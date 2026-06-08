@@ -26,11 +26,9 @@ IngresoSUP es la base arquitectónica del sistema de ingreso a la Educación Sup
 ## Guía de despliegue local
 
 1. Instalar Python 3.10+.
-2. Crear un entorno virtual dentro de `backend/`:
+2. Crear un entorno virtual:
 
    ```bash
-   cd backend
-   python -m venv .venv
    .\.venv\Scripts\activate
    pip install -r requirements.txt
    python manage.py migrate
@@ -50,10 +48,10 @@ IngresoSUP es la base arquitectónica del sistema de ingreso a la Educación Sup
 
 ## Rutas de autenticación
 
-- `POST /api/auth/login/` — iniciar sesión.
-- `POST /api/auth/register/` — registro de estudiante.
-- `POST /api/auth/logout/` — cerrar sesión.
-- `GET /api/auth/me/` — obtener usuario autenticado.
+- `POST /api/authentication/login/` — iniciar sesión.
+- `POST /api/authentication/register/` — registro de estudiante.
+- `POST /api/authentication/logout/` — cerrar sesión.
+- `GET /api/authentication/me/` — obtener usuario autenticado.
 - `GET /api/roles/admin/` — administración de roles para Super Administrador.
 - `GET /api/audit/logs/` — consultar logs de cambios de rol (Super Administrador).
 
@@ -64,16 +62,10 @@ IngresoSUP es la base arquitectónica del sistema de ingreso a la Educación Sup
 - [x] Endpoints de login/logout y sesión
 - [x] Estructura base del frontend React
 - [x] Landing page con secciones de noticias, plazas, cortes y oferta académica
+- [ ] Dashboards según roles
 - [ ] Módulo de boletas
 - [ ] Módulo de escalafón
 - [ ] Módulo de reportes
 - [ ] Módulo de gestión de admisión por etapas
 - [ ] Implementar JWT y Single Page App auth completa
 - [ ] Conexión de datos reales con APIs REST y backend
-
-## Buenas prácticas
-
-- Backend modular con `core` como punto de extensión.
-- Separación de responsabilidades: API y UI.
-- Comentarios y placeholders para futuras extensiones.
-- Sistema de permisos por niveles para evitar escalamiento no autorizado.

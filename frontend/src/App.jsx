@@ -6,6 +6,7 @@ import LandingPage from "./pages/LandingPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import RoleAdminPage from "./pages/RoleAdminPage";
+import SuperAdminDashboard from "./pages/SuperAdminDashboard";
 import LandingNav from "./components/LandingNav";
 
 function App() {
@@ -52,6 +53,7 @@ function App() {
             <Route path="/login" element={<LoginPage onLogin={handleLogin} />} />
             <Route path="/registro" element={<RegisterPage />} />
             <Route path="/roles" element={<RoleAdminPage user={user} />} />
+            <Route path="/superadmin" element={<SuperAdminDashboard user={user} />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>
