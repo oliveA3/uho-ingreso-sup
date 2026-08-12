@@ -1,21 +1,18 @@
-"""Core app model aliases for shared API serializers and views."""
+from django.db import models
 
-from apps.authentication.models import Rol, RolPermiso, Usuario
-from apps.auditoria.models import LogAuditoria
-from apps.carreras.models import Carrera
-from apps.escuelas.models import Escuela
-from apps.nomencladores.models import AsignaturaExamen, Ces, Municipio, OtorgamientoTipo, Provincia
+from apps.authentication.models import Usuario, ROLES
 
-__all__ = [
-    "Rol",
-    "RolPermiso",
-    "Usuario",
-    "LogAuditoria",
-    "Provincia",
-    "Municipio",
-    "Ces",
-    "OtorgamientoTipo",
-    "AsignaturaExamen",
-    "Carrera",
-    "Escuela",
-]
+
+class LogAuditoria(models.Model):
+    usuario = models.ForeignKey(
+        Usuario, on_delete=models.CASCADE, related_name='logs')
+    accion = models.CharField(max_length=200)
+    modulo = models.CharField(max_length=120)
+    entidad = models.CharField(max_length=300, choices=ROLES)
+    datos_anteriores = models.CharField(max_length=500)
+    datos_nuevos = models.CharField(max_length=500)
+    ip = models.CharField(max_length=30)
+    # user_agent
+    created_at = models.DateTimeField(auto_now_add=True)
+
+# notificaciones

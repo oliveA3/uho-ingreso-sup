@@ -1,3 +1,4 @@
+import { useState } from "react";
 import HeroSection from "../components/HeroSection";
 import StageBanner from "../components/StageBanner";
 import ProcessTimeline from "../components/ProcessTimeline";
@@ -8,17 +9,21 @@ import OfferingsSection from "../components/OfferingsSection";
 import { newsItems, planPlazas, cutoffIndices, offerings, landingStage, timelineSteps } from "../data/landingData";
 
 export default function LandingPage() {
+
   return (
-    <div className="space-y-8">
-      <HeroSection />
-      <StageBanner stage={landingStage} />
-      <ProcessTimeline steps={timelineSteps} />
-      <div className="space-y-8">
-        <NewsSection items={newsItems} />
-        <PlanPlazasSection items={planPlazas} />
-        <CutoffSection items={cutoffIndices} />
-        <OfferingsSection items={offerings} />
-      </div>
+    <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900">
+
+      <main className="flex-1 space-y-8 py-5 px-4 sm:px-6 lg:px-8">
+        <HeroSection />
+        <StageBanner stage={landingStage} />
+        <ProcessTimeline steps={timelineSteps} />
+        <div className="space-y-8">
+          <NewsSection items={newsItems} />
+          <PlanPlazasSection items={planPlazas} />
+          <CutoffSection items={cutoffIndices} />
+          <OfferingsSection items={offerings} />
+        </div>
+      </main>
     </div>
   );
 }

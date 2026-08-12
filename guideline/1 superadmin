@@ -1,0 +1,741 @@
+Header general que lleva al landing page
+
+Sidemenu (abre automaticamente en el Dashboard) con:
+    Dashboard -> 
+        - nomencladores de provincias, municipios, escuelas, carreras, ces y asignaturas (registros, activos)
+        cada uno abre una ventana modal que muestra la lista de objetos (con botones para editar y eliminar)
+        informacion de si estan activas o no
+        - barra de busqueda por nombre y boton para agregar nuevo objeto (con su ventana modal)
+    
+    Usuarios -> 
+        - lista de usuarios (usuario, nombre, rol, alcance, estado)
+        filtrar por rol, provincia y estado
+        cada uno con botones para editar y eliminar
+        - boton para agregar usuario (con su ventana modal)
+    
+    Matriz de roles y permisos -> 
+        ver en el mockup
+        
+    Indentidad visual ->
+        - colores: primario, secundario, acento, fondo, exito y error (opcion de editar)
+        - opciones para cambiar: logo (subir foto), nombre del sistema (ingresoSUP) y tipografia
+        - boton de guardado
+        
+        #1F4E79 Primario
+        #2E75B6 Secundario
+        #5BA3D9 Acento
+        #D6E4F0 Fondo
+        #1A7A4A Éxito
+        #C0392B Error
+    
+    Cerrar sesion ->
+
+<!-- ===== SUPER ADMIN ===== -->
+<div id="s-admin" class="screen">
+    <div class="layout">
+        <div class="sb">
+            <div class="ui">
+                <div class="un">Admin Sistema</div>
+                <div class="ur">⚙️ Super Admin</div>
+                <div class="us">Acceso Global</div>
+            </div>
+            <div class="st">Administración</div>
+            <a onclick="ss('adm', 'dashboard')" class="on" id="adm-n-dashboard"
+                >🏠 Dashboard</a
+            >
+            <a onclick="ss('adm', 'nomencladores')" id="adm-n-nomencladores"
+                >📚 Nomencladores</a
+            >
+            <a onclick="ss('adm', 'roles')" id="adm-n-roles"
+                >🔐 Roles y Permisos</a
+            >
+            <a onclick="ss('adm', 'usuarios')" id="adm-n-usuarios"
+                >👥 Usuarios</a
+            >
+            <a onclick="ss('adm', 'docker')" id="adm-n-docker"
+                >🐳 Despliegue Docker</a
+            >
+            <a onclick="ss('adm', 'identidad')" id="adm-n-identidad"
+                >🎨 Identidad Visual</a
+            >
+            <div class="st">Cuenta</div>
+            <a onclick="go('landing')">🚪 Cerrar Sesión</a>
+        </div>
+        <div class="main">
+            <div id="adm-dashboard">
+                <div class="pt">Panel de Administración Global</div>
+                <div class="ps">
+                    IngresoSUP · Configuración y gestión del sistema
+                </div>
+                <div class="stats">
+                    <div class="stat">
+                        <div class="sn">2</div>
+                        <div class="sl">Provincias Activas</div>
+                    </div>
+                    <div class="stat">
+                        <div class="sn">7</div>
+                        <div class="sl">Roles Definidos</div>
+                    </div>
+                    <div class="stat g">
+                        <div class="sn">312</div>
+                        <div class="sl">Usuarios Totales</div>
+                    </div>
+                    <div class="stat">
+                        <div class="sn">v2.0</div>
+                        <div class="sl">Versión</div>
+                    </div>
+                </div>
+                <div class="alert ai">
+                    ⚙️ Acceso total. Gestiona nomencladores, roles, usuarios,
+                    identidad visual y configuración de despliegue.
+                </div>
+            </div>
+            <div id="adm-nomencladores" style="display: none">
+                <div class="pt">📚 Gestión de Nomencladores</div>
+                <div class="ps">
+                    Todos los catálogos del sistema con CRUD completo
+                </div>
+                <div
+                    style="
+                        display: grid;
+                        grid-template-columns: repeat(
+                            auto-fit,
+                            minmax(150px, 1fr)
+                        );
+                        gap: 9px;
+                        margin-bottom: 12px;
+                    "
+                >
+                    <div
+                        class="card"
+                        style="
+                            cursor: pointer;
+                            text-align: center;
+                            padding: 14px;
+                        "
+                        onclick="sm('m-crud')"
+                    >
+                        <div style="font-size: 26px">🗺️</div>
+                        <div
+                            style="
+                                font-weight: 700;
+                                color: var(--bl);
+                                margin-top: 4px;
+                                font-size: 12px;
+                            "
+                        >
+                            Provincias
+                        </div>
+                        <div class="sl">15 registros</div>
+                    </div>
+                    <div
+                        class="card"
+                        style="
+                            cursor: pointer;
+                            text-align: center;
+                            padding: 14px;
+                        "
+                        onclick="sm('m-crud')"
+                    >
+                        <div style="font-size: 26px">🏘️</div>
+                        <div
+                            style="
+                                font-weight: 700;
+                                color: var(--bl);
+                                margin-top: 4px;
+                                font-size: 12px;
+                            "
+                        >
+                            Municipios
+                        </div>
+                        <div class="sl">168 registros</div>
+                    </div>
+                    <div
+                        class="card"
+                        style="
+                            cursor: pointer;
+                            text-align: center;
+                            padding: 14px;
+                        "
+                        onclick="sm('m-crud')"
+                    >
+                        <div style="font-size: 26px">🏫</div>
+                        <div
+                            style="
+                                font-weight: 700;
+                                color: var(--bl);
+                                margin-top: 4px;
+                                font-size: 12px;
+                            "
+                        >
+                            Escuelas
+                        </div>
+                        <div class="sl">87 registros</div>
+                    </div>
+                    <div
+                        class="card"
+                        style="
+                            cursor: pointer;
+                            text-align: center;
+                            padding: 14px;
+                        "
+                        onclick="sm('m-crud')"
+                    >
+                        <div style="font-size: 26px">🎓</div>
+                        <div
+                            style="
+                                font-weight: 700;
+                                color: var(--bl);
+                                margin-top: 4px;
+                                font-size: 12px;
+                            "
+                        >
+                            Carreras
+                        </div>
+                        <div class="sl">120 registros</div>
+                    </div>
+                    <div
+                        class="card"
+                        style="
+                            cursor: pointer;
+                            text-align: center;
+                            padding: 14px;
+                        "
+                        onclick="sm('m-crud')"
+                    >
+                        <div style="font-size: 26px">🏛️</div>
+                        <div
+                            style="
+                                font-weight: 700;
+                                color: var(--bl);
+                                margin-top: 4px;
+                                font-size: 12px;
+                            "
+                        >
+                            CES / Univ.
+                        </div>
+                        <div class="sl">8 registros</div>
+                    </div>
+                    <div
+                        class="card"
+                        style="
+                            cursor: pointer;
+                            text-align: center;
+                            padding: 14px;
+                        "
+                        onclick="sm('m-crud')"
+                    >
+                        <div style="font-size: 26px">📐</div>
+                        <div
+                            style="
+                                font-weight: 700;
+                                color: var(--bl);
+                                margin-top: 4px;
+                                font-size: 12px;
+                            "
+                        >
+                            Asignaturas
+                        </div>
+                        <div class="sl">3 registros</div>
+                    </div>
+                </div>
+                <div class="alert ai">
+                    ℹ️ Los nomencladores con registros asociados se desactivan
+                    (soft delete) para preservar integridad histórica.
+                </div>
+            </div>
+            <div id="adm-roles" style="display: none">
+                <div class="pt">🔐 Roles y Permisos (RBAC)</div>
+                <div class="ps">
+                    Matriz de control de acceso. Los permisos se verifican en el
+                    servidor en cada petición.
+                </div>
+                <div class="card">
+                    <div class="alert ai" style="margin-bottom: 9px">
+                        🔒 La visibilidad en la interfaz es una medida de
+                        usabilidad. La seguridad real se aplica en cada endpoint
+                        del servidor.
+                    </div>
+                    <div class="tw">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Permiso</th>
+                                    <th>SuperAdmin</th>
+                                    <th>Jefe Com.</th>
+                                    <th>Repr.Prov</th>
+                                    <th>Repr.Mun</th>
+                                    <th>Director</th>
+                                    <th>Secretario</th>
+                                    <th>Estudiante</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>
+                                        <strong>Gestionar Provincias</strong>
+                                    </td>
+                                    <td class="pmc">✅</td>
+                                    <td class="pmc">❌</td>
+                                    <td class="pmc">❌</td>
+                                    <td class="pmc">❌</td>
+                                    <td class="pmc">❌</td>
+                                    <td class="pmc">❌</td>
+                                    <td class="pmc">❌</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Crear Usuarios</strong></td>
+                                    <td class="pmc">✅</td>
+                                    <td class="pmc">❌</td>
+                                    <td class="pmc">✅</td>
+                                    <td class="pmc">✅</td>
+                                    <td class="pmc">❌</td>
+                                    <td class="pmc">❌</td>
+                                    <td class="pmc">❌</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Activar Etapas</strong></td>
+                                    <td class="pmc">✅</td>
+                                    <td class="pmc">✅</td>
+                                    <td class="pmc">❌</td>
+                                    <td class="pmc">❌</td>
+                                    <td class="pmc">❌</td>
+                                    <td class="pmc">❌</td>
+                                    <td class="pmc">❌</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Importar Escalafón</strong></td>
+                                    <td class="pmc">✅</td>
+                                    <td class="pmc">✅</td>
+                                    <td class="pmc">✅</td>
+                                    <td class="pmc">✅</td>
+                                    <td class="pmc">❌</td>
+                                    <td class="pmc">✅</td>
+                                    <td class="pmc">❌</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Aprobar Boletas</strong></td>
+                                    <td class="pmc">✅</td>
+                                    <td class="pmc">✅</td>
+                                    <td class="pmc">✅</td>
+                                    <td class="pmc">✅</td>
+                                    <td class="pmc">❌</td>
+                                    <td class="pmc">✅</td>
+                                    <td class="pmc">❌</td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <strong>Ver Reportes Escuela</strong>
+                                    </td>
+                                    <td class="pmc">✅</td>
+                                    <td class="pmc">✅</td>
+                                    <td class="pmc">✅</td>
+                                    <td class="pmc">✅</td>
+                                    <td class="pmc">✅</td>
+                                    <td class="pmc">✅</td>
+                                    <td class="pmc">❌</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Ver Logs Auditoría</strong></td>
+                                    <td class="pmc">✅</td>
+                                    <td class="pmc">✅</td>
+                                    <td class="pmc">❌</td>
+                                    <td class="pmc">❌</td>
+                                    <td class="pmc">❌</td>
+                                    <td class="pmc">❌</td>
+                                    <td class="pmc">❌</td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <strong>Llenar Boleta Solicitud</strong>
+                                    </td>
+                                    <td class="pmc">❌</td>
+                                    <td class="pmc">❌</td>
+                                    <td class="pmc">❌</td>
+                                    <td class="pmc">❌</td>
+                                    <td class="pmc">❌</td>
+                                    <td class="pmc">❌</td>
+                                    <td class="pmc">✅</td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <strong
+                                            >Modificar Índice (excep.)</strong
+                                        >
+                                    </td>
+                                    <td class="pmc">✅</td>
+                                    <td class="pmc">✅</td>
+                                    <td class="pmc">❌</td>
+                                    <td class="pmc">❌</td>
+                                    <td class="pmc">❌</td>
+                                    <td class="pmc">❌</td>
+                                    <td class="pmc">❌</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Gestionar API Keys</strong></td>
+                                    <td class="pmc">✅</td>
+                                    <td class="pmc">❌</td>
+                                    <td class="pmc">❌</td>
+                                    <td class="pmc">❌</td>
+                                    <td class="pmc">❌</td>
+                                    <td class="pmc">❌</td>
+                                    <td class="pmc">❌</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div id="adm-usuarios" style="display: none">
+                <div class="pt">👥 Gestión Global de Usuarios</div>
+                <div class="ps">Todos los usuarios del sistema</div>
+                <div class="card">
+                    <div class="ch">
+                        <div class="ct">
+                            Usuarios <span class="badge bb">312</span>
+                        </div>
+                        <button class="btn bp bsm" onclick="sm('m-nusuario')">
+                            + Nuevo
+                        </button>
+                    </div>
+                    <div class="fr">
+                        <div class="fg">
+                            <label>Rol</label
+                            ><select>
+                                <option>Todos</option>
+                                <option>Jefe Comisión</option>
+                                <option>Repr. Provincial</option>
+                                <option>Secretario</option>
+                            </select>
+                        </div>
+                        <div class="fg">
+                            <label>Provincia</label
+                            ><select>
+                                <option>Todas</option>
+                                <option>Holguín</option>
+                            </select>
+                        </div>
+                        <div class="fg">
+                            <label>Estado</label
+                            ><select>
+                                <option>Todos</option>
+                                <option>Activo</option>
+                                <option>Inactivo</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="tw">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Usuario</th>
+                                    <th>Nombre</th>
+                                    <th>Rol</th>
+                                    <th>Alcance</th>
+                                    <th>Estado</th>
+                                    <th>Acc.</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>r.linares</td>
+                                    <td>Dr. Roberto Linares</td>
+                                    <td>
+                                        <span class="badge bb"
+                                            >Jefe Comisión</span
+                                        >
+                                    </td>
+                                    <td>Holguín</td>
+                                    <td>
+                                        <span class="badge bg">Activo</span>
+                                    </td>
+                                    <td>
+                                        <button class="btn bsm bo2">✏️</button>
+                                        <button class="btn bsm bd">🔒</button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>m.infante</td>
+                                    <td>Lic. Marta Infante</td>
+                                    <td>
+                                        <span class="badge bb"
+                                            >Repr. Prov.</span
+                                        >
+                                    </td>
+                                    <td>Holguín</td>
+                                    <td>
+                                        <span class="badge bg">Activo</span>
+                                    </td>
+                                    <td>
+                                        <button class="btn bsm bo2">✏️</button>
+                                        <button class="btn bsm bd">🔒</button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>caridad.rodriguez</td>
+                                    <td>Caridad Rodríguez</td>
+                                    <td>
+                                        <span class="badge bgr"
+                                            >Secretario</span
+                                        >
+                                    </td>
+                                    <td>IPVCE F. Engels</td>
+                                    <td>
+                                        <span class="badge bg">Activo</span>
+                                    </td>
+                                    <td>
+                                        <button class="btn bsm bo2">✏️</button>
+                                        <button class="btn bsm bd">🔒</button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div id="adm-docker" style="display: none">
+                <div class="pt">🐳 Despliegue con Docker</div>
+                <div class="ps">
+                    Entorno de desarrollo local reproducible — Repositorio Git
+                </div>
+                <div class="card">
+                    <div class="ct" style="margin-bottom: 9px">
+                        Instalación en 3 pasos
+                    </div>
+                    <div
+                        style="
+                            background: #1e2d3d;
+                            border-radius: 7px;
+                            padding: 12px;
+                            font-family: monospace;
+                            font-size: 11px;
+                            color: #7ecff5;
+                            margin-bottom: 9px;
+                        "
+                    >
+                        <div style="color: #aaa; margin-bottom: 4px">
+                            # 1. Clonar repositorio (GitLab UHo o GitHub)
+                        </div>
+                        <div>
+                            git clone https://github.com/usuario/ingresoSUP.git
+                            && cd ingresoSUP
+                        </div>
+                        <div style="color: #aaa; margin: 7px 0 4px">
+                            # 2. Configurar variables de entorno
+                        </div>
+                        <div>cp .env.example .env</div>
+                        <div style="color: #aaa; margin: 7px 0 4px">
+                            # 3. Levantar todos los servicios
+                        </div>
+                        <div>docker-compose up -d</div>
+                        <div style="color: #27ae60; margin-top: 7px">
+                            ✅ App en http://localhost:8000
+                        </div>
+                        <div style="color: #27ae60">
+                            ✅ API Docs en http://localhost:8000/api/docs
+                        </div>
+                        <div style="color: #27ae60">
+                            ✅ Correo (dev) en http://localhost:8025 (MailHog)
+                        </div>
+                    </div>
+                    <div class="ct" style="margin-bottom: 8px; font-size: 12px">
+                        Servicios en docker-compose.yml
+                    </div>
+                    <div class="tw">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Servicio</th>
+                                    <th>Imagen</th>
+                                    <th>Puerto</th>
+                                    <th>Función</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><strong>app</strong></td>
+                                    <td>php:8.3-fpm / node:20</td>
+                                    <td>8000</td>
+                                    <td>Servidor de aplicación principal</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>db</strong></td>
+                                    <td>postgres:16-alpine</td>
+                                    <td>5432</td>
+                                    <td>Base de datos PostgreSQL</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>redis</strong></td>
+                                    <td>redis:7-alpine</td>
+                                    <td>6379</td>
+                                    <td>Caché y cola de notificaciones</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>worker</strong></td>
+                                    <td>(misma app)</td>
+                                    <td>—</td>
+                                    <td>
+                                        Procesador de colas (emails masivos)
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>mailhog</strong></td>
+                                    <td>mailhog/mailhog</td>
+                                    <td>8025</td>
+                                    <td>SMTP local para desarrollo</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="alert ai" style="margin-top: 9px">
+                        📁 Repositorio:
+                        <strong>gitlab.uho.edu.cu/ingresoSUP</strong> o
+                        <strong>github.com/usuario/ingresoSUP</strong
+                        ><br />Ramas: main (prod) · develop (integración) ·
+                        feature/* (funcionalidades)
+                    </div>
+                </div>
+            </div>
+            <div id="adm-identidad" style="display: none">
+                <div class="pt">🎨 Identidad Visual Institucional</div>
+                <div class="ps">
+                    Ajustada al Manual de Identidad del contexto MINED/MES
+                </div>
+                <div class="card">
+                    <div class="ct" style="margin-bottom: 9px">
+                        Paleta de Colores Institucional
+                    </div>
+                    <div
+                        style="
+                            display: flex;
+                            gap: 9px;
+                            flex-wrap: wrap;
+                            margin-bottom: 11px;
+                        "
+                    >
+                        <div style="text-align: center">
+                            <div
+                                class="color-swatch"
+                                style="background: #1f4e79"
+                            ></div>
+                            <div
+                                style="
+                                    font-size: 9px;
+                                    margin-top: 3px;
+                                    font-weight: 700;
+                                "
+                            >
+                                #1F4E79<br />Primario
+                            </div>
+                        </div>
+                        <div style="text-align: center">
+                            <div
+                                class="color-swatch"
+                                style="background: #2e75b6"
+                            ></div>
+                            <div
+                                style="
+                                    font-size: 9px;
+                                    margin-top: 3px;
+                                    font-weight: 700;
+                                "
+                            >
+                                #2E75B6<br />Secundario
+                            </div>
+                        </div>
+                        <div style="text-align: center">
+                            <div
+                                class="color-swatch"
+                                style="background: #5ba3d9"
+                            ></div>
+                            <div
+                                style="
+                                    font-size: 9px;
+                                    margin-top: 3px;
+                                    font-weight: 700;
+                                "
+                            >
+                                #5BA3D9<br />Acento
+                            </div>
+                        </div>
+                        <div style="text-align: center">
+                            <div
+                                class="color-swatch"
+                                style="
+                                    background: #d6e4f0;
+                                    border: 1px solid #ccc;
+                                "
+                            ></div>
+                            <div
+                                style="
+                                    font-size: 9px;
+                                    margin-top: 3px;
+                                    font-weight: 700;
+                                "
+                            >
+                                #D6E4F0<br />Fondo
+                            </div>
+                        </div>
+                        <div style="text-align: center">
+                            <div
+                                class="color-swatch"
+                                style="background: #1a7a4a"
+                            ></div>
+                            <div
+                                style="
+                                    font-size: 9px;
+                                    margin-top: 3px;
+                                    font-weight: 700;
+                                "
+                            >
+                                #1A7A4A<br />Éxito
+                            </div>
+                        </div>
+                        <div style="text-align: center">
+                            <div
+                                class="color-swatch"
+                                style="background: #c0392b"
+                            ></div>
+                            <div
+                                style="
+                                    font-size: 9px;
+                                    margin-top: 3px;
+                                    font-weight: 700;
+                                "
+                            >
+                                #C0392B<br />Error
+                            </div>
+                        </div>
+                    </div>
+                    <div class="ct" style="margin-bottom: 8px; font-size: 12px">
+                        Configuración Logo y Tipografía
+                    </div>
+                    <div class="fr">
+                        <div class="fg">
+                            <label>Logo del Sistema (PNG/SVG)</label
+                            ><input type="file" accept="image/*" />
+                        </div>
+                        <div class="fg">
+                            <label>Nombre del Sistema</label
+                            ><input value="IngresoSUP" />
+                        </div>
+                        <div class="fg">
+                            <label>Tipografía Principal</label
+                            ><select>
+                                <option>Segoe UI (recomendada)</option>
+                                <option>Arial</option>
+                                <option>Roboto</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="alert ai">
+                        📋 El logo aparece en: cabecera Landing Page, pantalla
+                        de login y en todos los documentos exportados (boletas
+                        PDF, reportes, listados).
+                    </div>
+                    <button class="btn bp">💾 Guardar Configuración</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

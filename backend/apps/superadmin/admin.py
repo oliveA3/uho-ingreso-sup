@@ -1,9 +1,15 @@
 from django.contrib import admin
+from .models import IdentidadVisual
 
-from .models import SuperAdminConfig
-
-
-@admin.register(SuperAdminConfig)
-class SuperAdminConfigAdmin(admin.ModelAdmin):
-    list_display = ("logo_url", "primary_color", "secondary_color", "accent_color", "updated_at")
-    readonly_fields = ("updated_at",)
+@admin.register(IdentidadVisual)
+class IdentidadVisualAdmin(admin.ModelAdmin):
+    list_display = [
+        "id",
+        "nombre_sistema",
+        "tipografia",
+        "color_primario",
+        "color_secundario",
+        "color_acento",
+        "fecha_creado",
+    ]
+    readonly_fields = ["fecha_creado"]  # este sí existe en el modelo

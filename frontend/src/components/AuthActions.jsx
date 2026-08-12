@@ -7,7 +7,7 @@ export default function AuthActions({ user, onLogout }) {
     <div className="flex flex-wrap items-center gap-3">
       {user ? (
         <>
-          <span className="text-sm text-slate-700">{user.nombre} {user.apellidos}</span>
+          <span className="text-sm text-slate-700">{user.first_name || user.nombre || user.username} {user.last_name || user.apellidos || ""}</span>
           <button
             type="button"
             onClick={onLogout}

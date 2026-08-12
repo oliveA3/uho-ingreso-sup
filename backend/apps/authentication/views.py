@@ -42,16 +42,16 @@ class RegisterView(APIView):
 
 
 @method_decorator(csrf_exempt, name="dispatch")
+class CurrentUserView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        return JsonResponse({"user": UserSerializer(request.user).data}, status=status.HTTP_200_OK)
+
+
 class LogoutView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
         logout(request)
         return JsonResponse({"detail": "Sesión cerrada."}, status=status.HTTP_200_OK)
-
-
-class CurrentUserView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request):
-        return JsonResponse({"user": UserSerializer(request.user).data}, status=status.HTTP_200_OK)

@@ -1,14 +1,16 @@
 from django.urls import path
-from .views import SuperAdminDashboard
+
+from .views import (
+    IdentidadVisualConfig,
+    ProvinciaViewSet,
+    MunicipioViewSet,
+    EscuelaViewSet
+)
 
 urlpatterns = [
-    path("dashboard/", SuperAdminDashboard.as_view(), name="superadmin-dashboard"),
-]
-from django.urls import path
-
-from .views import SuperAdminConfigView, SuperAdminDashboardMetricsView
-
-urlpatterns = [
-    path("dashboard/", SuperAdminDashboardMetricsView.as_view(), name="superadmin_dashboard"),
-    path("config/", SuperAdminConfigView.as_view(), name="superadmin_config"),
+    path("provincias/", ProvinciaViewSet.as_view({"get": "list"}), name="provincias"),
+    path("municipios/", MunicipioViewSet.as_view({"get": "list"}), name="municipios"),
+    path("escuelas/", EscuelaViewSet.as_view({"get": "list"}), name="escuelas"),
+    path("dashboard/", IdentidadVisualConfig.as_view(),
+         name="identidad-visual-config"),
 ]

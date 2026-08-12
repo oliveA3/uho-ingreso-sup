@@ -85,7 +85,7 @@ export async function updateSuperAdminConfig(payload) {
 }
 
 export async function fetchNomencladoresHealth() {
-  const response = await fetch(`${API_BASE}/nomencladores/health/`, {
+  const response = await fetch(`${API_BASE}/core/health/`, {
     credentials: "include",
   });
   return handleResponse(response);

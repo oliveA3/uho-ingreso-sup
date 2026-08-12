@@ -1,0 +1,99 @@
+    <!-- ===== LANDING ===== -->
+    <div id="s-landing" class="screen active">
+        <div class="lnav">
+            <span class="brand">🎓 IngresoSUP</span>
+            <a onclick="sm('m-plazas')">📋 Plan de Plazas</a>
+            <a onclick="sm('m-cortes')">📊 Índices Corte</a>
+            <a onclick="sm('m-univ')">🎓 Universidades</a>
+            <a onclick="sm('m-noticias')">📰 Noticias</a>
+            <a onclick="sm('m-nota')" style="background:rgba(255,165,0,.2);color:#FFD080;">🔍 Consultar Nota</a>
+            <a onclick="go('login')"
+                style="background:var(--b2);color:#fff;padding:5px 10px;border-radius:5px;font-weight:700;">Iniciar
+                Sesión</a>
+        </div>
+        <div class="hero">
+            <h1>Proceso de Ingreso a la Educación Superior 2025</h1>
+            <p>Información oficial sobre el proceso de solicitud y otorgamiento de carreras del Curso Diurno. Provincia
+                de Holguín.</p>
+            <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
+                <button class="btn bp" onclick="sm('m-plazas')">📋 Ver Plan de Plazas</button>
+                <button class="btn"
+                    style="background:rgba(255,255,255,.15);color:#fff;border:1.5px solid rgba(255,255,255,.4);"
+                    onclick="go('login')">👩‍🎓 Crear Cuenta</button>
+            </div>
+        </div>
+        <div
+            style="background:linear-gradient(90deg,#1a7a4a,#27ae60);color:#fff;padding:8px 16px;text-align:center;font-size:11px;">
+            🟢 <strong>Etapa activa:</strong> Publicación y Validación del Escalafón — 10/01 al 20/01/2025 &nbsp;|&nbsp;
+            <a onclick="go('student')" style="color:#a8ffd8;text-decoration:underline;cursor:pointer;">Acceder como
+                Estudiante →</a>
+        </div>
+        <div style="padding:16px;max-width:1100px;margin:0 auto;">
+            <div class="card">
+                <div class="ch">
+                    <div class="ct">📅 Cronograma del Proceso 2025</div>
+                </div>
+                <div class="ptl">
+                    <div class="pi done">
+                        <div class="pit">✅ 1. Escalafón</div>
+                        <div class="pis">10–20 Ene</div>
+                    </div>
+                    <div class="pi act">
+                        <div class="pit">⚡ 2. Boleta Interés</div>
+                        <div class="pis">22–30 Ene</div>
+                    </div>
+                    <div class="pi pend">
+                        <div class="pit">⏳ 3. Solicitud</div>
+                        <div class="pis">1–10 Feb</div>
+                    </div>
+                    <div class="pi pend">
+                        <div class="pit">⏳ 4. Pruebas</div>
+                        <div class="pis">15–17 Feb</div>
+                    </div>
+                    <div class="pi pend">
+                        <div class="pit">⏳ 5. Resultados</div>
+                        <div class="pis">25 Feb</div>
+                    </div>
+                    <div class="pi pend">
+                        <div class="pit">⏳ 6. Otorgamiento</div>
+                        <div class="pis">10 Mar</div>
+                    </div>
+                </div>
+            </div>
+            <h3 style="color:var(--bl);margin:9px 0 7px;font-size:13px;">📰 Noticias e Información</h3>
+            <div class="lgrid">
+                <div class="nc">
+                    <div class="ni2">📢</div>
+                    <div class="nb">
+                        <h4>Inicio del proceso de Ingreso 2025</h4>
+                        <p>El proceso da inicio con la publicación del escalafón en todas las escuelas.</p>
+                        <div class="dt">08 Enero 2025</div>
+                    </div>
+                </div>
+                <div class="nc">
+                    <div class="ni2">🏫</div>
+                    <div class="nb">
+                        <h4>Requisitos para estudiantes de 12mo</h4>
+                        <p>Conozca los pasos para inscribirse en el proceso de ingreso a la ES.</p>
+                        <div class="dt">05 Enero 2025</div>
+                    </div>
+                </div>
+                <div class="nc">
+                    <div class="ni2">🎓</div>
+                    <div class="nb">
+                        <h4>Oferta de carreras 2025</h4>
+                        <p>La UHo y otras instituciones ofrecen 47 carreras para el curso diurno 2025-2026.</p>
+                        <div class="dt">03 Enero 2025</div>
+                    </div>
+                </div>
+                <div class="nc">
+                    <div class="ni2">📊</div>
+                    <div class="nb">
+                        <h4>Índices de corte 2024</h4>
+                        <p>Consulte los índices de corte del proceso anterior por carrera.</p>
+                        <div class="dt">15 Dic 2024</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>

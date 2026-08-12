@@ -16,16 +16,14 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "corsheaders",
     "rest_framework",
-    "apps.authentication",
-    "apps.nomencladores",
-    "apps.escuelas",
-    "apps.proceso",
-    "apps.carreras",
-    "apps.estudiantes",
-    "apps.reportes",
-    "apps.auditoria",
     "apps.core",
+    "apps.authentication",
+    "apps.gestion_provincial",
+    "apps.gestion_municipal",
+    "apps.gestion_escuela",
+    "apps.gestion_personal",
     "apps.superadmin",
+    "apps.import_export",
 ]
 
 MIDDLEWARE = [
