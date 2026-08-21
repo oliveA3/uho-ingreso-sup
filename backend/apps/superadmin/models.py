@@ -62,8 +62,8 @@ class Asignatura(models.Model):
 
 
 class IdentidadVisual(models.Model):
-    logo_url = models.URLField(
-        blank=True, help_text="URL del logo institucional")
+    logo_url = models.TextField(
+        blank=True, help_text="URL o imagen codificada del logo institucional")
     nombre_sistema = models.CharField(max_length=100, default="IngresoSUP")
     tipografia = models.CharField(max_length=100, default="Segoe UI")
 

@@ -1,5 +1,13 @@
 from rest_framework import serializers
-from .models import IdentidadVisual, Provincia, Municipio, Escuela
+from .models import (
+    Asignatura,
+    Carrera,
+    Ces,
+    Escuela,
+    IdentidadVisual,
+    Municipio,
+    Provincia,
+)
 
 
 class IdentidadVisualSerializer(serializers.ModelSerializer):
@@ -21,7 +29,7 @@ class IdentidadVisualSerializer(serializers.ModelSerializer):
 
 
 class IdentidadVisualUpdateSerializer(serializers.Serializer):
-    logo_url = serializers.URLField(required=False, allow_blank=True)
+    logo_url = serializers.CharField(required=False, allow_blank=True)
     nombre_sistema = serializers.CharField(required=False, max_length=100)
     tipografia = serializers.CharField(required=False, max_length=100)
 
@@ -36,16 +44,34 @@ class IdentidadVisualUpdateSerializer(serializers.Serializer):
 class ProvinciaSerializer(serializers.ModelSerializer):
     class Meta:
         model = Provincia
-        fields = ['id', 'nombre']
+        fields = ['id', 'nombre', 'activa']
 
 
 class MunicipioSerializer(serializers.ModelSerializer):
     class Meta:
         model = Municipio
-        fields = ['id', 'nombre', 'provincia']
+        fields = ['id', 'nombre', 'provincia', 'activo']
 
 
 class EscuelaSerializer(serializers.ModelSerializer):
     class Meta:
         model = Escuela
-        fields = ['id', 'nombre', 'municipio']
+        fields = ['id', 'nombre', 'codigo', 'descripcion', 'municipio', 'activa']
+
+
+class CesSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Ces
+        fields = ['id', 'nombre', 'activa']
+
+
+class CarreraSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Carrera
+        fields = ['id', 'codigo', 'nombre', 'ces', 'provincia', 'activa']
+
+
+class AsignaturaSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Asignatura
+        fields = ['id', 'nombre', 'activa']

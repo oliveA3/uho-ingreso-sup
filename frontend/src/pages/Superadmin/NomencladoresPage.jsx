@@ -1,43 +1,269 @@
-const nomencladores = [
-  { emoji: "🗺️", title: "Provincias", subtitle: "15 registros" },
-  { emoji: "🏘️", title: "Municipios", subtitle: "168 registros" },
-  { emoji: "🏫", title: "Escuelas", subtitle: "87 registros" },
-  { emoji: "🎓", title: "Carreras", subtitle: "120 registros" },
-  { emoji: "🏛️", title: "CES / Univ.", subtitle: "8 registros" },
-  { emoji: "📐", title: "Asignaturas", subtitle: "3 registros" },
-];
+import { useEffect, useState } from "react";
+import {
+  createSuperAdminCatalogItem,
+  deleteSuperAdminCatalogItem,
+  fetchSuperAdminCatalog,
+  updateSuperAdminCatalogItem,
+} from "../../services/api";
+
+const catalogs = {
+  provincias: {
+    title: "Provincias",
+    icon: "🗺️",
+    fields: [{ name: "nombre", label: "Nombre", type: "text" }],
+    activeField: "activa",
+  },
+  municipios: {
+    title: "Municipios",
+    icon: "🏘️",
+    fields: [
+      { name: "nombre", label: "Nombre", type: "text" },
+      { name: "provincia", label: "ID de provincia", type: "number" },
+    ],
+    activeField: "activo",
+  },
+  escuelas: {
+    title: "Escuelas",
+    icon: "🏫",
+    fields: [
+      { name: "nombre", label: "Nombre", type: "text" },
+      { name: "codigo", label: "Código", type: "text" },
+      { name: "descripcion", label: "Descripción", type: "text" },
+      { name: "municipio", label: "ID de municipio", type: "number" },
+    ],
+    activeField: "activa",
+  },
+  carreras: {
+    title: "Carreras",
+    icon: "🎓",
+    fields: [
+      { name: "codigo", label: "Código", type: "text" },
+      { name: "nombre", label: "Nombre", type: "text" },
+      { name: "ces", label: "Universidad / CES", type: "select", optionsKey: "ces" },
+      { name: "provincia", label: "Provincia", type: "select", optionsKey: "provincias" },
+    ],
+    activeField: "activa",
+  },
+  ces: {
+    title: "CES / Universidades",
+    icon: "🏛️",
+    fields: [{ name: "nombre", label: "Nombre", type: "text" }],
+    activeField: "activa",
+  },
+  asignaturas: {
+    title: "Asignaturas",
+    icon: "📐",
+    fields: [{ name: "nombre", label: "Nombre", type: "text" }],
+    activeField: "activa",
+  },
+};
+
+function emptyForm(config) {
+  return Object.fromEntries(config.fields.map((field) => [field.name, ""]));
+}
 
 export default function NomencladoresPage() {
+  const [resource, setResource] = useState("provincias");
+  const [items, setItems] = useState([]);
+  const [form, setForm] = useState({});
+  const [editing, setEditing] = useState(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [error, setError] = useState("");
+  const [search, setSearch] = useState("");
+  const [referenceOptions, setReferenceOptions] = useState({ ces: [], provincias: [] });
+  const config = catalogs[resource];
+  const filteredItems = items.filter((item) => {
+    const query = search.trim().toLowerCase();
+    if (!query) return true;
+    return [item.nombre, item.codigo]
+      .filter(Boolean)
+      .some((value) => String(value).toLowerCase().includes(query));
+  });
+
+  async function loadItems() {
+    try {
+      setError("");
+      setItems(await fetchSuperAdminCatalog(resource));
+    } catch (requestError) {
+      setError(requestError.message);
+    }
+  }
+
+  async function loadReferenceOptions() {
+    try {
+      const [ces, provincias] = await Promise.all([
+        fetchSuperAdminCatalog("ces"),
+        fetchSuperAdminCatalog("provincias"),
+      ]);
+      setReferenceOptions({ ces, provincias });
+    } catch (requestError) {
+      setError(requestError.message);
+    }
+  }
+
+  useEffect(() => {
+    loadItems();
+    if (resource === "carreras") loadReferenceOptions();
+    setSearch("");
+    setEditing(null);
+    setForm(emptyForm(catalogs[resource]));
+  }, [resource]);
+
+  function openCreate() {
+    setEditing(null);
+    setForm(emptyForm(config));
+    setModalOpen(true);
+  }
+
+  function openEdit(item) {
+    setEditing(item);
+    setForm(Object.fromEntries(config.fields.map((field) => [field.name, item[field.name] ?? ""])));
+    setModalOpen(true);
+  }
+
+  async function handleSubmit(event) {
+    event.preventDefault();
+    try {
+      setError("");
+      const payload = { ...form };
+      config.fields.filter((field) => field.type === "number" || field.type === "select").forEach((field) => {
+        payload[field.name] = Number(payload[field.name]);
+      });
+      if (editing) {
+        await updateSuperAdminCatalogItem(resource, editing.id, payload);
+      } else {
+        await createSuperAdminCatalogItem(resource, payload);
+      }
+      setModalOpen(false);
+      await loadItems();
+    } catch (requestError) {
+      setError(requestError.message);
+    }
+  }
+
+  async function handleDelete(item) {
+    if (!window.confirm(`¿Eliminar ${item.nombre || item.codigo}?`)) return;
+    try {
+      setError("");
+      await deleteSuperAdminCatalogItem(resource, item.id);
+      await loadItems();
+    } catch (requestError) {
+      setError(requestError.message);
+    }
+  }
+
+  async function toggleActive(item) {
+    try {
+      setError("");
+      await updateSuperAdminCatalogItem(resource, item.id, {
+        [config.activeField]: !item[config.activeField],
+      });
+      await loadItems();
+    } catch (requestError) {
+      setError(requestError.message);
+    }
+  }
+
   return (
     <div className="space-y-6">
-      <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
+      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h1 className="text-2xl font-semibold text-slate-900">📚 Nomencladores</h1>
-            <p className="mt-2 text-sm text-slate-600">Todos los catálogos del sistema con CRUD completo.</p>
+            <p className="mt-2 text-sm text-slate-600">Administra los catálogos.</p>
           </div>
-          <button
-            type="button"
-            className="inline-flex items-center justify-center rounded-2xl bg-sky-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-sky-700"
-          >
-            Ver catálogo
+          <button type="button" onClick={openCreate} className="rounded-2xl bg-sky-600 px-5 py-3 text-sm font-semibold text-white hover:bg-sky-700">
+            + Nuevo registro
           </button>
         </div>
 
-        <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {nomencladores.map((item) => (
-            <div key={item.title} className="rounded-3xl border border-slate-200 bg-slate-50 p-6 text-center">
-              <div className="text-3xl">{item.emoji}</div>
-              <div className="mt-4 text-sm font-semibold text-slate-900">{item.title}</div>
-              <div className="mt-2 text-sm text-slate-600">{item.subtitle}</div>
-            </div>
+        <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {Object.entries(catalogs).map(([key, item]) => (
+            <button key={key} type="button" onClick={() => setResource(key)} className={`rounded-3xl border p-5 text-left transition ${resource === key ? "border-sky-500 bg-sky-50" : "border-slate-200 bg-slate-50 hover:bg-white"}`}>
+              <span className="text-2xl">{item.icon}</span>
+              <span className="mt-3 block text-sm font-semibold text-slate-900">{item.title}</span>
+            </button>
           ))}
         </div>
+      </section>
 
-        <div className="mt-6 rounded-3xl border border-slate-200 bg-slate-50 p-6 text-sm text-slate-700">
-          ℹ️ Los nomencladores con registros asociados se desactivan (soft delete) para preservar integridad histórica.
+      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <h2 className="text-xl font-semibold text-slate-900">{config.title}</h2>
+          <div className="flex items-center gap-3">
+            <span className="rounded-full bg-slate-100 px-3 py-1 text-sm text-slate-600">{filteredItems.length} registros</span>
+          </div>
+        </div>
+        {error && <p className="mt-4 rounded-2xl bg-rose-50 p-4 text-sm text-rose-700">{error}</p>}
+        <div className="mt-5">
+          <label htmlFor="nomenclador-search" className="sr-only">Buscar nomenclador</label>
+          <input
+            id="nomenclador-search"
+            type="search"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder={`Buscar en ${config.title.toLowerCase()}...`}
+            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-sky-500 focus:bg-white"
+          />
+        </div>
+        <div className="mt-5 overflow-x-auto rounded-3xl border border-slate-200">
+          <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
+            <thead className="bg-slate-100 text-slate-500"><tr><th className="px-4 py-3">Registro</th><th className="px-4 py-3">Estado</th><th className="px-4 py-3">Acciones</th></tr></thead>
+            <tbody className="divide-y divide-slate-200 bg-white">
+              {filteredItems.map((item) => (
+                <tr key={item.id}>
+                  <td className="px-4 py-4 font-medium text-slate-900">{item.nombre || item.codigo}</td>
+                  <td className="px-4 py-4"><button type="button" onClick={() => toggleActive(item)} className={item[config.activeField] ? "text-emerald-600" : "text-slate-400"}>{item[config.activeField] ? "Activo" : "Inactivo"}</button></td>
+                  <td className="px-4 py-4"><button type="button" onClick={() => openEdit(item)} className="mr-2 rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold">Editar</button><button type="button" onClick={() => handleDelete(item)} className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700">Eliminar</button></td>
+                </tr>
+              ))}
+              {!filteredItems.length && <tr><td colSpan="3" className="px-4 py-8 text-center text-slate-500">{items.length ? "No se encontraron registros." : "No hay registros."}</td></tr>}
+            </tbody>
+          </table>
         </div>
       </section>
+
+      {modalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
+          <form onSubmit={handleSubmit} className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl">
+            <h2 className="text-xl font-semibold text-slate-900">
+              {editing ? "Editar" : "Nuevo"} {config.title}
+            </h2>
+            <div className="mt-5 space-y-4">
+              {config.fields.map((field) => (
+                <label key={field.name} className="block text-sm font-semibold text-slate-700">
+                  {field.label}
+                  {field.type === "select" ? (
+                    <select
+                      required
+                      value={form[field.name] ?? ""}
+                      onChange={(event) => setForm({ ...form, [field.name]: event.target.value })}
+                      className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 font-normal"
+                    >
+                      <option value="">Selecciona una opción</option>
+                      {referenceOptions[field.optionsKey].map((option) => (
+                        <option key={option.id} value={option.id}>{option.nombre}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      required={field.name === "nombre" || field.name === "codigo"}
+                      type={field.type}
+                      value={form[field.name] ?? ""}
+                      onChange={(event) => setForm({ ...form, [field.name]: event.target.value })}
+                      className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 font-normal"
+                    />
+                  )}
+                </label>
+              ))}
+            </div>
+            <div className="mt-6 flex justify-end gap-3">
+              <button type="button" onClick={() => setModalOpen(false)} className="rounded-2xl border border-slate-200 px-5 py-3 text-sm font-semibold">Cancelar</button>
+              <button type="submit" className="rounded-2xl bg-sky-600 px-5 py-3 text-sm font-semibold text-white">Guardar</button>
+            </div>
+          </form>
+        </div>
+      )}
     </div>
   );
 }

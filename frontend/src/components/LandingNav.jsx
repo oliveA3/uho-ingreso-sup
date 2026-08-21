@@ -1,14 +1,15 @@
 import { Link } from "react-router-dom";
 import AuthActions from "./AuthActions";
 
-export default function LandingNav({ user, onLogout, onOpenMenu }) {
+export default function LandingNav({ user, visualConfig, onLogout, onOpenMenu }) {
   return (
     <nav className="sticky top-0 z-40 bg-white/95 backdrop-blur-md shadow-sm border-b border-slate-200">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-5 py-5 sm:px-6">
         {/* Logo y título */}
         <div className="flex items-center gap-3">
-          <Link to="/" className="text-lg font-black tracking-tight text-sky-700">
-            🎓 IngresoSUP
+          <Link to="/" style={{ color: "var(--brand-primary)" }} className="flex items-center gap-2 text-lg font-black tracking-tight">
+            {visualConfig?.logo_url ? <img src={visualConfig.logo_url} alt="Logo" className="h-8 w-8 object-contain" /> : "🎓"}
+            {visualConfig?.nombre_sistema || "IngresoSUP"}
           </Link>
           <p className="text-sm text-slate-500">
             Sistema de Ingreso a la Educación Superior

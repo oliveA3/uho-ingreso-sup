@@ -7,10 +7,10 @@ export default function SuperAdminSidebar({ scope }) {
       items: [
         { label: "Dashboard", icon: "🏠", to: "/superadmin/dashboard" },
         { label: "Nomencladores", icon: "📚", to: "/superadmin/nomencladores" },
-        { label: "Roles y Permisos", icon: "🔐", to: "/superadmin/roles" },
         { label: "Usuarios", icon: "👥", to: "/superadmin/usuarios" },
-        { label: "Despliegue Docker", icon: "🐳", to: "/superadmin/despliegue" },
+        { label: "Roles y Permisos", icon: "🔐", to: "/superadmin/roles" },
         { label: "Identidad Visual", icon: "🎨", to: "/superadmin/identidad" },
+        { label: "Despliegue Docker", icon: "🐳", to: "/superadmin/despliegue" },
       ],
     },
     {

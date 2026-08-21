@@ -1,7 +1,7 @@
 from django.contrib.auth import authenticate, login, logout
 from django.http import JsonResponse
 from django.utils.decorators import method_decorator
-from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.views import APIView
@@ -55,3 +55,11 @@ class LogoutView(APIView):
     def post(self, request):
         logout(request)
         return JsonResponse({"detail": "Sesión cerrada."}, status=status.HTTP_200_OK)
+
+
+@method_decorator(ensure_csrf_cookie, name="dispatch")
+class CsrfCookieView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        return JsonResponse({"detail": "Cookie CSRF disponible."}, status=status.HTTP_200_OK)

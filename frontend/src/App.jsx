@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
-import { fetchCurrentUser, logout } from "./services/api";
+import { fetchCurrentUser, fetchSuperAdminConfig, logout } from "./services/api";
 import { SidebarSelector } from "./components/Sidebar/SidebarSelector";
 import LandingNav from "./components/LandingNav";
 import Footer from "./components/Footer";
@@ -29,13 +29,13 @@ import JefeComisionOtorgamiento from "./pages/JefeComision/OtorgamientoPage";
 import JefeComisionApi from "./pages/JefeComision/ApiPage";
 import JefeComisionLogs from "./pages/JefeComision/LogsPage";
 import JefeComisionCarreras from "./pages/JefeComision/CarrerasPage";
-import RepresentanteProvincialLayout from "./pages/RepresentanteProvincial/RepresentanteProvincialLayout";
-import ReprProvDashboard from "./pages/RepresentanteProvincial/DashboardPage";
-import ReprProvMunicipios from "./pages/RepresentanteProvincial/MunicipiosPage";
-import ReprProvUsuarios from "./pages/RepresentanteProvincial/UsuariosPage";
-import RepresentanteMunicipalLayout from "./pages/RepresentanteMunicipal/RepresentanteMunicipalLayout";
-import ReprMunicipalDashboard from "./pages/RepresentanteMunicipal/DashboardPage";
-import ReprMunicipalUsuarios from "./pages/RepresentanteMunicipal/UsuariosPage";
+import RepresentanteProvincialLayout from "./pages/ReprProvincial/RepresentanteProvincialLayout";
+import ReprProvDashboard from "./pages/ReprProvincial/DashboardPage";
+import ReprProvMunicipios from "./pages/ReprProvincial/MunicipiosPage";
+import ReprProvUsuarios from "./pages/ReprProvincial/UsuariosPage";
+import RepresentanteMunicipalLayout from "./pages/ReprMunicipal/RepresentanteMunicipalLayout";
+import ReprMunicipalDashboard from "./pages/ReprMunicipal/DashboardPage";
+import ReprMunicipalUsuarios from "./pages/ReprMunicipal/UsuariosPage";
 import SecretarioLayout from "./pages/Secretario/SecretarioLayout";
 import SecretarioDashboardPage from "./pages/Secretario/DashboardPage";
 import SecretarioEscalafonPage from "./pages/Secretario/EscalafonPage";
@@ -51,6 +51,7 @@ function App() {
   const [user, setUser] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [visualConfig, setVisualConfig] = useState(null);
 
   useEffect(() => {
     async function loadCurrentUser() {
@@ -66,6 +67,18 @@ function App() {
     loadCurrentUser();
   }, []);
 
+  useEffect(() => {
+    fetchSuperAdminConfig()
+      .then((data) => setVisualConfig(data.config))
+      .catch(() => setVisualConfig(null));
+  }, []);
+
+  useEffect(() => {
+    const handleVisualIdentityUpdate = (event) => setVisualConfig(event.detail);
+    window.addEventListener("visual-identity-updated", handleVisualIdentityUpdate);
+    return () => window.removeEventListener("visual-identity-updated", handleVisualIdentityUpdate);
+  }, []);
+
   const handleLogin = (userData) => setUser(userData);
   const handleLogout = async () => {
     try {
@@ -77,11 +90,23 @@ function App() {
 
   return (
     <BrowserRouter>
-      <LandingNav
-        user={user}
-        onLogout={handleLogout}
-        onOpenMenu={() => setIsMenuOpen(true)}
-      />
+      <div
+        style={{
+          "--brand-primary": visualConfig?.color_primario || "#1F4E79",
+          "--brand-secondary": visualConfig?.color_secundario || "#2E75B6",
+          "--brand-accent": visualConfig?.color_acento || "#5BA3D9",
+          "--brand-background": visualConfig?.color_fondo || "#D6E4F0",
+          "--brand-success": visualConfig?.color_exito || "#1A7A4A",
+          "--brand-error": visualConfig?.color_error || "#C0392B",
+          "--brand-font": visualConfig?.tipografia || "Segoe UI",
+        }}
+      >
+        <LandingNav
+          user={user}
+          visualConfig={visualConfig}
+          onLogout={handleLogout}
+          onOpenMenu={() => setIsMenuOpen(true)}
+        />
 
       {isMenuOpen && (
         <div className="fixed inset-0 z-40 bg-slate-900/45 backdrop-blur-sm" onClick={() => setIsMenuOpen(false)}>
@@ -152,6 +177,7 @@ function App() {
         </div>
 
         <Footer />
+      </div>
       </div>
     </BrowserRouter>
   );
