@@ -1,6 +1,6 @@
 import BaseSidebar from "./BaseSidebar";
 
-export default function SecretarioSidebar({ scope }) {
+export default function SecretarioSidebar({ scope, onLogout }) {
   const sections = [
     {
       title: "Gestión Escuela",
@@ -19,7 +19,7 @@ export default function SecretarioSidebar({ scope }) {
       title: "Cuenta",
       items: [
         { label: "Notificaciones", icon: "🔔", to: "/secretario/notificaciones" },
-        { label: "Cerrar Sesión", icon: "🚪", to: "/" },
+        { label: "Cerrar Sesión", icon: "🚪", action: "logout" },
       ],
     },
   ];
@@ -30,6 +30,7 @@ export default function SecretarioSidebar({ scope }) {
       roleLabel="📋 Secretario"
       scope={scope}
       sections={sections}
+      onLogout={onLogout}
     />
   );
 }

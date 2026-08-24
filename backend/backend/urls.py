@@ -11,6 +11,8 @@ urlpatterns = [
     path("api/core/", include("apps.core.urls")),
     path("api/authentication/", include("apps.authentication.urls")),
     path("api/superadmin/", include("apps.superadmin.urls")),
+    path("api/gestion-provincial/", include("apps.gestion_provincial.urls")),
+    path("api/gestion-municipal/", include("apps.gestion_municipal.urls")),
     path("api/import-export/", include("apps.import_export.urls")),
     path("", home),
 ]

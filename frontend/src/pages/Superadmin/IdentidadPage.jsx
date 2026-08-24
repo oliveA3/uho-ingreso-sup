@@ -129,16 +129,12 @@ export default function IdentidadPage() {
           </label>
         </div>
 
-        <div className="mt-6 rounded-3xl border border-slate-200 bg-slate-50 p-6 text-sm text-slate-700">
-          Los cambios se guardan en el backend y se aplican a la interfaz global.
-        </div>
-
         <div className="mt-4 flex flex-wrap gap-3">
-          <button disabled={loading || saving} type="submit" className="rounded-2xl bg-slate-900 px-6 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50">
-            {saving ? "Guardando..." : "💾 Guardar Configuración"}
-          </button>
           <button disabled={loading || saving} type="button" onClick={restoreDefaults} className="rounded-2xl border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50">
             Volver a predeterminado
+          </button>
+          <button disabled={loading || saving} type="submit" className="rounded-2xl bg-slate-900 px-6 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50">
+            {saving ? "Guardando..." : "💾 Guardar Configuración"}
           </button>
         </div>
       </form>

@@ -1,8 +1,8 @@
 import { Link } from "react-router-dom";
 
-export default function BaseSidebar({ title, roleLabel, scope, sections }) {
+export default function BaseSidebar({ title, roleLabel, scope, sections, onLogout }) {
   return (
-    <aside className="space-y-6 rounded-3xl p-6 shadow-sm">
+    <aside className="space-y-5 rounded-3xl p-5 shadow-sm">
       <div className="space-y-1">
         <div className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-900">
           {title}
@@ -21,7 +21,16 @@ export default function BaseSidebar({ title, roleLabel, scope, sections }) {
           </div>
           <nav className="mt-3 space-y-2 text-sm text-slate-600">
             {section.items.map((item) =>
-              item.to ? (
+              item.action === "logout" ? (
+                <button
+                  key={item.label}
+                  type="button"
+                  onClick={onLogout}
+                  className="block w-full rounded-2xl px-4 py-3 text-left transition hover:bg-slate-100 hover:text-slate-900"
+                >
+                  {item.icon} {item.label}
+                </button>
+              ) : item.to ? (
                 <Link
                   key={item.label}
                   to={item.to}

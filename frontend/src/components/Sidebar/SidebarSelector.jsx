@@ -6,26 +6,30 @@ import RepresentanteProvincialSidebar from "./RepresentanteProvincialSidebar";
 import RepresentanteMunicipalSidebar from "./RepresentanteMunicipalSidebar";
 import SecretarioSidebar from "./SecretarioSidebar";
 
-export function SidebarSelector({ user }) {
+export function SidebarSelector({ user, onLogout }) {
   if (!user) return null;
 
   switch (String(user.rol).toLowerCase()) {
     case "superadmin":
-      return React.createElement(SuperAdminSidebar, { scope: user.alcance });
+      return React.createElement(SuperAdminSidebar, { scope: user.alcance, onLogout });
     case "estudiante":
-      return React.createElement(EstudianteSidebar, { scope: user.alcance });
+      return React.createElement(EstudianteSidebar, { scope: user.alcance, onLogout });
     case "jefe_comision":
     case "jefe comisión":
     case "jefe comision":
-      return React.createElement(JefeComisionSidebar, { scope: user.alcance });
+      return React.createElement(JefeComisionSidebar, { scope: user.alcance, onLogout });
     case "repr_provincial":
     case "repr provincial":
-      return React.createElement(RepresentanteProvincialSidebar, { scope: user.alcance });
+    case "ingreso_provincial":
+    case "ingreso provincial":
+      return React.createElement(RepresentanteProvincialSidebar, { scope: user.alcance, onLogout });
     case "repr_municipal":
     case "repr municipal":
-      return React.createElement(RepresentanteMunicipalSidebar, { scope: user.alcance });
+    case "ingreso_municipal":
+    case "ingreso municipal":
+      return React.createElement(RepresentanteMunicipalSidebar, { scope: user.alcance, onLogout });
     case "secretario":
-      return React.createElement(SecretarioSidebar, { scope: user.alcance });
+      return React.createElement(SecretarioSidebar, { scope: user.alcance, onLogout });
     default:
       return null;
   }

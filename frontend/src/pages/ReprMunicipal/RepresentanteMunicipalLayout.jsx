@@ -1,7 +1,6 @@
 import { Outlet } from "react-router-dom";
-import { SidebarSelector } from "../../components/Sidebar/SidebarSelector";
 
-export default function RepresentanteMunicipalLayout({ user }) {
+export default function RepresentanteMunicipalLayout({ user, onLogout }) {
   if (!user) {
     return (
       <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm m-4">
@@ -13,11 +12,8 @@ export default function RepresentanteMunicipalLayout({ user }) {
 
   return (
     <div className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
-      <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
-        <SidebarSelector user={user} />
-        <div className="space-y-6">
-          <Outlet />
-        </div>
+      <div className="space-y-6">
+        <Outlet />
       </div>
     </div>
   );

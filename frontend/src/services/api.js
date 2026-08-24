@@ -237,3 +237,168 @@ export async function deleteSuperAdminUser(id) {
   });
   return handleResponse(response);
 }
+
+export async function fetchProvincialDashboard() {
+  const response = await fetch(`${API_BASE}/gestion-provincial/dashboard/`, { credentials: "include" });
+  return handleResponse(response);
+}
+
+export async function fetchProvincialSchools() {
+  const response = await fetch(`${API_BASE}/gestion-provincial/escuelas/`, { credentials: "include" });
+  return handleResponse(response);
+}
+
+export async function fetchProvincialProvinces() {
+  const response = await fetch(`${API_BASE}/gestion-provincial/provincias/`, { credentials: "include" });
+  return handleResponse(response);
+}
+
+export async function fetchProvincialCes() {
+  const response = await fetch(`${API_BASE}/gestion-provincial/ces/`, { credentials: "include" });
+  return handleResponse(response);
+}
+
+export async function fetchProvincialMunicipalities(provinceId) {
+  const query = provinceId ? `?provincia=${provinceId}` : "";
+  const response = await fetch(`${API_BASE}/gestion-provincial/municipios/${query}`, { credentials: "include" });
+  return handleResponse(response);
+}
+
+export async function fetchProvincialUsers() {
+  const response = await fetch(`${API_BASE}/gestion-provincial/usuarios/`, { credentials: "include" });
+  return handleResponse(response);
+}
+
+export async function createProvincialUser(payload) {
+  const csrf = await csrfHeaders();
+  const response = await fetch(`${API_BASE}/gestion-provincial/usuarios/`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json", ...csrf },
+    body: JSON.stringify(payload),
+  });
+  return handleResponse(response);
+}
+
+export async function updateProvincialUser(id, payload) {
+  const csrf = await csrfHeaders();
+  const response = await fetch(`${API_BASE}/gestion-provincial/usuarios/${id}/`, {
+    method: "PATCH",
+    credentials: "include",
+    headers: { "Content-Type": "application/json", ...csrf },
+    body: JSON.stringify(payload),
+  });
+  return handleResponse(response);
+}
+
+export async function deleteProvincialUser(id) {
+  const csrf = await csrfHeaders();
+  const response = await fetch(`${API_BASE}/gestion-provincial/usuarios/${id}/`, {
+    method: "DELETE",
+    credentials: "include",
+    headers: csrf,
+  });
+  return handleResponse(response);
+}
+
+export async function createProvincialSchool(payload) {
+  const csrf = await csrfHeaders();
+  const response = await fetch(`${API_BASE}/gestion-provincial/escuelas/`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json", ...csrf }, body: JSON.stringify(payload) });
+  return handleResponse(response);
+}
+
+export async function updateProvincialSchool(id, payload) {
+  const csrf = await csrfHeaders();
+  const response = await fetch(`${API_BASE}/gestion-provincial/escuelas/${id}/`, { method: "PATCH", credentials: "include", headers: { "Content-Type": "application/json", ...csrf }, body: JSON.stringify(payload) });
+  return handleResponse(response);
+}
+
+export async function deleteProvincialSchool(id) {
+  const csrf = await csrfHeaders();
+  const response = await fetch(`${API_BASE}/gestion-provincial/escuelas/${id}/`, { method: "DELETE", credentials: "include", headers: csrf });
+  return handleResponse(response);
+}
+
+export async function fetchMunicipalSchools() {
+  const response = await fetch(`${API_BASE}/gestion-municipal/escuelas/`, { credentials: "include" });
+  return handleResponse(response);
+}
+
+export async function createMunicipalSchool(payload) {
+  const csrf = await csrfHeaders();
+  const response = await fetch(`${API_BASE}/gestion-municipal/escuelas/`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json", ...csrf }, body: JSON.stringify(payload) });
+  return handleResponse(response);
+}
+
+export async function updateMunicipalSchool(id, payload) {
+  const csrf = await csrfHeaders();
+  const response = await fetch(`${API_BASE}/gestion-municipal/escuelas/${id}/`, { method: "PATCH", credentials: "include", headers: { "Content-Type": "application/json", ...csrf }, body: JSON.stringify(payload) });
+  return handleResponse(response);
+}
+
+export async function deleteMunicipalSchool(id) {
+  const csrf = await csrfHeaders();
+  const response = await fetch(`${API_BASE}/gestion-municipal/escuelas/${id}/`, { method: "DELETE", credentials: "include", headers: csrf });
+  return handleResponse(response);
+}
+
+export async function fetchMunicipalUsers() {
+  const response = await fetch(`${API_BASE}/gestion-municipal/usuarios/`, { credentials: "include" });
+  return handleResponse(response);
+}
+
+export async function createMunicipalUser(payload) {
+  const csrf = await csrfHeaders();
+  const response = await fetch(`${API_BASE}/gestion-municipal/usuarios/`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json", ...csrf }, body: JSON.stringify(payload) });
+  return handleResponse(response);
+}
+
+export async function updateMunicipalUser(id, payload) {
+  const csrf = await csrfHeaders();
+  const response = await fetch(`${API_BASE}/gestion-municipal/usuarios/${id}/`, { method: "PATCH", credentials: "include", headers: { "Content-Type": "application/json", ...csrf }, body: JSON.stringify(payload) });
+  return handleResponse(response);
+}
+
+export async function deleteMunicipalUser(id) {
+  const csrf = await csrfHeaders();
+  const response = await fetch(`${API_BASE}/gestion-municipal/usuarios/${id}/`, { method: "DELETE", credentials: "include", headers: csrf });
+  return handleResponse(response);
+}
+
+export async function fetchProvincialCareers(search = "") {
+  const query = search ? `?search=${encodeURIComponent(search)}` : "";
+  const response = await fetch(`${API_BASE}/gestion-provincial/carreras/${query}`, { credentials: "include" });
+  return handleResponse(response);
+}
+
+export async function createProvincialCareer(payload) {
+  const csrf = await csrfHeaders();
+  const response = await fetch(`${API_BASE}/gestion-provincial/carreras/`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json", ...csrf }, body: JSON.stringify(payload) });
+  return handleResponse(response);
+}
+
+export async function updateProvincialCareer(id, payload) {
+  const csrf = await csrfHeaders();
+  const response = await fetch(`${API_BASE}/gestion-provincial/carreras/${id}/`, { method: "PATCH", credentials: "include", headers: { "Content-Type": "application/json", ...csrf }, body: JSON.stringify(payload) });
+  return handleResponse(response);
+}
+
+export async function deleteProvincialCareer(id) {
+  const csrf = await csrfHeaders();
+  const response = await fetch(`${API_BASE}/gestion-provincial/carreras/${id}/`, { method: "DELETE", credentials: "include", headers: csrf });
+  return handleResponse(response);
+}
+
+export async function importProvincialCareers(file) {
+  const csrf = await csrfHeaders();
+  const formData = new FormData();
+  formData.append("file", file);
+  const response = await fetch(`${API_BASE}/import-export/import/carreras/`, { method: "POST", credentials: "include", headers: csrf, body: formData });
+  return handleResponse(response);
+}
+
+export async function exportProvincialCareers() {
+  const response = await fetch(`${API_BASE}/import-export/export/carreras/`, { credentials: "include" });
+  if (!response.ok) throw new Error("No se pudo exportar el catálogo de carreras.");
+  return response.blob();
+}

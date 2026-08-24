@@ -1,7 +1,6 @@
 import { Outlet } from "react-router-dom";
-import { SidebarSelector } from "../../components/Sidebar/SidebarSelector";
 
-export default function SuperAdminLayout({ user }) {
+export default function SuperAdminLayout({ user, onLogout }) {
   const isSuperAdmin = String(user?.rol || user?.rol_label || "").toLowerCase().includes("super");
 
   if (!user) {
@@ -24,11 +23,8 @@ export default function SuperAdminLayout({ user }) {
 
   return (
     <div className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
-      <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
-        <SidebarSelector user={user} />
-        <div className="space-y-6">
-          <Outlet context={{ user }} />
-        </div>
+      <div className="space-y-6">
+        <Outlet context={{ user }} />
       </div>
     </div>
   );

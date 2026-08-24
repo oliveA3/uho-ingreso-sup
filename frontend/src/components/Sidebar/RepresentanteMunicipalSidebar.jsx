@@ -1,17 +1,17 @@
 import BaseSidebar from "./BaseSidebar";
 
-export default function RepresentanteMunicipalSidebar({ scope }) {
+export default function RepresentanteMunicipalSidebar({ scope, onLogout }) {
   const sections = [
     {
       title: "Gestión",
       items: [
-        { label: "Dashboard", icon: "🏠", to: "/repr_municipal/dashboard" },
+        { label: "Escuelas", icon: "🏫", to: "/repr_municipal/escuelas" },
         { label: "Usuarios", icon: "👥", to: "/repr_municipal/usuarios" },
       ],
     },
     {
       title: "Cuenta",
-      items: [{ label: "Cerrar Sesión", icon: "🚪", to: "/" }],
+      items: [{ label: "Cerrar Sesión", icon: "🚪", action: "logout" }],
     },
   ];
 
@@ -21,6 +21,7 @@ export default function RepresentanteMunicipalSidebar({ scope }) {
       roleLabel="🏘️ Repr. Municipal"
       scope={scope}
       sections={sections}
+      onLogout={onLogout}
     />
   );
 }

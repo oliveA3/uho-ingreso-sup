@@ -1,17 +1,17 @@
 import { Link } from "react-router-dom";
 import AuthActions from "./AuthActions";
 
-export default function LandingNav({ user, visualConfig, onLogout, onOpenMenu }) {
+export default function LandingNav({ user, visualConfig, onLogout, onToggleMenu, isMenuOpen }) {
   return (
     <nav className="sticky top-0 z-40 bg-white/95 backdrop-blur-md shadow-sm border-b border-slate-200">
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-5 py-5 sm:px-6">
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-3 py-3 sm:gap-3 sm:px-6 sm:py-5">
         {/* Logo y título */}
-        <div className="flex items-center gap-3">
-          <Link to="/" style={{ color: "var(--brand-primary)" }} className="flex items-center gap-2 text-lg font-black tracking-tight">
+        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+          <Link to="/" style={{ color: "var(--brand-primary)" }} className="flex min-w-0 items-center gap-2 truncate text-base font-black tracking-tight sm:text-lg">
             {visualConfig?.logo_url ? <img src={visualConfig.logo_url} alt="Logo" className="h-8 w-8 object-contain" /> : "🎓"}
-            {visualConfig?.nombre_sistema || "IngresoSUP"}
+            <span className="truncate">{visualConfig?.nombre_sistema || "IngresoSUP"}</span>
           </Link>
-          <p className="text-sm text-slate-500">
+          <p className="hidden text-sm text-slate-500 sm:block">
             Sistema de Ingreso a la Educación Superior
           </p>
         </div>
@@ -32,13 +32,14 @@ export default function LandingNav({ user, visualConfig, onLogout, onOpenMenu })
           </a>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex shrink-0 items-center gap-1 sm:gap-3">
           {user && (
             <button
               type="button"
-              onClick={onOpenMenu}
+              onClick={onToggleMenu}
               className="rounded-full p-2 text-slate-600 hover:bg-slate-100 hover:text-sky-700"
-              aria-label="Abrir menú"
+              aria-label={isMenuOpen ? "Cerrar menú" : "Abrir menú"}
+              aria-expanded={isMenuOpen}
             >
               ☰
             </button>

@@ -22,7 +22,7 @@ export default function RolesPage() {
           </div>
         </div>
 
-        <div className="mt-6 overflow-x-auto">
+        <div className="table-scroll mt-6 overflow-x-auto">
           <table className="min-w-full border-collapse text-sm">
             <thead>
               <tr className="bg-slate-100 text-left text-slate-700">

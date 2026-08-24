@@ -1,6 +1,6 @@
 import BaseSidebar from "./BaseSidebar";
 
-export default function EstudianteSidebar({ scope }) {
+export default function EstudianteSidebar({ scope, onLogout }) {
   const sections = [
     {
       title: "Mi Información",
@@ -11,7 +11,7 @@ export default function EstudianteSidebar({ scope }) {
     },
     {
       title: "Cuenta",
-      items: [{ label: "Cerrar Sesión", icon: "🚪", to: "/" }],
+      items: [{ label: "Cerrar Sesión", icon: "🚪", action: "logout" }],
     },
   ];
 
@@ -21,6 +21,7 @@ export default function EstudianteSidebar({ scope }) {
       roleLabel="🎓 Estudiante"
       scope={scope}
       sections={sections}
+      onLogout={onLogout}
     />
   );
 }

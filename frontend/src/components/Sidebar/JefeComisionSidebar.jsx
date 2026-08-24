@@ -1,26 +1,26 @@
 import BaseSidebar from "./BaseSidebar";
 
-export default function JefeComisionSidebar({ scope }) {
+export default function JefeComisionSidebar({ scope, onLogout }) {
   const sections = [
     {
       title: "Proceso",
       items: [
         { label: "Dashboard", icon: "🏠", to: "/jefe_comision/dashboard" },
-        { label: "Control Etapas", icon: "⚙️", to: "/jefe_comision/etapas" },
+        { label: "Control de Etapas", icon: "⚙️", to: "/jefe_comision/etapas" },
+        { label: "Catálogo de Carreras", icon: "📚", to: "/jefe_comision/carreras" },
         { label: "Escalafones", icon: "📋", to: "/jefe_comision/escalafones" },
         { label: "Plan de Plazas", icon: "📊", to: "/jefe_comision/plazas" },
         { label: "Solicitudes", icon: "📝", to: "/jefe_comision/solicitudes" },
         { label: "Resultados", icon: "🏆", to: "/jefe_comision/resultados" },
         { label: "Otorgamiento", icon: "🎓", to: "/jefe_comision/otorgamiento" },
-        { label: "API REST", icon: "🔌", to: "/jefe_comision/api" },
-        { label: "Logs Auditoría", icon: "📜", to: "/jefe_comision/logs" },
+        { label: "Documentación API REST", icon: "🔌", to: "/jefe_comision/api" },
+        { label: "Registros", icon: "📜", to: "/jefe_comision/logs" },
       ],
     },
     {
-      title: "Conf.",
+      title: "Cuenta",
       items: [
-        { label: "Catálogo Carreras", icon: "📚", to: "/jefe_comision/carreras" },
-        { label: "Cerrar Sesión", icon: "🚪", to: "/" },
+        { label: "Cerrar Sesión", icon: "🚪", action: "logout" },
       ],
     },
   ];
@@ -31,6 +31,7 @@ export default function JefeComisionSidebar({ scope }) {
       roleLabel="🏛️ Jefe Comisión"
       scope={scope}
       sections={sections}
+      onLogout={onLogout}
     />
   );
 }

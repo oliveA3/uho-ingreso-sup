@@ -18,7 +18,7 @@ const catalogs = {
     icon: "🏘️",
     fields: [
       { name: "nombre", label: "Nombre", type: "text" },
-      { name: "provincia", label: "ID de provincia", type: "number" },
+      { name: "provincia", label: "Provincia", type: "select", optionsKey: "provincias" },
     ],
     activeField: "activo",
   },
@@ -29,7 +29,8 @@ const catalogs = {
       { name: "nombre", label: "Nombre", type: "text" },
       { name: "codigo", label: "Código", type: "text" },
       { name: "descripcion", label: "Descripción", type: "text" },
-      { name: "municipio", label: "ID de municipio", type: "number" },
+      { name: "provincia", label: "Provincia", type: "select", optionsKey: "provincias" },
+      { name: "municipio", label: "Municipio", type: "select", optionsKey: "municipios" },
     ],
     activeField: "activa",
   },
@@ -47,7 +48,9 @@ const catalogs = {
   ces: {
     title: "CES / Universidades",
     icon: "🏛️",
-    fields: [{ name: "nombre", label: "Nombre", type: "text" }],
+    fields: [
+        { name: "nombre", label: "Nombre", type: "text" },
+    ],
     activeField: "activa",
   },
   asignaturas: {
@@ -59,7 +62,10 @@ const catalogs = {
 };
 
 function emptyForm(config) {
-  return Object.fromEntries(config.fields.map((field) => [field.name, ""]));
+  return {
+    ...Object.fromEntries(config.fields.map((field) => [field.name, ""])),
+    [config.activeField]: true,
+  };
 }
 
 export default function NomencladoresPage() {
@@ -70,7 +76,7 @@ export default function NomencladoresPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
-  const [referenceOptions, setReferenceOptions] = useState({ ces: [], provincias: [] });
+  const [referenceOptions, setReferenceOptions] = useState({ ces: [], provincias: [], municipios: [] });
   const config = catalogs[resource];
   const filteredItems = items.filter((item) => {
     const query = search.trim().toLowerCase();
@@ -79,6 +85,7 @@ export default function NomencladoresPage() {
       .filter(Boolean)
       .some((value) => String(value).toLowerCase().includes(query));
   });
+  const activeItems = filteredItems.filter((item) => item[config.activeField]).length;
 
   async function loadItems() {
     try {
@@ -91,11 +98,12 @@ export default function NomencladoresPage() {
 
   async function loadReferenceOptions() {
     try {
-      const [ces, provincias] = await Promise.all([
+      const [ces, provincias, municipios] = await Promise.all([
         fetchSuperAdminCatalog("ces"),
         fetchSuperAdminCatalog("provincias"),
+        fetchSuperAdminCatalog("municipios"),
       ]);
-      setReferenceOptions({ ces, provincias });
+      setReferenceOptions({ ces, provincias, municipios });
     } catch (requestError) {
       setError(requestError.message);
     }
@@ -103,11 +111,18 @@ export default function NomencladoresPage() {
 
   useEffect(() => {
     loadItems();
-    if (resource === "carreras") loadReferenceOptions();
+    if (["municipios", "escuelas", "carreras"].includes(resource)) loadReferenceOptions();
     setSearch("");
     setEditing(null);
     setForm(emptyForm(catalogs[resource]));
   }, [resource]);
+
+  useEffect(() => {
+    if (resource !== "escuelas" || !form.provincia) return;
+    fetchSuperAdminCatalog("municipios", { provincia: form.provincia })
+      .then((municipios) => setReferenceOptions((current) => ({ ...current, municipios })))
+      .catch((requestError) => setError(requestError.message));
+  }, [resource, form.provincia]);
 
   function openCreate() {
     setEditing(null);
@@ -116,8 +131,13 @@ export default function NomencladoresPage() {
   }
 
   function openEdit(item) {
+    const municipality = referenceOptions.municipios.find((option) => option.id === item.municipio);
     setEditing(item);
-    setForm(Object.fromEntries(config.fields.map((field) => [field.name, item[field.name] ?? ""])));
+    setForm({
+      ...Object.fromEntries(config.fields.map((field) => [field.name, item[field.name] ?? ""])),
+      [config.activeField]: item[config.activeField],
+      provincia: municipality?.provincia ?? "",
+    });
     setModalOpen(true);
   }
 
@@ -125,7 +145,7 @@ export default function NomencladoresPage() {
     event.preventDefault();
     try {
       setError("");
-      const payload = { ...form };
+      const { provincia, ...payload } = form;
       config.fields.filter((field) => field.type === "number" || field.type === "select").forEach((field) => {
         payload[field.name] = Number(payload[field.name]);
       });
@@ -191,7 +211,9 @@ export default function NomencladoresPage() {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-xl font-semibold text-slate-900">{config.title}</h2>
           <div className="flex items-center gap-3">
-            <span className="rounded-full bg-slate-100 px-3 py-1 text-sm text-slate-600">{filteredItems.length} registros</span>
+            <span className="rounded-full bg-slate-100 px-3 py-1 text-sm text-slate-600">
+              {filteredItems.length} registrados / {activeItems} activados
+            </span>
           </div>
         </div>
         {error && <p className="mt-4 rounded-2xl bg-rose-50 p-4 text-sm text-rose-700">{error}</p>}
@@ -206,14 +228,14 @@ export default function NomencladoresPage() {
             className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-sky-500 focus:bg-white"
           />
         </div>
-        <div className="mt-5 overflow-x-auto rounded-3xl border border-slate-200">
+        <div className="table-scroll mt-5 overflow-x-auto rounded-3xl border border-slate-200">
           <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
             <thead className="bg-slate-100 text-slate-500"><tr><th className="px-4 py-3">Registro</th><th className="px-4 py-3">Estado</th><th className="px-4 py-3">Acciones</th></tr></thead>
             <tbody className="divide-y divide-slate-200 bg-white">
               {filteredItems.map((item) => (
                 <tr key={item.id}>
                   <td className="px-4 py-4 font-medium text-slate-900">{item.nombre || item.codigo}</td>
-                  <td className="px-4 py-4"><button type="button" onClick={() => toggleActive(item)} className={item[config.activeField] ? "text-emerald-600" : "text-slate-400"}>{item[config.activeField] ? "Activo" : "Inactivo"}</button></td>
+                  <td className="px-4 py-4"><button type="button" onClick={() => toggleActive(item)} title={item[config.activeField] ? "Desactivar registro" : "Activar registro"} className={item[config.activeField] ? "mr-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100" : "mr-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600 transition hover:bg-slate-100"}>{item[config.activeField] ? "Activo" : "Inactivo"}</button></td>
                   <td className="px-4 py-4"><button type="button" onClick={() => openEdit(item)} className="mr-2 rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold">Editar</button><button type="button" onClick={() => handleDelete(item)} className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700">Eliminar</button></td>
                 </tr>
               ))}
@@ -237,7 +259,15 @@ export default function NomencladoresPage() {
                     <select
                       required
                       value={form[field.name] ?? ""}
-                      onChange={(event) => setForm({ ...form, [field.name]: event.target.value })}
+                      onChange={(event) => {
+                        const value = event.target.value;
+                        setForm({
+                          ...form,
+                          [field.name]: value,
+                          ...(resource === "escuelas" && field.name === "provincia" ? { municipio: "" } : {}),
+                        });
+                      }}
+                      disabled={resource === "escuelas" && field.name === "municipio" && !form.provincia}
                       className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 font-normal"
                     >
                       <option value="">Selecciona una opción</option>
@@ -256,6 +286,15 @@ export default function NomencladoresPage() {
                   )}
                 </label>
               ))}
+              <label className="flex items-center gap-3 text-sm font-semibold text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={Boolean(form[config.activeField])}
+                  onChange={(event) => setForm({ ...form, [config.activeField]: event.target.checked })}
+                  className="h-5 w-5 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                />
+                Registro activo
+              </label>
             </div>
             <div className="mt-6 flex justify-end gap-3">
               <button type="button" onClick={() => setModalOpen(false)} className="rounded-2xl border border-slate-200 px-5 py-3 text-sm font-semibold">Cancelar</button>

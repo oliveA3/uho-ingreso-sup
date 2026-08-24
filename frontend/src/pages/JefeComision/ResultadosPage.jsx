@@ -37,7 +37,7 @@ export default function ResultadosPage() {
           <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700">18</span>
         </div>
 
-        <div className="mt-6 overflow-x-auto">
+        <div className="table-scroll mt-6 overflow-x-auto">
           <table className="min-w-full border-collapse text-sm">
             <thead>
               <tr className="bg-slate-100 text-left text-slate-700">

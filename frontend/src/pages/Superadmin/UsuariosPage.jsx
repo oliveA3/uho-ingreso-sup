@@ -14,7 +14,6 @@ const roles = [
   ["ingreso_municipal", "Repr. Municipal"],
   ["director_escuela", "Director de Escuela"],
   ["secretario_escuela", "Secretario de Escuela"],
-  ["estudiante", "Estudiante"],
 ];
 
 const emptyForm = {
@@ -99,7 +98,7 @@ export default function UsuariosPage() {
       email: user.email || "",
       first_name: user.first_name || "",
       last_name: user.last_name || "",
-      rol: user.rol || "estudiante",
+      rol: user.rol || "superadmin",
       provincia: user.provincia || "",
       municipio: user.municipio || "",
       escuela: user.escuela || "",
@@ -124,6 +123,11 @@ export default function UsuariosPage() {
       ["provincia", "municipio", "escuela"].forEach((field) => {
         payload[field] = payload[field] ? Number(payload[field]) : null;
       });
+      if (payload.rol === "superadmin") {
+        payload.provincia = null;
+        payload.municipio = null;
+        payload.escuela = null;
+      }
       if (!payload.password) delete payload.password;
       if (editing) {
         delete payload.username;
@@ -193,7 +197,7 @@ export default function UsuariosPage() {
         </div>
 
         {error && <p className="mt-5 rounded-2xl bg-rose-50 p-4 text-sm text-rose-700">{error}</p>}
-        <div className="mt-6 overflow-x-auto">
+        <div className="table-scroll mt-6 overflow-x-auto">
           <table className="min-w-full border-collapse text-sm">
             <thead><tr className="bg-slate-100 text-left text-slate-700"><th className="px-4 py-3">Usuario</th><th className="px-4 py-3">Nombre</th><th className="px-4 py-3">Rol</th><th className="px-4 py-3">Alcance</th><th className="px-4 py-3">Estado</th><th className="px-4 py-3">Acciones</th></tr></thead>
             <tbody>
@@ -221,9 +225,13 @@ export default function UsuariosPage() {
             <div className="mt-5 grid gap-4 sm:grid-cols-2">
               {["username", "email", "first_name", "last_name"].map((field) => <label key={field} className="text-sm font-semibold text-slate-700">{field === "first_name" ? "Nombre" : field === "last_name" ? "Apellidos" : field === "email" ? "Correo" : "Usuario"}<input required={!editing || field !== "username"} disabled={editing && field === "username"} type={field === "email" ? "email" : "text"} value={form[field]} onChange={(event) => setForm({ ...form, [field]: event.target.value })} className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 font-normal" /></label>)}
               <label className="text-sm font-semibold text-slate-700">Rol<select required value={form.rol} onChange={(event) => { const role = event.target.value; setForm({ ...form, rol: role, provincia: "", municipio: "", escuela: "" }); }} className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 font-normal">{roles.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-              <label className="text-sm font-semibold text-slate-700">Provincia{(needsMunicipality || needsSchool) && <span className="text-rose-600"> *</span>}<select required={needsMunicipality || needsSchool} value={form.provincia} onChange={(event) => setForm({ ...form, provincia: event.target.value, municipio: "", escuela: "" })} className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 font-normal"><option value="">Sin asignar</option>{provinces.map((province) => <option key={province.id} value={province.id}>{province.nombre}</option>)}</select></label>
+              {form.rol !== "superadmin" && <label className="text-sm font-semibold text-slate-700">Provincia{(needsMunicipality || needsSchool) && <span className="text-rose-600"> *</span>}<select required={needsMunicipality || needsSchool} value={form.provincia} onChange={(event) => setForm({ ...form, provincia: event.target.value, municipio: "", escuela: "" })} className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 font-normal"><option value="">Sin asignar</option>{provinces.map((province) => <option key={province.id} value={province.id}>{province.nombre}</option>)}</select></label>}
               {needsMunicipality && <label className="text-sm font-semibold text-slate-700">Municipio <span className="text-rose-600">*</span><select required value={form.municipio} onChange={(event) => setForm({ ...form, municipio: event.target.value, escuela: "" })} disabled={!form.provincia} className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 font-normal disabled:bg-slate-100"><option value="">Selecciona un municipio</option>{municipalities.map((municipality) => <option key={municipality.id} value={municipality.id}>{municipality.nombre}</option>)}</select></label>}
               {needsSchool && <label className="text-sm font-semibold text-slate-700 sm:col-span-2">Escuela <span className="text-rose-600">*</span><select required value={form.escuela} onChange={(event) => setForm({ ...form, escuela: event.target.value })} disabled={!form.municipio} className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 font-normal disabled:bg-slate-100"><option value="">Selecciona una escuela</option>{schools.map((school) => <option key={school.id} value={school.id}>{school.nombre}</option>)}</select></label>}
+              <label className="flex items-center gap-3 text-sm font-semibold text-slate-700 sm:col-span-2">
+                <input type="checkbox" checked={form.is_active} onChange={(event) => setForm({ ...form, is_active: event.target.checked })} className="h-5 w-5 rounded border-slate-300 text-sky-600 focus:ring-sky-500" />
+                Usuario activo
+              </label>
               <label className="text-sm font-semibold text-slate-700 sm:col-span-2">Contraseña{editing && <span className="font-normal text-slate-500"> (dejar vacía para conservarla)</span>}
                 <div className="relative mt-2">
                   <input required={!editing} minLength="8" type={showPassword ? "text" : "password"} value={form.password} onChange={(event) => setForm({ ...form, password: event.target.value })} className="w-full rounded-2xl border border-slate-200 px-4 py-3 pr-24 font-normal" />

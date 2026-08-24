@@ -35,7 +35,7 @@ export default function EscalafonesPage() {
             <button className="rounded-2xl bg-slate-900 px-4 py-2 text-xs font-semibold text-white">📊 Exportar</button>
           </div>
 
-          <div className="mt-5 overflow-x-auto">
+          <div className="table-scroll mt-5 overflow-x-auto">
             <table className="min-w-full border-collapse text-sm">
               <thead>
                 <tr className="bg-slate-100 text-left text-slate-700">

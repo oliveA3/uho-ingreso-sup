@@ -30,11 +30,10 @@ import JefeComisionApi from "./pages/JefeComision/ApiPage";
 import JefeComisionLogs from "./pages/JefeComision/LogsPage";
 import JefeComisionCarreras from "./pages/JefeComision/CarrerasPage";
 import RepresentanteProvincialLayout from "./pages/ReprProvincial/RepresentanteProvincialLayout";
-import ReprProvDashboard from "./pages/ReprProvincial/DashboardPage";
 import ReprProvMunicipios from "./pages/ReprProvincial/MunicipiosPage";
 import ReprProvUsuarios from "./pages/ReprProvincial/UsuariosPage";
 import RepresentanteMunicipalLayout from "./pages/ReprMunicipal/RepresentanteMunicipalLayout";
-import ReprMunicipalDashboard from "./pages/ReprMunicipal/DashboardPage";
+import ReprMunicipalEscuelas from "./pages/ReprMunicipal/EscuelasPage";
 import ReprMunicipalUsuarios from "./pages/ReprMunicipal/UsuariosPage";
 import SecretarioLayout from "./pages/Secretario/SecretarioLayout";
 import SecretarioDashboardPage from "./pages/Secretario/DashboardPage";
@@ -47,7 +46,7 @@ import SecretarioResultadosPage from "./pages/Secretario/ResultadosPage";
 import SecretarioOtorgamientosPage from "./pages/Secretario/OtorgamientosPage";
 import SecretarioNotificacionesPage from "./pages/Secretario/NotificacionesPage";
 
-function App() {
+function AppContent() {
   const [user, setUser] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -85,11 +84,12 @@ function App() {
       await logout();
     } finally {
       setUser(null);
+      setIsMenuOpen(false);
+      window.location.assign("/");
     }
   };
 
   return (
-    <BrowserRouter>
       <div
         style={{
           "--brand-primary": visualConfig?.color_primario || "#1F4E79",
@@ -105,24 +105,25 @@ function App() {
           user={user}
           visualConfig={visualConfig}
           onLogout={handleLogout}
-          onOpenMenu={() => setIsMenuOpen(true)}
+          onToggleMenu={() => setIsMenuOpen((isOpen) => !isOpen)}
+          isMenuOpen={isMenuOpen}
         />
 
-      {isMenuOpen && (
-        <div className="fixed inset-0 z-40 bg-slate-900/45 backdrop-blur-sm" onClick={() => setIsMenuOpen(false)}>
-          <div className="h-full w-full max-w-sm rounded-r-3xl border bg-white shadow-2xl" onClick={(event) => event.stopPropagation()}>
-            <SidebarSelector user={user} />
-          </div>
-        </div>
-      )}
-      
       <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900">
-        <div className="flex-1">
-          <Routes>
+        <div className="flex flex-1 flex-col lg:flex-row">
+          {isMenuOpen && (
+            <div className="w-full shrink-0 border-b border-slate-200 bg-white lg:w-[250px] lg:border-b-0 lg:border-r">
+              <div className="max-h-[45vh] overflow-y-auto lg:max-h-[calc(100vh-5rem)]">
+                <SidebarSelector user={user} onLogout={handleLogout} />
+              </div>
+            </div>
+          )}
+          <div className="min-w-0 flex-1">
+            <Routes>
             <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<LoginPage onLogin={handleLogin} />} />
             <Route path="/registro" element={<RegisterPage />} />
-            <Route path="/superadmin/*" element={<SuperAdminLayout user={user} />}>
+            <Route path="/superadmin/*" element={<SuperAdminLayout user={user} onLogout={handleLogout} />}>
               <Route index element={<DashboardPage user={user} />} />
               <Route path="dashboard" element={<DashboardPage user={user} />} />
               <Route path="nomencladores" element={<NomencladoresPage />} />
@@ -131,12 +132,12 @@ function App() {
               <Route path="despliegue" element={<DesplieguePage />} />
               <Route path="identidad" element={<IdentidadPage />} />
             </Route>
-            <Route path="/estudiante/*" element={<EstudianteLayout user={user} />}>
+            <Route path="/estudiante/*" element={<EstudianteLayout user={user} onLogout={handleLogout} />}>
               <Route index element={<EstudianteHomePage user={user} />} />
               <Route path="boleta" element={<BoletaPage />} />
               <Route path="resultados" element={<ResultadosPage />} />
             </Route>
-            <Route path="/jefe_comision/*" element={<JefeComisionLayout user={user} />}>
+            <Route path="/jefe_comision/*" element={<JefeComisionLayout user={user} onLogout={handleLogout} />}>
               <Route index element={<JefeComisionDashboard />} />
               <Route path="dashboard" element={<JefeComisionDashboard />} />
               <Route path="etapas" element={<JefeComisionEtapas />} />
@@ -149,18 +150,19 @@ function App() {
               <Route path="logs" element={<JefeComisionLogs />} />
               <Route path="carreras" element={<JefeComisionCarreras />} />
             </Route>
-            <Route path="/repr_provincial/*" element={<RepresentanteProvincialLayout user={user} />}>
-              <Route index element={<ReprProvDashboard />} />
-              <Route path="dashboard" element={<ReprProvDashboard />} />
+            <Route path="/repr_provincial/*" element={<RepresentanteProvincialLayout user={user} onLogout={handleLogout} />}>
+              <Route index element={<ReprProvMunicipios />} />
+              <Route path="dashboard" element={<Navigate to="/repr_provincial/municipios" replace />} />
               <Route path="municipios" element={<ReprProvMunicipios />} />
               <Route path="usuarios" element={<ReprProvUsuarios />} />
             </Route>
-            <Route path="/repr_municipal/*" element={<RepresentanteMunicipalLayout user={user} />}>
-              <Route index element={<ReprMunicipalDashboard />} />
-              <Route path="dashboard" element={<ReprMunicipalDashboard />} />
+            <Route path="/repr_municipal/*" element={<RepresentanteMunicipalLayout user={user} onLogout={handleLogout} />}>
+              <Route index element={<Navigate to="escuelas" replace />} />
+              <Route path="dashboard" element={<Navigate to="/repr_municipal/escuelas" replace />} />
+              <Route path="escuelas" element={<ReprMunicipalEscuelas />} />
               <Route path="usuarios" element={<ReprMunicipalUsuarios />} />
             </Route>
-            <Route path="/secretario/*" element={<SecretarioLayout user={user} />}>
+            <Route path="/secretario/*" element={<SecretarioLayout user={user} onLogout={handleLogout} />}>
               <Route index element={<SecretarioDashboardPage />} />
               <Route path="dashboard" element={<SecretarioDashboardPage />} />
               <Route path="escalafon" element={<SecretarioEscalafonPage />} />
@@ -173,12 +175,20 @@ function App() {
               <Route path="notificaciones" element={<SecretarioNotificacionesPage />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
+            </Routes>
+          </div>
         </div>
 
         <Footer />
       </div>
       </div>
+  );
+}
+
+function App() {
+  return (
+    <BrowserRouter>
+      <AppContent />
     </BrowserRouter>
   );
 }

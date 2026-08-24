@@ -6,7 +6,7 @@ const logs = [
 export default function LogsPage() {
   return (
     <div className="space-y-6">
-      <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
+      <section className="table-scroll rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
         <div>
           <p className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-700">Registros</p>
           <h1 className="mt-2 text-3xl font-semibold text-slate-900">Logs de Auditoría</h1>
@@ -14,7 +14,7 @@ export default function LogsPage() {
         </div>
       </section>
 
-      <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm overflow-x-auto">
+      <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
         <table className="min-w-full border-collapse text-sm">
           <thead>
             <tr className="bg-slate-100 text-left text-slate-700">

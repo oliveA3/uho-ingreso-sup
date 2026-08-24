@@ -1,6 +1,6 @@
 import BaseSidebar from "./BaseSidebar";
 
-export default function SuperAdminSidebar({ scope }) {
+export default function SuperAdminSidebar({ scope, onLogout }) {
   const sections = [
     {
       title: "Administración",
@@ -15,7 +15,7 @@ export default function SuperAdminSidebar({ scope }) {
     },
     {
       title: "Cuenta",
-      items: [{ label: "Cerrar Sesión", icon: "🚪", to: "/" }],
+      items: [{ label: "Cerrar Sesión", icon: "🚪", action: "logout" }],
     },
   ];
 
@@ -24,6 +24,7 @@ export default function SuperAdminSidebar({ scope }) {
       title="⚙️ Super Admin"
       scope={scope}
       sections={sections}
+      onLogout={onLogout}
     />
   );
 }

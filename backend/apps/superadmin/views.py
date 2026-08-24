@@ -81,7 +81,7 @@ class SuperAdminUserViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         queryset = Usuario.objects.select_related(
             "provincia", "municipio", "escuela"
-        ).all().order_by("username")
+        ).exclude(rol="estudiante").order_by("username")
         role = self.request.query_params.get("rol")
         provincia = self.request.query_params.get("provincia")
         estado = self.request.query_params.get("estado")
