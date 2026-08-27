@@ -4,6 +4,7 @@ import { fetchCurrentUser, fetchSuperAdminConfig, logout } from "./services/api"
 import { SidebarSelector } from "./components/Sidebar/SidebarSelector";
 import LandingNav from "./components/LandingNav";
 import Footer from "./components/Footer";
+import StageOneGuard from "./components/StageOneGuard";
 import LandingPage from "./pages/LandingPage";
 import LoginPage from "./pages/Auth/LoginPage";
 import RegisterPage from "./pages/Auth/RegisterPage";
@@ -14,10 +15,15 @@ import RolesPage from "./pages/Superadmin/RolesPage";
 import UsuariosPage from "./pages/Superadmin/UsuariosPage";
 import DesplieguePage from "./pages/Superadmin/DesplieguePage";
 import IdentidadPage from "./pages/Superadmin/IdentidadPage";
+import AuditLogsPage from "./pages/JefeComision/LogsPage";
 import EstudianteLayout from "./pages/Estudiante/EstudianteLayout";
 import EstudianteHomePage from "./pages/Estudiante/HomePage";
 import BoletaPage from "./pages/Estudiante/BoletaPage";
+import EstudianteEscalafonPage from "./pages/Estudiante/EscalafonPage";
 import ResultadosPage from "./pages/Estudiante/ResultadosPage";
+import EstudianteBoletaInteresPage from "./pages/Estudiante/BoletaInteresPage";
+import EstudianteConfirmacionPruebasPage from "./pages/Estudiante/ConfirmacionPruebasPage";
+import EstudianteOtorgamientoPage from "./pages/Estudiante/OtorgamientoPage";
 import JefeComisionLayout from "./pages/JefeComision/JefeComisionLayout";
 import JefeComisionDashboard from "./pages/JefeComision/DashboardPage";
 import JefeComisionEtapas from "./pages/JefeComision/EtapasPage";
@@ -45,6 +51,11 @@ import SecretarioConfirmacionPruebasPage from "./pages/Secretario/ConfirmacionPr
 import SecretarioResultadosPage from "./pages/Secretario/ResultadosPage";
 import SecretarioOtorgamientosPage from "./pages/Secretario/OtorgamientosPage";
 import SecretarioNotificacionesPage from "./pages/Secretario/NotificacionesPage";
+import DirectorLayout from "./pages/Director/DirectorLayout";
+import DirectorBoletaInteresPage from "./pages/Director/BoletaInteresPage";
+import DirectorBoletasSolicitudPage from "./pages/Director/BoletasSolicitudPage";
+import DirectorConfirmacionPruebasPage from "./pages/Director/ConfirmacionPruebasPage";
+import DirectorOtorgamientosPage from "./pages/Director/OtorgamientosPage";
 
 function AppContent() {
   const [user, setUser] = useState(null);
@@ -105,20 +116,46 @@ function AppContent() {
           user={user}
           visualConfig={visualConfig}
           onLogout={handleLogout}
-          onToggleMenu={() => setIsMenuOpen((isOpen) => !isOpen)}
-          isMenuOpen={isMenuOpen}
         />
 
       <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900">
         <div className="flex flex-1 flex-col lg:flex-row">
-          {isMenuOpen && (
-            <div className="w-full shrink-0 border-b border-slate-200 bg-white lg:w-[250px] lg:border-b-0 lg:border-r">
-              <div className="max-h-[45vh] overflow-y-auto lg:max-h-[calc(100vh-5rem)]">
-                <SidebarSelector user={user} onLogout={handleLogout} />
-              </div>
+          {user && (
+            <div className="flex min-h-0 shrink-0 items-start">
+              {isMenuOpen && (
+                <div className="flex h-[calc(100vh-5rem)] w-[250px] min-h-0 flex-col self-start border-r border-slate-200 bg-white shadow-lg lg:h-[calc(100vh-5rem)]">
+                  <div className="min-h-0 flex-1">
+                    <SidebarSelector user={user} onLogout={handleLogout} />
+                  </div>
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={() => setIsMenuOpen((isOpen) => !isOpen)}
+                className={`relative z-10 flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center border border-slate-200 bg-slate-900 p-0 text-xl font-semibold text-white shadow-md transition hover:bg-slate-700 ${
+                  isMenuOpen ? "rounded-r-xl border-l-0" : "rounded-r-xl"
+                }`}
+                aria-label={isMenuOpen ? "Cerrar menú" : "Abrir menú"}
+                aria-expanded={isMenuOpen}
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  width="22"
+                  height="22"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                  className="pointer-events-none"
+                >
+                  {isMenuOpen ? <path d="m15 18-6-6 6-6" /> : <path d="m9 18 6-6-6-6" />}
+                </svg>
+              </button>
             </div>
           )}
-          <div className="min-w-0 flex-1">
+          <div className="min-w-0 flex-1 lg:-ml-4">
             <Routes>
             <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<LoginPage onLogin={handleLogin} />} />
@@ -131,21 +168,26 @@ function AppContent() {
               <Route path="usuarios" element={<UsuariosPage />} />
               <Route path="despliegue" element={<DesplieguePage />} />
               <Route path="identidad" element={<IdentidadPage />} />
+              <Route path="logs" element={<AuditLogsPage />} />
             </Route>
             <Route path="/estudiante/*" element={<EstudianteLayout user={user} onLogout={handleLogout} />}>
               <Route index element={<EstudianteHomePage user={user} />} />
-              <Route path="boleta" element={<BoletaPage />} />
-              <Route path="resultados" element={<ResultadosPage />} />
+              <Route path="boleta" element={<StageOneGuard stageNumber={3} stageName="Plan de plazas y boleta de solicitud" panelName="Boleta de Solicitud"><BoletaPage /></StageOneGuard>} />
+              <Route path="escalafon" element={<StageOneGuard panelName="Escalafón"><EstudianteEscalafonPage /></StageOneGuard>} />
+              <Route path="boleta-interes" element={<StageOneGuard stageNumber={2} stageName="Boleta de Interés de Carrera" panelName="Boleta de Interés"><EstudianteBoletaInteresPage /></StageOneGuard>} />
+              <Route path="confirmacion-pruebas" element={<StageOneGuard stageNumber={4} stageName="Confirmación de las pruebas de ingreso" panelName="Confirmación de Pruebas"><EstudianteConfirmacionPruebasPage /></StageOneGuard>} />
+              <Route path="resultados" element={<StageOneGuard stageNumber={5} stageName="Publicación de resultados en las pruebas de ingreso" panelName="Resultados de tus Pruebas"><ResultadosPage /></StageOneGuard>} />
+              <Route path="otorgamiento" element={<StageOneGuard stageNumber={6} stageName="Otorgamiento de carreras" panelName="Mi Otorgamiento"><EstudianteOtorgamientoPage /></StageOneGuard>} />
             </Route>
             <Route path="/jefe_comision/*" element={<JefeComisionLayout user={user} onLogout={handleLogout} />}>
-              <Route index element={<JefeComisionDashboard />} />
-              <Route path="dashboard" element={<JefeComisionDashboard />} />
+              <Route index element={<JefeComisionDashboard user={user} />} />
+              <Route path="dashboard" element={<JefeComisionDashboard user={user} />} />
               <Route path="etapas" element={<JefeComisionEtapas />} />
-              <Route path="escalafones" element={<JefeComisionEscalafones />} />
-              <Route path="plazas" element={<JefeComisionPlazas />} />
-              <Route path="solicitudes" element={<JefeComisionSolicitudes />} />
-              <Route path="resultados" element={<JefeComisionResultados />} />
-              <Route path="otorgamiento" element={<JefeComisionOtorgamiento />} />
+              <Route path="escalafones" element={<StageOneGuard panelName="Escalafones"><JefeComisionEscalafones /></StageOneGuard>} />
+              <Route path="plazas" element={<StageOneGuard stageNumber={3} stageName="Plan de plazas y boleta de solicitud" panelName="Plan de Plazas"><JefeComisionPlazas /></StageOneGuard>} />
+              <Route path="solicitudes" element={<StageOneGuard stageNumber={3} stageName="Plan de plazas y boleta de solicitud" panelName="Solicitudes"><JefeComisionSolicitudes /></StageOneGuard>} />
+              <Route path="resultados" element={<StageOneGuard stageNumber={5} stageName="Publicación de resultados en las pruebas de ingreso" panelName="Gestión de Resultados"><JefeComisionResultados /></StageOneGuard>} />
+              <Route path="otorgamiento" element={<StageOneGuard stageNumber={6} stageName="Otorgamiento de carreras" panelName="Gestión de Otorgamientos"><JefeComisionOtorgamiento /></StageOneGuard>} />
               <Route path="api" element={<JefeComisionApi />} />
               <Route path="logs" element={<JefeComisionLogs />} />
               <Route path="carreras" element={<JefeComisionCarreras />} />
@@ -165,14 +207,23 @@ function AppContent() {
             <Route path="/secretario/*" element={<SecretarioLayout user={user} onLogout={handleLogout} />}>
               <Route index element={<SecretarioDashboardPage />} />
               <Route path="dashboard" element={<SecretarioDashboardPage />} />
-              <Route path="escalafon" element={<SecretarioEscalafonPage />} />
+              <Route path="escalafon" element={<StageOneGuard panelName="Escalafón"><SecretarioEscalafonPage /></StageOneGuard>} />
               <Route path="sincuenta" element={<SecretarioSinCuentaPage />} />
-              <Route path="boleta-interes" element={<SecretarioBoletaInteresPage />} />
-              <Route path="boletas-solicitud" element={<SecretarioBoletasSolicitudPage />} />
-              <Route path="confirmacion-pruebas" element={<SecretarioConfirmacionPruebasPage />} />
-              <Route path="resultados" element={<SecretarioResultadosPage />} />
+              <Route path="boleta-interes" element={<StageOneGuard stageNumber={2} stageName="Boleta de Interés de Carrera" panelName="Boleta de Interés"><SecretarioBoletaInteresPage /></StageOneGuard>} />
+              <Route path="boletas-solicitud" element={<StageOneGuard stageNumber={3} stageName="Plan de plazas y boleta de solicitud" panelName="Boletas de Solicitud"><SecretarioBoletasSolicitudPage /></StageOneGuard>} />
+              <Route path="confirmacion-pruebas" element={<StageOneGuard stageNumber={4} stageName="Confirmación de las pruebas de ingreso" panelName="Confirmación de Pruebas"><SecretarioConfirmacionPruebasPage /></StageOneGuard>} />
+              <Route path="resultados" element={<StageOneGuard stageNumber={5} stageName="Publicación de resultados en las pruebas de ingreso" panelName="Resultados"><SecretarioResultadosPage /></StageOneGuard>} />
               <Route path="otorgamientos" element={<SecretarioOtorgamientosPage />} />
               <Route path="notificaciones" element={<SecretarioNotificacionesPage />} />
+            </Route>
+            <Route path="/director/*" element={<DirectorLayout user={user} onLogout={handleLogout} />}>
+              <Route index element={<Navigate to="boleta-interes" replace />} />
+              <Route path="dashboard" element={<Navigate to="boleta-interes" replace />} />
+              <Route path="boleta-interes" element={<StageOneGuard stageNumber={2} stageName="Boleta de Interés de Carrera" panelName="Boletas de Interés"><DirectorBoletaInteresPage /></StageOneGuard>} />
+              <Route path="boletas-solicitud" element={<StageOneGuard stageNumber={3} stageName="Plan de plazas y boleta de solicitud" panelName="Estadísticas de Boletas"><DirectorBoletasSolicitudPage /></StageOneGuard>} />
+              <Route path="confirmacion-pruebas" element={<StageOneGuard stageNumber={4} stageName="Confirmación de las pruebas de ingreso" panelName="Estadísticas de Confirmación"><DirectorConfirmacionPruebasPage /></StageOneGuard>} />
+              <Route path="otorgamientos" element={<StageOneGuard stageNumber={6} stageName="Otorgamiento de carreras" panelName="Otorgamientos"><DirectorOtorgamientosPage /></StageOneGuard>} />
+              <Route path="resultados" element={<div className="rounded-3xl border border-slate-200 bg-white p-8">Resultados</div>} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>

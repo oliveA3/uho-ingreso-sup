@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { register } from "../../services/api";
+import { fetchRegistrationAvailability, register } from "../../services/api";
 import axios from "axios";
 
 export default function RegisterPage() {
@@ -11,6 +11,9 @@ export default function RegisterPage() {
         password: "",
         confirmPassword: "",
         whatsapp: "",
+        tutor_nombre: "",
+        tutor_email: "",
+        tutor_telefono: "",
     });
 
     const [provincias, setProvincias] = useState([]);
@@ -22,10 +25,14 @@ export default function RegisterPage() {
 
     const [error, setError] = useState(null);
     const [success, setSuccess] = useState(null);
+    const [registrationOpen, setRegistrationOpen] = useState(null);
     const navigate = useNavigate();
 
     useEffect(() => {
         axios.get("/api/superadmin/provincias/").then((res) => setProvincias(res.data));
+        fetchRegistrationAvailability()
+            .then((data) => setRegistrationOpen(data.registro_estudiantil))
+            .catch(() => setRegistrationOpen(false));
     }, []);
 
     useEffect(() => {
@@ -88,6 +95,9 @@ export default function RegisterPage() {
                 username: form.username,
                 password: form.password,
                 whatsapp: form.whatsapp,
+                tutor_nombre: form.tutor_nombre,
+                tutor_email: form.tutor_email,
+                tutor_telefono: form.tutor_telefono,
                 escuela: Number(escuelaId),
             });
             setSuccess("Registro exitoso. Por favor inicia sesión.");
@@ -96,6 +106,8 @@ export default function RegisterPage() {
             setError(err.message || "No se pudo crear la cuenta.");
         }
     };
+
+    const registrationDisabled = registrationOpen !== true;
 
     return (
         <div className="mx-auto max-w-2xl rounded-3xl border border-slate-200 bg-white p-8 my-10 shadow-sm">
@@ -115,6 +127,11 @@ export default function RegisterPage() {
             <p className="mt-2 text-sm text-slate-600">
                 Solo estudiantes de 12grado pueden registrarse.
             </p>
+            {registrationDisabled && (
+                <div className="mt-6 rounded-2xl bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                    El registro estudiantil estará disponible durante la Etapa 1 o la Etapa 2 del proceso de ingreso.
+                </div>
+            )}
             {error && (
                 <div className="mt-6 rounded-2xl bg-rose-50 px-4 py-3 text-sm text-rose-800">
                     {error}
@@ -126,8 +143,9 @@ export default function RegisterPage() {
                 </div>
             )}
             <form
-                className="mt-6 grid gap-5 md:grid-cols-2"
                 onSubmit={handleSubmit}
+                inert={registrationDisabled ? "" : undefined}
+                className={`mt-6 grid gap-5 md:grid-cols-2 ${registrationDisabled ? "pointer-events-none opacity-50 grayscale" : ""}`}
             >
                 <label className="block">
                     <span className="text-sm font-semibold text-slate-700">
@@ -153,6 +171,18 @@ export default function RegisterPage() {
                         maxLength={11}
                         required
                     />
+                </label>
+                <label className="block">
+                    <span className="text-sm font-semibold text-slate-700">Nombre del tutor</span>
+                    <input value={form.tutor_nombre} onChange={updateField("tutor_nombre")} className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 focus:border-sky-500 focus:outline-none" />
+                </label>
+                <label className="block">
+                    <span className="text-sm font-semibold text-slate-700">Correo del tutor</span>
+                    <input type="email" value={form.tutor_email} onChange={updateField("tutor_email")} className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 focus:border-sky-500 focus:outline-none" />
+                </label>
+                <label className="block">
+                    <span className="text-sm font-semibold text-slate-700">Teléfono del tutor</span>
+                    <input value={form.tutor_telefono} onChange={updateField("tutor_telefono")} className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 focus:border-sky-500 focus:outline-none" />
                 </label>
                 <label className="block md:col-span-2">
                     <span className="text-sm font-semibold text-slate-700">

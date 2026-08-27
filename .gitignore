@@ -3,17 +3,21 @@ __pycache__/
 *.py[cod]
 *.pyo
 *.pyd
-*.sqlite3
-*.sqlite
-db.sqlite3
-env/
-venv/
-.venv/
-backend/.venv/
 
 # Django
 *.log
 local_settings.py
+
+# Database
+*.sqlite3
+*.sqlite
+db.sqlite3
+
+# Virtual enviroments
+env/
+venv/
+.venv/
+backend/.venv/
 
 # Node
 node_modules/
@@ -29,4 +33,5 @@ pnpm-debug.log*
 # Editor
 .vscode/
 .idea/
+.github_scripts.md
 .DS_Store

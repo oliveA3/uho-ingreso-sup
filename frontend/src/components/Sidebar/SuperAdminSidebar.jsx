@@ -1,6 +1,6 @@
 import BaseSidebar from "./BaseSidebar";
 
-export default function SuperAdminSidebar({ scope, onLogout }) {
+export default function SuperAdminSidebar({ scope, onLogout, activeStageLabel }) {
   const sections = [
     {
       title: "Administración",
@@ -11,6 +11,7 @@ export default function SuperAdminSidebar({ scope, onLogout }) {
         { label: "Roles y Permisos", icon: "🔐", to: "/superadmin/roles" },
         { label: "Identidad Visual", icon: "🎨", to: "/superadmin/identidad" },
         { label: "Despliegue Docker", icon: "🐳", to: "/superadmin/despliegue" },
+        { label: "Logs de Auditoría", icon: "📜", to: "/superadmin/logs" },
       ],
     },
     {
@@ -25,6 +26,7 @@ export default function SuperAdminSidebar({ scope, onLogout }) {
       scope={scope}
       sections={sections}
       onLogout={onLogout}
+      activeStageLabel={activeStageLabel}
     />
   );
 }

@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import AuthActions from "./AuthActions";
 
-export default function LandingNav({ user, visualConfig, onLogout, onToggleMenu, isMenuOpen }) {
+export default function LandingNav({ user, visualConfig, onLogout }) {
   return (
     <nav className="sticky top-0 z-40 bg-white/95 backdrop-blur-md shadow-sm border-b border-slate-200">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-3 py-3 sm:gap-3 sm:px-6 sm:py-5">
@@ -33,17 +33,6 @@ export default function LandingNav({ user, visualConfig, onLogout, onToggleMenu,
         </div>
 
         <div className="flex shrink-0 items-center gap-1 sm:gap-3">
-          {user && (
-            <button
-              type="button"
-              onClick={onToggleMenu}
-              className="rounded-full p-2 text-slate-600 hover:bg-slate-100 hover:text-sky-700"
-              aria-label={isMenuOpen ? "Cerrar menú" : "Abrir menú"}
-              aria-expanded={isMenuOpen}
-            >
-              ☰
-            </button>
-          )}
           <AuthActions user={user} onLogout={onLogout} />
         </div>
       </div>

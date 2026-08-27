@@ -1,10 +1,11 @@
 import BaseSidebar from "./BaseSidebar";
 
-export default function RepresentanteMunicipalSidebar({ scope, onLogout }) {
+export default function RepresentanteMunicipalSidebar({ scope, onLogout, activeStageLabel }) {
   const sections = [
     {
       title: "Gestión",
       items: [
+        { label: "Dashboard", icon: "🏠", to: "/repr_municipal/dashboard" },
         { label: "Escuelas", icon: "🏫", to: "/repr_municipal/escuelas" },
         { label: "Usuarios", icon: "👥", to: "/repr_municipal/usuarios" },
       ],
@@ -22,6 +23,7 @@ export default function RepresentanteMunicipalSidebar({ scope, onLogout }) {
       scope={scope}
       sections={sections}
       onLogout={onLogout}
+      activeStageLabel={activeStageLabel}
     />
   );
 }

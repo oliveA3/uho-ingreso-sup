@@ -6,6 +6,8 @@ import {
   fetchSuperAdminUsers,
   updateSuperAdminUser,
 } from "../../services/api";
+import EntityActionButton from "../../components/Buttons/EntityActionButton";
+import StatusToggle from "../../components/Buttons/StatusToggle";
 
 const roles = [
   ["superadmin", "Super Administrador"],
@@ -207,8 +209,8 @@ export default function UsuariosPage() {
                   <td className="px-4 py-3 text-slate-700">{[user.first_name, user.last_name].filter(Boolean).join(" ") || "Sin nombre"}</td>
                   <td className="px-4 py-3"><span className="rounded-full bg-sky-100 px-3 py-1 text-xs font-semibold text-sky-700">{user.rol_label}</span></td>
                   <td className="px-4 py-3 text-slate-700">{user.provincia_nombre || user.municipio_nombre || user.escuela_nombre || "Global"}</td>
-                  <td className="px-4 py-3"><button type="button" onClick={() => toggleActive(user)} className={user.is_active ? "rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700" : "rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-500"}>{user.is_active ? "Activo" : "Inactivo"}</button></td>
-                  <td className="px-4 py-3"><button type="button" onClick={() => openEdit(user)} className="mr-2 rounded-2xl bg-slate-100 px-3 py-2 text-sm font-semibold">Editar</button><button type="button" onClick={() => handleDelete(user)} className="rounded-2xl bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700">Eliminar</button></td>
+                  <td className="px-4 py-3"><StatusToggle active={user.is_active} onClick={() => toggleActive(user)} /></td>
+                  <td className="px-4 py-3"><EntityActionButton variant="edit" onClick={() => openEdit(user)}>Editar</EntityActionButton><EntityActionButton variant="delete" className="ml-2" onClick={() => handleDelete(user)}>Eliminar</EntityActionButton></td>
                 </tr>
               ))}
               {!loading && !users.length && <tr><td colSpan="6" className="px-4 py-8 text-center text-slate-500">No hay usuarios para estos filtros.</td></tr>}

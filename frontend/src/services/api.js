@@ -54,10 +54,8 @@ function formatApiError(body) {
 }
 
 export async function fetchLandingData() {
-  // Placeholder: en la siguiente fase se activará el endpoint real del backend.
-  return {
-    success: true,
-  };
+  const response = await fetch(`${API_BASE}/gestion-provincial/etapas/disponibilidad/`);
+  return handleResponse(response);
 }
 
 export async function login(credentials) {
@@ -243,6 +241,16 @@ export async function fetchProvincialDashboard() {
   return handleResponse(response);
 }
 
+export async function fetchAuditLogs(filters = {}) {
+  const query = new URLSearchParams(Object.entries(filters).filter(([, value]) => value)).toString();
+  const response = await fetch(`${API_BASE}/core/logs/${query ? `?${query}` : ""}`, { credentials: "include" });
+  return handleResponse(response);
+}
+
+export function getAuditLogExportUrl(format = "xlsx") {
+  return `${API_BASE}/core/logs/export/${format === "pdf" ? "pdf/" : ""}`;
+}
+
 export async function fetchProvincialSchools() {
   const response = await fetch(`${API_BASE}/gestion-provincial/escuelas/`, { credentials: "include" });
   return handleResponse(response);
@@ -255,6 +263,120 @@ export async function fetchProvincialProvinces() {
 
 export async function fetchProvincialCes() {
   const response = await fetch(`${API_BASE}/gestion-provincial/ces/`, { credentials: "include" });
+  return handleResponse(response);
+}
+
+export async function fetchProvincialEtapas() {
+  const response = await fetch(`${API_BASE}/gestion-provincial/etapas/`, {
+    credentials: "include",
+  });
+  return handleResponse(response);
+}
+
+export async function fetchRegistrationAvailability() {
+  const response = await fetch(`${API_BASE}/gestion-provincial/etapas/disponibilidad/`);
+  return handleResponse(response);
+}
+
+export async function fetchEscalafon() {
+  const response = await fetch(`${API_BASE}/import-export/escalafon/`, { credentials: "include" });
+  return handleResponse(response);
+}
+
+export async function importEscalafon(file, escuela, anio) {
+  const csrf = await csrfHeaders();
+  const form = new FormData();
+  form.append("file", file);
+  form.append("escuela", escuela);
+  form.append("anio", anio);
+  const response = await fetch(`${API_BASE}/import-export/import/escalafon/`, { method: "POST", credentials: "include", headers: csrf, body: form });
+  return handleResponse(response);
+}
+
+export function getEscalafonTemplateUrl() {
+  return `${API_BASE}/import-export/escalafon/plantilla/`;
+}
+
+export async function downloadEscalafonTemplate() {
+  const response = await fetch(getEscalafonTemplateUrl(), { credentials: "include" });
+  if (!response.ok) throw new Error("No se pudo descargar la plantilla.");
+  return response.blob();
+}
+
+export function getEscalafonExportUrl(escuela, anio) {
+  return `${API_BASE}/import-export/export/escalafon/?escuela=${escuela}&anio=${anio}`;
+}
+
+export async function updateEscalafonEntry(id, payload) {
+  const csrf = await csrfHeaders();
+  const response = await fetch(`${API_BASE}/import-export/escalafon/${id}/`, { method: "PATCH", credentials: "include", headers: { "Content-Type": "application/json", ...csrf }, body: JSON.stringify(payload) });
+  return handleResponse(response);
+}
+
+export async function sendEscalafonToCommission() {
+  const csrf = await csrfHeaders();
+  const response = await fetch(`${API_BASE}/import-export/escalafon/enviar-comision/`, { method: "POST", credentials: "include", headers: csrf });
+  return handleResponse(response);
+}
+
+export async function submitEscalafonAction(action, causa = "") {
+  const csrf = await csrfHeaders();
+  const response = await fetch(`${API_BASE}/import-export/escalafon/mi-accion/${action}/`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json", ...csrf }, body: JSON.stringify({ causa }) });
+  return handleResponse(response);
+}
+
+export async function reviewEscalafonEntry(id) {
+  const csrf = await csrfHeaders();
+  const response = await fetch(`${API_BASE}/import-export/escalafon/${id}/revisar/`, { method: "POST", credentials: "include", headers: csrf });
+  return handleResponse(response);
+}
+
+export async function createProvincialProceso(anio) {
+  const csrf = await csrfHeaders();
+  const response = await fetch(`${API_BASE}/gestion-provincial/procesos/`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json", ...csrf },
+    body: JSON.stringify({ anio: `${anio}-01-01` }),
+  });
+  return handleResponse(response);
+}
+
+export async function fetchProvincialProceso() {
+  const response = await fetch(`${API_BASE}/gestion-provincial/procesos/`, {
+    credentials: "include",
+  });
+  return handleResponse(response);
+}
+
+export async function activateProvincialEtapa(id, dates) {
+  const csrf = await csrfHeaders();
+  const response = await fetch(`${API_BASE}/gestion-provincial/etapas/${id}/activar/`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json", ...csrf },
+    body: JSON.stringify(dates),
+  });
+  return handleResponse(response);
+}
+
+export async function closeProvincialEtapa(id) {
+  const csrf = await csrfHeaders();
+  const response = await fetch(`${API_BASE}/gestion-provincial/etapas/${id}/cerrar/`, {
+    method: "POST",
+    credentials: "include",
+    headers: csrf,
+  });
+  return handleResponse(response);
+}
+
+export async function resetProvincialEtapas() {
+  const csrf = await csrfHeaders();
+  const response = await fetch(`${API_BASE}/gestion-provincial/etapas/reiniciar/`, {
+    method: "POST",
+    credentials: "include",
+    headers: csrf,
+  });
   return handleResponse(response);
 }
 

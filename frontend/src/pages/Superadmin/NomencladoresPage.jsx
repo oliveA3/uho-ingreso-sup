@@ -5,6 +5,8 @@ import {
   fetchSuperAdminCatalog,
   updateSuperAdminCatalogItem,
 } from "../../services/api";
+import EntityActionButton from "../../components/Buttons/EntityActionButton";
+import StatusToggle from "../../components/Buttons/StatusToggle";
 
 const catalogs = {
   provincias: {
@@ -75,6 +77,7 @@ export default function NomencladoresPage() {
   const [editing, setEditing] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [search, setSearch] = useState("");
   const [referenceOptions, setReferenceOptions] = useState({ ces: [], provincias: [], municipios: [] });
   const config = catalogs[resource];
@@ -93,6 +96,7 @@ export default function NomencladoresPage() {
       setItems(await fetchSuperAdminCatalog(resource));
     } catch (requestError) {
       setError(requestError.message);
+      setNotice("");
     }
   }
 
@@ -113,6 +117,7 @@ export default function NomencladoresPage() {
     loadItems();
     if (["municipios", "escuelas", "carreras"].includes(resource)) loadReferenceOptions();
     setSearch("");
+    setNotice("");
     setEditing(null);
     setForm(emptyForm(catalogs[resource]));
   }, [resource]);
@@ -145,7 +150,8 @@ export default function NomencladoresPage() {
     event.preventDefault();
     try {
       setError("");
-      const { provincia, ...payload } = form;
+      const payload = { ...form };
+      if (resource === "escuelas") delete payload.provincia;
       config.fields.filter((field) => field.type === "number" || field.type === "select").forEach((field) => {
         payload[field.name] = Number(payload[field.name]);
       });
@@ -155,9 +161,11 @@ export default function NomencladoresPage() {
         await createSuperAdminCatalogItem(resource, payload);
       }
       setModalOpen(false);
+      setNotice(`El registro de ${config.title.toLowerCase()} se creó correctamente.`);
       await loadItems();
     } catch (requestError) {
       setError(requestError.message);
+      setNotice("");
     }
   }
 
@@ -165,6 +173,7 @@ export default function NomencladoresPage() {
     if (!window.confirm(`¿Eliminar ${item.nombre || item.codigo}?`)) return;
     try {
       setError("");
+      setNotice("");
       await deleteSuperAdminCatalogItem(resource, item.id);
       await loadItems();
     } catch (requestError) {
@@ -175,6 +184,7 @@ export default function NomencladoresPage() {
   async function toggleActive(item) {
     try {
       setError("");
+      setNotice("");
       await updateSuperAdminCatalogItem(resource, item.id, {
         [config.activeField]: !item[config.activeField],
       });
@@ -217,6 +227,7 @@ export default function NomencladoresPage() {
           </div>
         </div>
         {error && <p className="mt-4 rounded-2xl bg-rose-50 p-4 text-sm text-rose-700">{error}</p>}
+        {notice && <p className="mt-4 rounded-2xl bg-emerald-50 p-4 text-sm text-emerald-700">{notice}</p>}
         <div className="mt-5">
           <label htmlFor="nomenclador-search" className="sr-only">Buscar nomenclador</label>
           <input
@@ -235,8 +246,8 @@ export default function NomencladoresPage() {
               {filteredItems.map((item) => (
                 <tr key={item.id}>
                   <td className="px-4 py-4 font-medium text-slate-900">{item.nombre || item.codigo}</td>
-                  <td className="px-4 py-4"><button type="button" onClick={() => toggleActive(item)} title={item[config.activeField] ? "Desactivar registro" : "Activar registro"} className={item[config.activeField] ? "mr-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100" : "mr-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600 transition hover:bg-slate-100"}>{item[config.activeField] ? "Activo" : "Inactivo"}</button></td>
-                  <td className="px-4 py-4"><button type="button" onClick={() => openEdit(item)} className="mr-2 rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold">Editar</button><button type="button" onClick={() => handleDelete(item)} className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700">Eliminar</button></td>
+                  <td className="px-4 py-4"><StatusToggle active={item[config.activeField]} onClick={() => toggleActive(item)} title={item[config.activeField] ? "Desactivar registro" : "Activar registro"} /></td>
+                  <td className="px-4 py-4"><EntityActionButton variant="edit" onClick={() => openEdit(item)}>Editar</EntityActionButton><EntityActionButton variant="delete" className="ml-2" onClick={() => handleDelete(item)}>Eliminar</EntityActionButton></td>
                 </tr>
               ))}
               {!filteredItems.length && <tr><td colSpan="3" className="px-4 py-8 text-center text-slate-500">{items.length ? "No se encontraron registros." : "No hay registros."}</td></tr>}

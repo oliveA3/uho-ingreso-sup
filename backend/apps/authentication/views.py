@@ -7,6 +7,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.views import APIView
 
 from .serializers import LoginSerializer, RegisterSerializer, UserSerializer
+from apps.core.audit import record_audit
 
 
 @method_decorator(csrf_exempt, name="dispatch")
@@ -26,6 +27,7 @@ class LoginView(APIView):
                 status=status.HTTP_401_UNAUTHORIZED,
             )
         login(request, user)
+        record_audit(user, "Inicio de sesión", "authentication/login", request=request)
         return JsonResponse({"user": UserSerializer(user).data}, status=status.HTTP_200_OK)
 
 
@@ -37,7 +39,20 @@ class RegisterView(APIView):
     def post(self, request):
         serializer = RegisterSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+
+        from apps.gestion_provincial.models import ETAPAS_NOMBRES, Etapa
+
+        registro_abierto = Etapa.objects.filter(
+            nombre__in=[ETAPAS_NOMBRES[1], ETAPAS_NOMBRES[2]],
+            estado="en_curso",
+        ).exists()
+        if not registro_abierto:
+            return JsonResponse(
+                {"detail": "El registro estudiantil solo está disponible durante las etapas 1 y 2."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
         user = serializer.save()
+        record_audit(user, "Registro estudiantil", "authentication/register", request=request)
         return JsonResponse({"user": UserSerializer(user).data}, status=status.HTTP_201_CREATED)
 
 
@@ -53,6 +68,7 @@ class LogoutView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
+        record_audit(request.user, "Cierre de sesión", "authentication/logout", request=request)
         logout(request)
         return JsonResponse({"detail": "Sesión cerrada."}, status=status.HTTP_200_OK)
 

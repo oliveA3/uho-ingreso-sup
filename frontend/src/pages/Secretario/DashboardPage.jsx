@@ -1,3 +1,5 @@
+import ActiveStageNotice from "../../components/ActiveStageNotice";
+
 export default function SecretarioDashboardPage() {
   return (
     <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -8,6 +10,8 @@ export default function SecretarioDashboardPage() {
             Resumen de etapa activa, estudiantes, boletas y escalafón para tu escuela.
           </p>
         </div>
+
+        <ActiveStageNotice />
 
         <div className="grid gap-4 sm:grid-cols-4">
           <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5">

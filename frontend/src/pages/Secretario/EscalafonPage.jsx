@@ -1,26 +1,69 @@
+import { useEffect, useRef, useState } from "react";
+import { downloadEscalafonTemplate, fetchEscalafon, importEscalafon, reviewEscalafonEntry, sendEscalafonToCommission, updateEscalafonEntry } from "../../services/api";
+import PrimaryButton from "../../components/Buttons/PrimaryButton";
+import SecondaryButton from "../../components/Buttons/SecondaryButton";
+import EntityActionButton from "../../components/Buttons/EntityActionButton";
+
 export default function SecretarioEscalafonPage() {
+  const [entries, setEntries] = useState([]);
+  const [stageActive, setStageActive] = useState(false);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const [loading, setLoading] = useState(true);
+  const fileInputRef = useRef(null);
+
+  const load = () => fetchEscalafon().then((data) => { setEntries(data.entries); setStageActive(true); }).catch((requestError) => setError(requestError.message)).finally(() => setLoading(false));
+  useEffect(() => { load(); }, []);
+  async function handleImport(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    try { setError(""); const result = await importEscalafon(file, "", new Date().getFullYear()); setNotice(`${result.inserted} estudiantes importados.`); await load(); } catch (requestError) { setError(requestError.message); }
+    event.target.value = "";
+  }
+  async function saveEntry(entry) {
+    try { await updateEscalafonEntry(entry.id, entry); setNotice("Registro actualizado."); await load(); } catch (requestError) { setError(requestError.message); }
+  }
+  async function sendToCommission() {
+    try { await sendEscalafonToCommission(); setNotice("Índices enviados y bloqueados definitivamente."); await load(); } catch (requestError) { setError(requestError.message); }
+  }
+  async function downloadTemplate() {
+    try {
+      const blob = await downloadEscalafonTemplate();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "plantilla-escalafon.xlsx";
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (requestError) { setError(requestError.message); }
+  }
+  async function markReviewed(id) {
+    try { await reviewEscalafonEntry(id); setNotice("Solicitud marcada como revisada."); await load(); } catch (requestError) { setError(requestError.message); }
+  }
+  function updateEntry(id, field, value) { setEntries((current) => current.map((entry) => entry.id === id ? { ...entry, [field]: value } : entry)); }
+
   return (
-    <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="space-y-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div>
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">Escalafón</h1>
           <p className="mt-2 text-sm text-slate-600">
             Importa el escalafón desde Excel y gestiona el estado de los estudiantes.
           </p>
         </div>
-        <button className="rounded-full bg-slate-900 px-5 py-2 text-sm font-semibold text-white hover:bg-slate-700">
-          Subir Excel
-        </button>
       </div>
 
+      <div className="flex flex-wrap gap-2">
+        <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden" disabled={!stageActive} onChange={handleImport} />
+        <PrimaryButton type="button" onClick={() => fileInputRef.current?.click()} disabled={!stageActive}>Importar Excel</PrimaryButton>
+        <SecondaryButton onClick={downloadTemplate}>Descargar plantilla</SecondaryButton>
+        <PrimaryButton type="button" onClick={sendToCommission}>Enviar índices a la Comisión</PrimaryButton>
+      </div>
+      {error && <p className="rounded-2xl bg-rose-50 p-4 text-sm text-rose-700">{error}</p>}
+      {notice && <p className="rounded-2xl bg-emerald-50 p-4 text-sm text-emerald-700">{notice}</p>}
+
       <div className="mt-6 space-y-4 rounded-3xl border border-slate-200 bg-slate-50 p-5">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm text-slate-600">Lista de estudiantes con filtros y exportación.</p>
-          <div className="flex flex-wrap gap-2">
-            <button className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700">Exportar Excel</button>
-            <button className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700">Enviar a comisión</button>
-          </div>
-        </div>
+          <p className="text-sm text-slate-600">Lista de estudiantes con filtros y gestión del escalafón.</p>
 
         <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
           <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
@@ -28,6 +71,9 @@ export default function SecretarioEscalafonPage() {
               <tr>
                 <th className="px-4 py-3">CI</th>
                 <th className="px-4 py-3">Nombre</th>
+                <th className="px-4 py-3">Apellidos</th>
+                <th className="px-4 py-3">Sexo</th>
+                <th className="px-4 py-3">Dirección</th>
                 <th className="px-4 py-3">10mo</th>
                 <th className="px-4 py-3">11mo</th>
                 <th className="px-4 py-3">12mo</th>
@@ -37,30 +83,7 @@ export default function SecretarioEscalafonPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 bg-white">
-              <tr>
-                <td className="px-4 py-4">...1847</td>
-                <td className="px-4 py-4 font-medium text-slate-900">María González P.</td>
-                <td className="px-4 py-4 text-slate-600">90.1</td>
-                <td className="px-4 py-4 text-slate-600">93.2</td>
-                <td className="px-4 py-4 text-slate-600">94.0</td>
-                <td className="px-4 py-4 text-slate-600"><strong>92.4</strong></td>
-                <td className="px-4 py-4 text-emerald-600">Aceptó</td>
-                <td className="px-4 py-4">
-                  <button className="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold">Ver</button>
-                </td>
-              </tr>
-              <tr>
-                <td className="px-4 py-4">...3312</td>
-                <td className="px-4 py-4 font-medium text-slate-900">Ana Beatriz Vega L.</td>
-                <td className="px-4 py-4 text-slate-600">93.8</td>
-                <td className="px-4 py-4 text-slate-600">94.2</td>
-                <td className="px-4 py-4 text-slate-600">94.1</td>
-                <td className="px-4 py-4 text-slate-600"><strong>94.0</strong></td>
-                <td className="px-4 py-4 text-amber-600">Revisión</td>
-                <td className="px-4 py-4">
-                  <button className="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold">Ver</button>
-                </td>
-              </tr>
+              {loading ? <tr><td colSpan="11" className="px-4 py-8 text-center">Cargando escalafón...</td></tr> : entries.map((entry) => <tr key={entry.id}><td className="px-4 py-4">{entry.ci}</td><td className="px-4 py-4"><input value={entry.nombre} onChange={(event) => updateEntry(entry.id, "nombre", event.target.value)} className="w-32 rounded-lg border px-2 py-1" /></td><td className="px-4 py-4"><input value={entry.apellidos} onChange={(event) => updateEntry(entry.id, "apellidos", event.target.value)} className="w-36 rounded-lg border px-2 py-1" /></td><td className="px-4 py-4"><select value={entry.sexo} onChange={(event) => updateEntry(entry.id, "sexo", event.target.value)} className="rounded-lg border px-2 py-1"><option value="M">M</option><option value="F">F</option></select></td><td className="px-4 py-4"><input value={entry.direccion} onChange={(event) => updateEntry(entry.id, "direccion", event.target.value)} className="w-40 rounded-lg border px-2 py-1" /></td><td className="px-4 py-4"><input value={entry.indice_10} disabled={entry.indices_bloqueados || !stageActive} onChange={(event) => updateEntry(entry.id, "indice_10", event.target.value)} className="w-20 rounded-lg border px-2 py-1" /></td><td className="px-4 py-4"><input value={entry.indice_11} disabled={entry.indices_bloqueados || !stageActive} onChange={(event) => updateEntry(entry.id, "indice_11", event.target.value)} className="w-20 rounded-lg border px-2 py-1" /></td><td className="px-4 py-4"><input value={entry.indice_12} disabled={entry.indices_bloqueados || !stageActive} onChange={(event) => updateEntry(entry.id, "indice_12", event.target.value)} className="w-20 rounded-lg border px-2 py-1" /></td><td className="px-4 py-4"><input value={entry.indice_general} disabled={entry.indices_bloqueados || !stageActive} onChange={(event) => updateEntry(entry.id, "indice_general", event.target.value)} className="w-20 rounded-lg border px-2 py-1" /></td><td className="px-4 py-4">{entry.estado_revision}</td><td className="px-4 py-4"><EntityActionButton variant="edit" onClick={() => saveEntry(entry)}>Guardar</EntityActionButton>{entry.estado_revision === "pendiente" && <EntityActionButton variant="delete" className="ml-2" onClick={() => markReviewed(entry.id)}>Revisada</EntityActionButton>}</td></tr>)}
             </tbody>
           </table>
         </div>

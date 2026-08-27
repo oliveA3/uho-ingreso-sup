@@ -3,6 +3,44 @@ from rest_framework import serializers
 from apps.authentication.models import ROLES, Usuario
 from apps.superadmin.models import Carrera, Ces, Escuela, Municipio, Provincia
 
+from .models import ETAPAS_NOMBRES, Etapa, Proceso
+
+
+class ProvincialProcesoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Proceso
+        fields = ["id", "anio", "etapa"]
+        read_only_fields = ["etapa"]
+
+    def validate_anio(self, value):
+        if Proceso.objects.filter(anio__year=value.year).exists():
+            raise serializers.ValidationError("Ya existe un proceso para ese año.")
+        return value
+
+
+class ProvincialEtapaSerializer(serializers.ModelSerializer):
+    numero = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Etapa
+        fields = ["id", "numero", "nombre", "fecha_inicio", "fecha_fin", "estado"]
+        read_only_fields = ["estado"]
+
+    def get_numero(self, obj):
+        return next(numero for numero, nombre in ETAPAS_NOMBRES.items() if nombre == obj.nombre)
+
+
+class ActivarEtapaSerializer(serializers.Serializer):
+    fecha_inicio = serializers.DateField()
+    fecha_fin = serializers.DateField()
+
+    def validate(self, attrs):
+        if attrs["fecha_inicio"] > attrs["fecha_fin"]:
+            raise serializers.ValidationError(
+                "La fecha de fin debe ser posterior o igual a la de inicio."
+            )
+        return attrs
+
 
 class ProvincialProvinciaSerializer(serializers.ModelSerializer):
     class Meta:

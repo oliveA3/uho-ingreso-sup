@@ -16,3 +16,9 @@ class LogAuditoria(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
 # notificaciones
+
+class Notificacion(models.Model):
+    usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE, related_name="notificaciones")
+    mensaje = models.TextField()
+    leida = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)

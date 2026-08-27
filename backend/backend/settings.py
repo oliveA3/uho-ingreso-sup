@@ -35,6 +35,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "apps.core.middleware.AuditMiddleware",
 ]
 
 ROOT_URLCONF = "backend.urls"
@@ -86,6 +87,27 @@ USE_L10N = True
 USE_TZ = True
 
 STATIC_URL = "/static/"
+
+LOG_DIR = BASE_DIR / "logs"
+LOG_DIR.mkdir(exist_ok=True)
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {
+        "audit_file": {
+            "class": "logging.FileHandler",
+            "filename": LOG_DIR / "audit.log",
+            "encoding": "utf-8",
+        },
+    },
+    "loggers": {
+        "audit": {
+            "handlers": ["audit_file"],
+            "level": "INFO",
+            "propagate": False,
+        },
+    },
+}
 
 AUTH_USER_MODEL = "authentication.Usuario"
 

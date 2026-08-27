@@ -6,6 +6,8 @@ import {
   fetchProvincialUsers,
   updateProvincialUser,
 } from "../../services/api";
+import EntityActionButton from "../../components/Buttons/EntityActionButton";
+import StatusToggle from "../../components/Buttons/StatusToggle";
 
 const emptyForm = {
   username: "",
@@ -152,8 +154,8 @@ export default function UsuariosPage() {
                   <td className="px-4 py-4 font-medium text-slate-900">{displayName(user)}</td>
                   <td className="px-4 py-4 text-slate-600">{user.municipio_nombre || "-"}</td>
                   <td className="px-4 py-4 text-slate-600">{user.email}</td>
-                  <td className="px-4 py-4"><button type="button" onClick={() => toggleUser(user)} className={`rounded-full px-3 py-1 text-xs font-semibold ${user.is_active ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-600"}`}>{user.is_active ? "Activo" : "Inactivo"}</button></td>
-                  <td className="px-4 py-4"><button type="button" onClick={() => openEdit(user)} className="mr-2 rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold">Editar</button><button type="button" onClick={() => handleDelete(user)} className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700">Eliminar</button></td>
+                  <td className="px-4 py-4"><StatusToggle active={user.is_active} onClick={() => toggleUser(user)} /></td>
+                  <td className="px-4 py-4"><EntityActionButton variant="edit" onClick={() => openEdit(user)}>Editar</EntityActionButton><EntityActionButton variant="delete" className="ml-2" onClick={() => handleDelete(user)}>Eliminar</EntityActionButton></td>
                 </tr>
               ))}
             </tbody>

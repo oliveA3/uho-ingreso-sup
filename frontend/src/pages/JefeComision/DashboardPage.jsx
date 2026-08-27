@@ -1,47 +1,51 @@
-const stats = [
-  { value: "14", label: "Municipios" },
-  { value: "87", label: "Escuelas" },
-  { value: "4,230", label: "Estudiantes" },
-  { value: "3,811", label: "Con Cuenta" },
-  { value: "2,640", label: "Boletas Enviadas" },
-  { value: "1,590", label: "Pendientes" },
-];
+import { useEffect, useState } from "react";
+import { fetchProvincialDashboard } from "../../services/api";
+import ActiveStageNotice from "../../components/ActiveStageNotice";
 
-const topMunicipios = [
-  { name: "Holguín", percent: 78 },
-  { name: "Gibara", percent: 65 },
-  { name: "Banes", percent: 58 },
-  { name: "R. Freyre", percent: 45 },
-  { name: "Moa", percent: 38 },
-];
+export default function DashboardPage({ user }) {
+  const [dashboard, setDashboard] = useState(null);
+  const [error, setError] = useState("");
 
-const topCarreras = [
-  { name: "Medicina", value: 412 },
-  { name: "Ing. Informática", value: 344 },
-  { name: "Derecho", value: 251 },
-  { name: "Ing. Industrial", value: 184 },
-];
+  useEffect(() => {
+    fetchProvincialDashboard()
+      .then(setDashboard)
+      .catch((requestError) => setError(requestError.message));
+  }, []);
 
-export default function DashboardPage() {
+  if (error) {
+    return <div className="rounded-3xl border border-rose-200 bg-rose-50 p-8 text-sm text-rose-700">{error}</div>;
+  }
+
+  if (!dashboard) {
+    return <div className="rounded-3xl border border-slate-200 bg-white p-8 text-sm text-slate-600">Cargando información del dashboard...</div>;
+  }
+
+  const scope = user?.rol === "jefe_comision" ? "Provincial" : user?.rol_label || "General";
+  const province = user?.provincia_nombre || "toda la provincia";
+  const stats = [
+    { value: dashboard.municipios, label: "Municipios" },
+    { value: dashboard.escuelas, label: "Escuelas" },
+    { value: dashboard.estudiantes, label: "Estudiantes" },
+    { value: dashboard.estudiantes_con_cuenta, label: "Con Cuenta" },
+    { value: dashboard.boletas_interes_enviadas, label: "Boletas Enviadas" },
+    { value: dashboard.boletas_interes_pendientes, label: "Pendientes" },
+  ];
+
   return (
     <div className="space-y-6">
       <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.24em] text-sky-700">Dashboard Provincial</p>
-            <h1 className="mt-2 text-3xl font-semibold text-slate-900">Holguín</h1>
-            <p className="mt-3 text-sm text-slate-600">Proceso de Ingreso 2025</p>
+            <h1 className="mt-2 text-3xl font-semibold text-slate-900">Dashboard Provincial</h1>
+            <p className="mt-3 text-sm text-slate-600">Información actual del proceso de ingreso</p>
           </div>
           <div className="rounded-3xl bg-slate-50 px-5 py-4 text-sm text-slate-700">
-            <p className="font-semibold">Etapa Activa</p>
-            <p>Boleta de Interés</p>
-            <p className="text-slate-500">22/01 - 30/01/2025</p>
+            <p>Alcance {scope}, {province}</p>
           </div>
         </div>
 
-        <div className="mt-6 rounded-3xl border border-slate-200 bg-emerald-50 p-5 text-sm text-emerald-700">
-          ✅ Etapa activa: <strong>Boleta de Interés</strong> — 22/01 al 30/01/2025
-        </div>
+        <ActiveStageNotice />
 
         <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
           {stats.map((stat) => (
@@ -57,14 +61,14 @@ export default function DashboardPage() {
         <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
           <div className="text-sm font-semibold text-slate-900">🗺️ Avance por Municipio</div>
           <div className="mt-5 space-y-4">
-            {topMunicipios.map((municipio) => (
+            {dashboard.municipios_lista.map((municipio) => (
               <div key={municipio.name} className="space-y-2">
                 <div className="flex items-center justify-between text-sm text-slate-700">
-                  <span>{municipio.name}</span>
-                  <span>{municipio.percent}%</span>
+                  <span>{municipio.nombre}</span>
+                  <span>{municipio.escuelas_count} escuelas</span>
                 </div>
                 <div className="h-2 overflow-hidden rounded-full bg-slate-200">
-                  <div className="h-2 rounded-full bg-sky-600" style={{ width: `${municipio.percent}%` }} />
+                  <div className="h-2 rounded-full bg-sky-600" style={{ width: `${Math.min(100, municipio.escuelas_count ? municipio.escuelas_count / Math.max(1, dashboard.escuelas) * 100 : 0)}%` }} />
                 </div>
               </div>
             ))}
@@ -74,14 +78,14 @@ export default function DashboardPage() {
         <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
           <div className="text-sm font-semibold text-slate-900">🏆 Top Carreras Solicitadas</div>
           <div className="mt-5 space-y-4">
-            {topCarreras.map((career) => (
+            {dashboard.top_carreras.map((career) => (
               <div key={career.name} className="space-y-2">
                 <div className="flex items-center justify-between text-sm text-slate-700">
-                  <span>{career.name}</span>
-                  <span>{career.value}</span>
+                  <span>{career.carrera__nombre}</span>
+                  <span>{career.total}</span>
                 </div>
                 <div className="h-2 overflow-hidden rounded-full bg-slate-200">
-                  <div className="h-2 rounded-full bg-sky-600" style={{ width: `${Math.min(100, career.value / 4.5)}%` }} />
+                  <div className="h-2 rounded-full bg-sky-600" style={{ width: `${Math.min(100, career.total * 10)}%` }} />
                 </div>
               </div>
             ))}

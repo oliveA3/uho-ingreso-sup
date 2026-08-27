@@ -1,4 +1,5 @@
 from django.db import models
+from django.db.models import Q
 from django.contrib.auth.models import AbstractUser
 from phonenumber_field.modelfields import PhoneNumberField
 
@@ -10,7 +11,7 @@ ROLES = [
     ('ingreso_provincial', 'Repr. Ingreso Provincial'),
     ('ingreso_municipal', 'Repr. Ingreso Municipal'),
     ('director_escuela', 'Director de Escuela'),
-    ('secretario_escuela', 'Secretaario de Escuela'),
+    ('secretario_escuela', 'Secretario de Escuela'),
     ('estudiante', 'Estudiante')
 ]
 
@@ -28,10 +29,39 @@ class Usuario(AbstractUser):
     escuela = models.ForeignKey(
         Escuela, on_delete=models.PROTECT, related_name='usuarios', null=True, blank=True)
 
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["provincia"],
+                condition=Q(rol="jefe_comision"),
+                name="unique_jefe_comision_provincia",
+            ),
+            models.UniqueConstraint(
+                fields=["provincia"],
+                condition=Q(rol="ingreso_provincial"),
+                name="unique_repr_provincial_provincia",
+            ),
+            models.UniqueConstraint(
+                fields=["municipio"],
+                condition=Q(rol="ingreso_municipal"),
+                name="unique_repr_municipal_municipio",
+            ),
+            models.UniqueConstraint(
+                fields=["escuela"],
+                condition=Q(rol="director_escuela"),
+                name="unique_director_escuela",
+            ),
+            models.UniqueConstraint(
+                fields=["escuela"],
+                condition=Q(rol="secretario_escuela"),
+                name="unique_secretario_escuela",
+            ),
+        ]
+
 
 class Estudiante(models.Model):
-    usuario = models.ForeignKey(
-        Usuario, on_delete=models.CASCADE, related_name='estudiante')
+    usuario = models.OneToOneField(
+        Usuario, on_delete=models.CASCADE, related_name='estudiante', null=True, blank=True)
 
     ci = models.CharField(unique=True, max_length=11)
     nombre = models.CharField(max_length=150)
@@ -41,16 +71,16 @@ class Estudiante(models.Model):
     direccion = models.CharField(max_length=500)
     escuela = models.ForeignKey(
         Escuela, on_delete=models.PROTECT, related_name='estudiantes')
-    whatsapp = PhoneNumberField(region='CU')
+    whatsapp = PhoneNumberField(region='CU', blank=True)
 
-    indice_10 = models.FloatField()
-    indice_11 = models.FloatField()
-    indice_12 = models.FloatField()
-    indice_general = models.FloatField()
+    indice_10 = models.FloatField(null=True, blank=True)
+    indice_11 = models.FloatField(null=True, blank=True)
+    indice_12 = models.FloatField(null=True, blank=True)
+    indice_general = models.FloatField(null=True, blank=True)
 
     tutor_nombre = models.CharField(max_length=200, null=True, blank=True)
     tutor_email = models.EmailField(null=True, blank=True)
-    # tutor_telefono = whatsapp = models.PhoneNumberField(region='CU')
+    tutor_telefono = PhoneNumberField(region='CU', null=True, blank=True)
 
 
 class RolPermiso(models.Model):

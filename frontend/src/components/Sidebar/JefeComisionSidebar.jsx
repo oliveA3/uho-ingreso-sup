@@ -1,6 +1,6 @@
 import BaseSidebar from "./BaseSidebar";
 
-export default function JefeComisionSidebar({ scope, onLogout }) {
+export default function JefeComisionSidebar({ scope, onLogout, activeStageLabel }) {
   const sections = [
     {
       title: "Proceso",
@@ -8,7 +8,11 @@ export default function JefeComisionSidebar({ scope, onLogout }) {
         { label: "Dashboard", icon: "🏠", to: "/jefe_comision/dashboard" },
         { label: "Control de Etapas", icon: "⚙️", to: "/jefe_comision/etapas" },
         { label: "Catálogo de Carreras", icon: "📚", to: "/jefe_comision/carreras" },
-        { label: "Escalafones", icon: "📋", to: "/jefe_comision/escalafones" },
+        {
+          label: "Escalafones",
+          icon: "📋",
+          to: "/jefe_comision/escalafones",
+        },
         { label: "Plan de Plazas", icon: "📊", to: "/jefe_comision/plazas" },
         { label: "Solicitudes", icon: "📝", to: "/jefe_comision/solicitudes" },
         { label: "Resultados", icon: "🏆", to: "/jefe_comision/resultados" },
@@ -32,6 +36,7 @@ export default function JefeComisionSidebar({ scope, onLogout }) {
       scope={scope}
       sections={sections}
       onLogout={onLogout}
+      activeStageLabel={activeStageLabel}
     />
   );
 }

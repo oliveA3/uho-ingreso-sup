@@ -1,9 +1,11 @@
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 
 export default function BaseSidebar({ title, roleLabel, scope, sections, onLogout }) {
+  const location = useLocation();
+
   return (
-    <aside className="space-y-5 rounded-3xl p-5 shadow-sm">
-      <div className="space-y-1">
+    <aside className="flex h-full min-h-0 flex-col overflow-hidden rounded-3xl p-5 shadow-sm">
+      <div className="shrink-0 space-y-1">
         <div className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-900">
           {title}
         </div>
@@ -14,13 +16,14 @@ export default function BaseSidebar({ title, roleLabel, scope, sections, onLogou
         )}
       </div>
 
-      {sections.map((section) => (
-        <div key={section.title}>
-          <div className="pt-3 text-slate-500 uppercase tracking-[0.18em] text-xs">
-            {section.title}
-          </div>
-          <nav className="mt-3 space-y-2 text-sm text-slate-600">
-            {section.items.map((item) =>
+      <div className="sidebar-sections-scroll -mr-5 min-h-0 flex-1 overflow-y-auto pr-5">
+        {sections.map((section) => (
+          <div key={section.title}>
+            <div className="pt-3 text-slate-500 uppercase tracking-[0.18em] text-xs">
+              {section.title}
+            </div>
+            <nav className="mt-3 space-y-2 text-sm text-slate-600">
+              {section.items.map((item) => (
               item.action === "logout" ? (
                 <button
                   key={item.label}
@@ -30,11 +33,24 @@ export default function BaseSidebar({ title, roleLabel, scope, sections, onLogou
                 >
                   {item.icon} {item.label}
                 </button>
+              ) : item.disabled ? (
+                <div
+                  key={item.label}
+                  title={item.disabledMessage}
+                  aria-disabled="true"
+                  className="block cursor-not-allowed rounded-2xl px-4 py-3 text-slate-400 opacity-70"
+                >
+                  {item.icon} {item.label}
+                </div>
               ) : item.to ? (
                 <Link
                   key={item.label}
                   to={item.to}
-                  className="block rounded-2xl px-4 py-3 transition hover:bg-slate-100 hover:text-slate-900"
+                  className={`block rounded-2xl px-4 py-3 transition hover:bg-slate-100 hover:text-slate-900 ${
+                    location.pathname === item.to || location.pathname.startsWith(`${item.to}/`)
+                      ? "bg-sky-100 font-semibold text-sky-800"
+                      : ""
+                  }`}
                 >
                   {item.icon} {item.label}
                 </Link>
@@ -47,10 +63,11 @@ export default function BaseSidebar({ title, roleLabel, scope, sections, onLogou
                   {item.icon} {item.label}
                 </a>
               )
-            )}
-          </nav>
-        </div>
-      ))}
+              ))}
+            </nav>
+          </div>
+        ))}
+      </div>
     </aside>
   );
 }
