@@ -5,7 +5,7 @@ from django.db import transaction
 from openpyxl import Workbook, load_workbook
 
 from apps.authentication.models import Estudiante
-from apps.gestion_escuela.models import Escalafon, EstudianteEscalafon
+from apps.gestion_escuela.models import Escalafon, EscalafonItem
 from apps.superadmin.models import Escuela
 
 
@@ -103,7 +103,7 @@ class EscalafonExcelService:
                     for field in ("nombre", "apellidos", "sexo", "direccion"):
                         setattr(estudiante, field, row[field])
                     estudiante.save(update_fields=["nombre", "apellidos", "sexo", "direccion"])
-                EstudianteEscalafon.objects.create(
+                EscalafonItem.objects.create(
                     escalafon=escalafon,
                     estudiante=estudiante,
                     indice_10=row["indice_10"],

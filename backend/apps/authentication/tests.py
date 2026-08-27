@@ -1,7 +1,7 @@
 from django.test import TestCase
 
 from apps.authentication.models import Usuario
-from apps.authentication.serializers import SuperAdminUserSerializer
+from apps.authentication.serializers import SuperAdminUserSerializer, UserSerializer
 from apps.superadmin.models import Escuela, Municipio, Provincia
 
 
@@ -33,6 +33,20 @@ class AutheticationSmokeTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["user"]["rol"], "superadmin")
         self.assertEqual(response.json()["user"]["rol_label"], "Super Administrador")
+
+    def test_user_serializer_allows_users_without_student_profile(self):
+        user = Usuario.objects.create_user(
+            username="director.test",
+            email="director@example.com",
+            password="secret1234",
+            rol="director_escuela",
+        )
+
+        data = UserSerializer(user).data
+
+        self.assertIsNone(data["tutor_nombre"])
+        self.assertIsNone(data["tutor_email"])
+        self.assertIsNone(data["tutor_telefono"])
 
 
 class SuperAdminUserScopeTests(TestCase):

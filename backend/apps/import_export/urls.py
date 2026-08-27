@@ -1,7 +1,7 @@
 from django.urls import path
 from .views import (
     EscalafonEntryView, EscalafonListView, EscalafonSendView, EscalafonTemplateView,
-    EscalafonReviewView,
+    EscalafonReviewView, ProvincialEscalafonSummaryView, ProvincialEscalafonExportView,
     ExportCarrerasView, ExportEscalafonView, ImportCarrerasView, ImportEscalafonView,
     ImportPlanPlazaView, ImportOtorgamientoView, StudentEscalafonActionView,
 )
@@ -14,6 +14,8 @@ urlpatterns = [
     path("import/escalafon/", ImportEscalafonView.as_view(), name="import-escalafon"),
     path("export/escalafon/", ExportEscalafonView.as_view(), name="export-escalafon"),
     path("escalafon/", EscalafonListView.as_view(), name="escalafon-list"),
+    path("escalafon/resumen-provincial/", ProvincialEscalafonSummaryView.as_view(), name="escalafon-summary-provincial"),
+    path("escalafon/exportar-provincial/", ProvincialEscalafonExportView.as_view(), name="escalafon-export-provincial"),
     path("escalafon/plantilla/", EscalafonTemplateView.as_view(), name="escalafon-template"),
     path("escalafon/<int:pk>/", EscalafonEntryView.as_view(), name="escalafon-entry"),
     path("escalafon/<int:pk>/revisar/", EscalafonReviewView.as_view(), name="escalafon-review"),

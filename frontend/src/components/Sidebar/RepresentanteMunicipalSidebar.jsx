@@ -5,7 +5,6 @@ export default function RepresentanteMunicipalSidebar({ scope, onLogout, activeS
     {
       title: "Gestión",
       items: [
-        { label: "Dashboard", icon: "🏠", to: "/repr_municipal/dashboard" },
         { label: "Escuelas", icon: "🏫", to: "/repr_municipal/escuelas" },
         { label: "Usuarios", icon: "👥", to: "/repr_municipal/usuarios" },
       ],

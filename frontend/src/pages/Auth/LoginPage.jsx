@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { login } from "../../services/api";
+import FeedbackMessage from "../../components/FeedbackMessage";
 
 export default function LoginPage({ onLogin }) {
   const [username, setUsername] = useState("");
@@ -39,11 +40,7 @@ export default function LoginPage({ onLogin }) {
           Accede con el usuario y contraseña de tu cuenta IngresoSUP.
         </p>
 
-        {error && (
-          <div className="mt-6 rounded-2xl bg-rose-50 px-4 py-3 text-sm text-rose-800">
-            {error}
-          </div>
-        )}
+        {error && <FeedbackMessage type="error" className="mt-6 rounded-2xl">{error}</FeedbackMessage>}
 
         <form className="mt-6 space-y-5" onSubmit={handleSubmit}>
           <label className="block">

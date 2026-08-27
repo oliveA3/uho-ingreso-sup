@@ -2,6 +2,8 @@ import { Link, useLocation } from "react-router-dom";
 
 export default function BaseSidebar({ title, roleLabel, scope, sections, onLogout }) {
   const location = useLocation();
+  const isItemActive = (item) => location.pathname === item.to
+    || (!item.exact && location.pathname.startsWith(`${item.to}/`));
 
   return (
     <aside className="flex h-full min-h-0 flex-col overflow-hidden rounded-3xl p-5 shadow-sm">
@@ -47,7 +49,7 @@ export default function BaseSidebar({ title, roleLabel, scope, sections, onLogou
                   key={item.label}
                   to={item.to}
                   className={`block rounded-2xl px-4 py-3 transition hover:bg-slate-100 hover:text-slate-900 ${
-                    location.pathname === item.to || location.pathname.startsWith(`${item.to}/`)
+                    isItemActive(item)
                       ? "bg-sky-100 font-semibold text-sky-800"
                       : ""
                   }`}

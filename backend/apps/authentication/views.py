@@ -1,4 +1,5 @@
 from django.contrib.auth import authenticate, login, logout
+from django.conf import settings
 from django.http import JsonResponse
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
@@ -42,7 +43,7 @@ class RegisterView(APIView):
 
         from apps.gestion_provincial.models import ETAPAS_NOMBRES, Etapa
 
-        registro_abierto = Etapa.objects.filter(
+        registro_abierto = settings.DEBUG or Etapa.objects.filter(
             nombre__in=[ETAPAS_NOMBRES[1], ETAPAS_NOMBRES[2]],
             estado="en_curso",
         ).exists()

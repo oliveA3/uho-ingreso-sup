@@ -2,8 +2,10 @@ import io
 
 from django.test import TestCase
 from openpyxl import Workbook
+from rest_framework.test import APIClient
 
 from apps.authentication.models import Estudiante
+from apps.authentication.models import Usuario
 from apps.gestion_escuela.models import Escalafon
 from apps.gestion_provincial.models import Proceso
 from apps.import_export.services.escalafon_service import EscalafonExcelService
@@ -78,6 +80,42 @@ class EscalafonTests(TestCase):
 		self.assertEqual(student.usuario_id, user.id)
 		self.assertEqual(user.first_name, "Ana")
 		self.assertEqual(user.last_name, "Pérez")
+
+	def test_students_without_account_are_scoped_to_secretary_school(self):
+		other_school = Escuela.objects.create(nombre="ESBU", municipio=self.municipio)
+		secretary = Usuario.objects.create_user(
+			username="secretaria", email="secretaria@example.com", password="secret1234",
+			rol="secretario_escuela", escuela=self.escuela,
+			municipio=self.municipio, provincia=self.provincia,
+		)
+		student = Estudiante.objects.create(
+			ci="12345678901", nombre="Ana", apellidos="Pérez", sexo="F",
+			direccion="Calle 1", escuela=self.escuela, indice_general=91.5,
+		)
+		registered_user = Usuario.objects.create_user(
+			username="registrado", email="registrado@example.com", password="secret1234",
+		)
+		Estudiante.objects.create(
+			ci="12345678902", nombre="Luis", apellidos="Díaz", sexo="M",
+			direccion="Calle 2", escuela=self.escuela, usuario=registered_user,
+		)
+		Estudiante.objects.create(
+			ci="12345678903", nombre="Marta", apellidos="Gómez", sexo="F",
+			direccion="Calle 3", escuela=other_school,
+		)
+
+		client = APIClient()
+		client.force_authenticate(user=secretary)
+		response = client.get("/api/gestion-escuela/estudiantes/sin-cuenta/")
+
+		self.assertEqual(response.status_code, 200)
+		self.assertEqual(response.json()["students"], [{
+			"id": student.id,
+			"ci": "12345678901",
+			"nombre": "Ana",
+			"apellidos": "Pérez",
+			"indice_general": 91.5,
+		}])
 from django.test import TestCase
 
 # Create your tests here.

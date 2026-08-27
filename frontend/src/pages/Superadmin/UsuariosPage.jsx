@@ -8,6 +8,7 @@ import {
 } from "../../services/api";
 import EntityActionButton from "../../components/Buttons/EntityActionButton";
 import StatusToggle from "../../components/Buttons/StatusToggle";
+import FeedbackMessage from "../../components/FeedbackMessage";
 
 const roles = [
   ["superadmin", "Super Administrador"],
@@ -198,7 +199,7 @@ export default function UsuariosPage() {
           </label>
         </div>
 
-        {error && <p className="mt-5 rounded-2xl bg-rose-50 p-4 text-sm text-rose-700">{error}</p>}
+        {error && <FeedbackMessage type="error" className="mt-5 rounded-2xl">{error}</FeedbackMessage>}
         <div className="table-scroll mt-6 overflow-x-auto">
           <table className="min-w-full border-collapse text-sm">
             <thead><tr className="bg-slate-100 text-left text-slate-700"><th className="px-4 py-3">Usuario</th><th className="px-4 py-3">Nombre</th><th className="px-4 py-3">Rol</th><th className="px-4 py-3">Alcance</th><th className="px-4 py-3">Estado</th><th className="px-4 py-3">Acciones</th></tr></thead>

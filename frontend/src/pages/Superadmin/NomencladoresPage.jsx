@@ -7,6 +7,7 @@ import {
 } from "../../services/api";
 import EntityActionButton from "../../components/Buttons/EntityActionButton";
 import StatusToggle from "../../components/Buttons/StatusToggle";
+import FeedbackMessage from "../../components/FeedbackMessage";
 
 const catalogs = {
   provincias: {
@@ -226,8 +227,8 @@ export default function NomencladoresPage() {
             </span>
           </div>
         </div>
-        {error && <p className="mt-4 rounded-2xl bg-rose-50 p-4 text-sm text-rose-700">{error}</p>}
-        {notice && <p className="mt-4 rounded-2xl bg-emerald-50 p-4 text-sm text-emerald-700">{notice}</p>}
+        {error && <FeedbackMessage type="error" className="mt-4 rounded-2xl">{error}</FeedbackMessage>}
+        {notice && <FeedbackMessage type="success" className="mt-4 rounded-2xl">{notice}</FeedbackMessage>}
         <div className="mt-5">
           <label htmlFor="nomenclador-search" className="sr-only">Buscar nomenclador</label>
           <input

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { fetchAuditLogs, getAuditLogExportUrl } from "../../services/api";
+import FeedbackMessage from "../../components/FeedbackMessage";
 
 export default function LogsPage() {
   const [logs, setLogs] = useState([]);
@@ -21,7 +22,7 @@ export default function LogsPage() {
           <p className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-700">Registros</p>
           <h1 className="mt-2 text-3xl font-semibold text-slate-900">Logs de Auditoría</h1>
           <p className="mt-3 text-sm text-slate-600">Filtra acciones por usuario, fecha, módulo o acción y exporta la auditoría.</p>
-          {error && <p className="mt-4 text-sm text-rose-700">{error}</p>}
+          {error && <FeedbackMessage type="error" className="mt-4 rounded-xl">{error}</FeedbackMessage>}
           <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
             {[["usuario", "Usuario"], ["accion", "Acción"], ["fecha_desde", "Desde"], ["fecha_hasta", "Hasta"]].map(([field, label]) => (
               <label key={field} className="text-sm text-slate-600">{label}<input type={field.startsWith("fecha") ? "date" : "search"} value={filters[field]} onChange={(event) => setFilters({ ...filters, [field]: event.target.value })} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2" /></label>

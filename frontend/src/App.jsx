@@ -119,12 +119,12 @@ function AppContent() {
         />
 
       <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900">
-        <div className="flex flex-1 flex-col lg:flex-row">
+        <div className="relative flex flex-1 flex-col lg:flex-row">
           {user && (
-            <div className="flex min-h-0 shrink-0 items-start">
+            <div className={`relative flex min-h-0 shrink-0 items-start self-stretch lg:items-stretch ${!isMenuOpen ? "lg:absolute lg:left-0 lg:top-0 lg:z-20" : ""}`}>
               {isMenuOpen && (
-                <div className="flex h-[calc(100vh-5rem)] w-[250px] min-h-0 flex-col self-start border-r border-slate-200 bg-white shadow-lg lg:h-[calc(100vh-5rem)]">
-                  <div className="min-h-0 flex-1">
+                <div className="flex h-[calc(100vh-5rem)] w-[250px] min-h-0 flex-col self-start border-r border-slate-200 bg-white shadow-lg lg:min-h-full">
+                  <div className="min-h-0 flex-1 lg:h-[calc(100vh-5rem)] lg:max-h-[calc(100vh-5rem)]">
                     <SidebarSelector user={user} onLogout={handleLogout} />
                   </div>
                 </div>
@@ -133,7 +133,7 @@ function AppContent() {
                 type="button"
                 onClick={() => setIsMenuOpen((isOpen) => !isOpen)}
                 className={`relative z-10 flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center border border-slate-200 bg-slate-900 p-0 text-xl font-semibold text-white shadow-md transition hover:bg-slate-700 ${
-                  isMenuOpen ? "rounded-r-xl border-l-0" : "rounded-r-xl"
+                  isMenuOpen ? "rounded-r-xl border-l-0 lg:absolute lg:left-[250px] lg:top-0" : "rounded-r-xl"
                 }`}
                 aria-label={isMenuOpen ? "Cerrar menú" : "Abrir menú"}
                 aria-expanded={isMenuOpen}
@@ -155,7 +155,7 @@ function AppContent() {
               </button>
             </div>
           )}
-          <div className="min-w-0 flex-1 lg:-ml-4">
+          <div className={`min-w-0 flex-1 pl-2 ${isMenuOpen ? "lg:pl-0" : "lg:pl-3"}`}>
             <Routes>
             <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<LoginPage onLogin={handleLogin} />} />
@@ -193,20 +193,20 @@ function AppContent() {
               <Route path="carreras" element={<JefeComisionCarreras />} />
             </Route>
             <Route path="/repr_provincial/*" element={<RepresentanteProvincialLayout user={user} onLogout={handleLogout} />}>
-              <Route index element={<ReprProvMunicipios />} />
+              <Route index element={<ReprProvMunicipios user={user} />} />
               <Route path="dashboard" element={<Navigate to="/repr_provincial/municipios" replace />} />
-              <Route path="municipios" element={<ReprProvMunicipios />} />
+              <Route path="municipios" element={<ReprProvMunicipios user={user} />} />
               <Route path="usuarios" element={<ReprProvUsuarios />} />
             </Route>
             <Route path="/repr_municipal/*" element={<RepresentanteMunicipalLayout user={user} onLogout={handleLogout} />}>
               <Route index element={<Navigate to="escuelas" replace />} />
               <Route path="dashboard" element={<Navigate to="/repr_municipal/escuelas" replace />} />
-              <Route path="escuelas" element={<ReprMunicipalEscuelas />} />
+              <Route path="escuelas" element={<ReprMunicipalEscuelas user={user} />} />
               <Route path="usuarios" element={<ReprMunicipalUsuarios />} />
             </Route>
             <Route path="/secretario/*" element={<SecretarioLayout user={user} onLogout={handleLogout} />}>
-              <Route index element={<SecretarioDashboardPage />} />
-              <Route path="dashboard" element={<SecretarioDashboardPage />} />
+              <Route index element={<SecretarioDashboardPage user={user} />} />
+              <Route path="dashboard" element={<SecretarioDashboardPage user={user} />} />
               <Route path="escalafon" element={<StageOneGuard panelName="Escalafón"><SecretarioEscalafonPage /></StageOneGuard>} />
               <Route path="sincuenta" element={<SecretarioSinCuentaPage />} />
               <Route path="boleta-interes" element={<StageOneGuard stageNumber={2} stageName="Boleta de Interés de Carrera" panelName="Boleta de Interés"><SecretarioBoletaInteresPage /></StageOneGuard>} />
@@ -219,7 +219,8 @@ function AppContent() {
             <Route path="/director/*" element={<DirectorLayout user={user} onLogout={handleLogout} />}>
               <Route index element={<Navigate to="boleta-interes" replace />} />
               <Route path="dashboard" element={<Navigate to="boleta-interes" replace />} />
-              <Route path="boleta-interes" element={<StageOneGuard stageNumber={2} stageName="Boleta de Interés de Carrera" panelName="Boletas de Interés"><DirectorBoletaInteresPage /></StageOneGuard>} />
+              <Route path="sincuenta" element={<SecretarioSinCuentaPage />} />
+              <Route path="boleta-interes" element={<StageOneGuard stageNumber={2} stageName="Boleta de Interés de Carrera" panelName="Boletas de Interés"><DirectorBoletaInteresPage user={user} /></StageOneGuard>} />
               <Route path="boletas-solicitud" element={<StageOneGuard stageNumber={3} stageName="Plan de plazas y boleta de solicitud" panelName="Estadísticas de Boletas"><DirectorBoletasSolicitudPage /></StageOneGuard>} />
               <Route path="confirmacion-pruebas" element={<StageOneGuard stageNumber={4} stageName="Confirmación de las pruebas de ingreso" panelName="Estadísticas de Confirmación"><DirectorConfirmacionPruebasPage /></StageOneGuard>} />
               <Route path="otorgamientos" element={<StageOneGuard stageNumber={6} stageName="Otorgamiento de carreras" panelName="Otorgamientos"><DirectorOtorgamientosPage /></StageOneGuard>} />

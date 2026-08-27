@@ -1,5 +1,3 @@
-from datetime import date
-
 from django.db import migrations, models
 import django.db.models.deletion
 
@@ -11,13 +9,6 @@ def migrate_years_to_processes(apps, schema_editor):
         proceso, _ = Proceso.objects.get_or_create(anio=date(escalafon.anio, 1, 1))
         escalafon.proceso_id = proceso.id
         escalafon.save(update_fields=["proceso"])
-
-
-def reverse_processes_to_years(apps, schema_editor):
-    Escalafon = apps.get_model("gestion_escuela", "Escalafon")
-    for escalafon in Escalafon.objects.select_related("proceso").all().iterator():
-        escalafon.anio = escalafon.proceso.anio.year
-        escalafon.save(update_fields=["anio"])
 
 
 class Migration(migrations.Migration):
@@ -37,7 +28,7 @@ class Migration(migrations.Migration):
                 to="gestion_provincial.proceso",
             ),
         ),
-        migrations.RunPython(migrate_years_to_processes, reverse_processes_to_years),
+        migrations.RunPython(migrate_years_to_processes, migrations.RunPython.noop),
         migrations.RemoveConstraint(
             model_name="escalafon",
             name="unique_escalafon_escuela_anio",

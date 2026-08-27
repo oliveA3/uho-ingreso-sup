@@ -5,7 +5,6 @@ export default function RepresentanteProvincialSidebar({ scope, onLogout, active
     {
       title: "Gestión",
       items: [
-        { label: "Dashboard", icon: "🏠", to: "/repr_provincial/dashboard" },
         { label: "Municipios y Escuelas", icon: "🗺️", to: "/repr_provincial/municipios" },
         { label: "Usuarios", icon: "👥", to: "/repr_provincial/usuarios" },
       ],

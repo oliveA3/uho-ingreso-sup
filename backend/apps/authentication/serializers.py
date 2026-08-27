@@ -3,7 +3,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from apps.authentication.models import ROLES, Usuario, Estudiante
-from apps.gestion_escuela.models import EstudianteEscalafon
+from apps.gestion_escuela.models import EscalafonItem
 from apps.superadmin.models import Escuela, Municipio, Provincia
 
 
@@ -15,9 +15,11 @@ class LoginSerializer(serializers.Serializer):
 class UserSerializer(serializers.ModelSerializer):
     rol_label = serializers.SerializerMethodField()
     provincia_nombre = serializers.CharField(source="provincia.nombre", read_only=True)
-    tutor_nombre = serializers.CharField(source="estudiante.tutor_nombre", read_only=True)
-    tutor_email = serializers.CharField(source="estudiante.tutor_email", read_only=True)
-    tutor_telefono = serializers.CharField(source="estudiante.tutor_telefono", read_only=True)
+    municipio_nombre = serializers.CharField(source="municipio.nombre", read_only=True)
+    escuela_nombre = serializers.CharField(source="escuela.nombre", read_only=True)
+    tutor_nombre = serializers.SerializerMethodField()
+    tutor_email = serializers.SerializerMethodField()
+    tutor_telefono = serializers.SerializerMethodField()
 
     class Meta:
         model = Usuario
@@ -28,8 +30,8 @@ class UserSerializer(serializers.ModelSerializer):
             "rol",
             "rol_label",
             "provincia", "provincia_nombre",
-            "municipio",
-            "escuela",
+            "municipio", "municipio_nombre",
+            "escuela", "escuela_nombre",
             "first_name",
             "last_name",
             "tutor_nombre", "tutor_email", "tutor_telefono",
@@ -37,6 +39,21 @@ class UserSerializer(serializers.ModelSerializer):
 
     def get_rol_label(self, obj):
         return dict(ROLES).get(obj.rol, obj.rol)
+
+    def _get_student_field(self, obj, field):
+        try:
+            return getattr(obj.estudiante, field)
+        except Estudiante.DoesNotExist:
+            return None
+
+    def get_tutor_nombre(self, obj):
+        return self._get_student_field(obj, "tutor_nombre")
+
+    def get_tutor_email(self, obj):
+        return self._get_student_field(obj, "tutor_email")
+
+    def get_tutor_telefono(self, obj):
+        return self._get_student_field(obj, "tutor_telefono")
 
 
 class SuperAdminUserSerializer(serializers.ModelSerializer):
@@ -158,7 +175,7 @@ class RegisterSerializer(serializers.Serializer):
     def validate(self, attrs):
         school = attrs.get("escuela")
         ci = attrs.get("ci")
-        entry = EstudianteEscalafon.objects.filter(
+        entry = EscalafonItem.objects.filter(
             estudiante__ci=ci,
             estudiante__escuela=school,
             escalafon__proceso__anio__year=timezone.now().year,

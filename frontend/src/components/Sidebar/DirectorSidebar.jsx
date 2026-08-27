@@ -6,6 +6,7 @@ export default function DirectorSidebar({ scope, onLogout, activeStageLabel }) {
       title: "Gestión Escuela",
       items: [
         { label: "Dashboard", icon: "🏠", to: "/director/dashboard" },
+        { label: "Sin Cuenta", icon: "👥", to: "/director/sincuenta" },
         { label: "Boletas de Interés", icon: "🎯", to: "/director/boleta-interes" },
         { label: "Estadísticas de Boletas", icon: "📊", to: "/director/boletas-solicitud" },
         { label: "Estadísticas de Confirmación", icon: "✏️", to: "/director/confirmacion-pruebas" },

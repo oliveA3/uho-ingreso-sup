@@ -8,6 +8,7 @@ import {
 } from "../../services/api";
 import EntityActionButton from "../../components/Buttons/EntityActionButton";
 import StatusToggle from "../../components/Buttons/StatusToggle";
+import FeedbackMessage from "../../components/FeedbackMessage";
 
 const emptyForm = {
   username: "",
@@ -133,7 +134,7 @@ export default function UsuariosPage() {
           </div>
           <button type="button" onClick={openCreate} className="rounded-2xl bg-sky-600 px-5 py-3 text-sm font-semibold text-white hover:bg-sky-700">+ Nuevo</button>
         </div>
-        {error && <p className="mt-5 rounded-2xl bg-rose-50 p-4 text-sm text-rose-700">{error}</p>}
+        {error && <FeedbackMessage type="error" className="mt-5 rounded-2xl">{error}</FeedbackMessage>}
       </section>
 
       <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">

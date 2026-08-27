@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { fetchSuperAdminConfig, updateSuperAdminConfig } from "../../services/api";
+import FeedbackMessage from "../../components/FeedbackMessage";
 
 const colorFields = [
   ["color_primario", "Primario"],
@@ -96,8 +97,8 @@ export default function IdentidadPage() {
           <p className="mt-2 text-sm text-slate-600">Configura la apariencia global de IngresoSUP.</p>
         </div>
 
-        {error && <p className="mt-5 rounded-2xl bg-rose-50 p-4 text-sm text-rose-700">{error}</p>}
-        {message && <p className="mt-5 rounded-2xl bg-emerald-50 p-4 text-sm text-emerald-700">{message}</p>}
+        {error && <FeedbackMessage type="error" className="mt-5 rounded-2xl">{error}</FeedbackMessage>}
+        {message && <FeedbackMessage type="success" className="mt-5 rounded-2xl">{message}</FeedbackMessage>}
 
         <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {colorFields.map(([field, label]) => (

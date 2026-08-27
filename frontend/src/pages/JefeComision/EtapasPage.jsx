@@ -5,6 +5,7 @@ import {
   fetchProvincialEtapas,
   resetProvincialEtapas,
 } from "../../services/api";
+import FeedbackMessage from "../../components/FeedbackMessage";
 
 const statusLabels = {
   completada: "Completada",
@@ -111,8 +112,8 @@ export default function EtapasPage() {
           <p className="mt-3 text-sm text-slate-600">Solo se puede activar la etapa inmediata después de la última en curso o completada.</p>
         </div>
 
-        {notice && <div className="mt-6 rounded-3xl border border-emerald-200 bg-emerald-50 p-5 text-sm text-emerald-700">{notice}</div>}
-        {error && <div className="mt-6 rounded-3xl border border-red-200 bg-red-50 p-5 text-sm text-red-700">{error}</div>}
+        {notice && <FeedbackMessage type="success" className="mt-6 rounded-3xl">{notice}</FeedbackMessage>}
+        {error && <FeedbackMessage type="error" className="mt-6 rounded-3xl">{error}</FeedbackMessage>}
 
         <div className="mt-6 space-y-4">
           {loading && <p className="text-sm text-slate-600">Cargando etapas...</p>}
@@ -148,7 +149,7 @@ export default function EtapasPage() {
         <div className="fixed inset-0 z-10 flex items-center justify-center bg-slate-900/40 p-4">
           <form onSubmit={handleActivation} className="w-full max-w-md rounded-3xl bg-white p-6 shadow-xl">
             <h2 className="text-xl font-semibold text-slate-900">Activar etapa {selectedStage.numero}</h2>
-            {error && <p className="mt-4 rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+            {error && <FeedbackMessage type="error" className="mt-4 rounded-xl">{error}</FeedbackMessage>}
             <div className="mt-5 grid gap-4 sm:grid-cols-2">
               <label className="text-sm font-medium text-slate-700">Fecha de inicio<input required type="date" value={dates.fecha_inicio} onChange={(event) => { setDates({ ...dates, fecha_inicio: event.target.value }); setError(""); }} className="mt-2 w-full rounded-xl border border-slate-300 px-3 py-2" /></label>
               <label className="text-sm font-medium text-slate-700">Fecha de fin<input required type="date" min={dates.fecha_inicio || undefined} value={dates.fecha_fin} onChange={(event) => { setDates({ ...dates, fecha_fin: event.target.value }); setError(""); }} className="mt-2 w-full rounded-xl border border-slate-300 px-3 py-2" /></label>

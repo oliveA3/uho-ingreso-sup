@@ -1,11 +1,14 @@
 import ActiveStageNotice from "../../components/ActiveStageNotice";
 
-export default function SecretarioDashboardPage() {
+export default function SecretarioDashboardPage({ user }) {
   return (
     <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
       <div className="space-y-4">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Dashboard Secretario</h1>
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 className="text-2xl font-semibold text-slate-900">Dashboard Secretario</h1>
+            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">{user?.escuela_nombre || "Escuela no asignada"}</span>
+          </div>
           <p className="mt-2 text-sm text-slate-600">
             Resumen de etapa activa, estudiantes, boletas y escalafón para tu escuela.
           </p>

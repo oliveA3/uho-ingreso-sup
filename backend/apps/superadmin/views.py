@@ -25,12 +25,18 @@ class ProvinciaViewSet(viewsets.ModelViewSet):
     serializer_class = ProvinciaSerializer
     permission_classes = [IsSuperAdmin]
 
+    def get_permissions(self):
+        return [AllowAny()] if self.request.method == "GET" else [IsSuperAdmin()]
+
 
 class MunicipioViewSet(viewsets.ModelViewSet):
     serializer_class = MunicipioSerializer
     permission_classes = [IsSuperAdmin]
     filter_backends = [filters.SearchFilter]
     search_fields = ["nombre"]
+
+    def get_permissions(self):
+        return [AllowAny()] if self.request.method == "GET" else [IsSuperAdmin()]
 
     def get_queryset(self):
         queryset = Municipio.objects.all().order_by("nombre")
@@ -45,6 +51,9 @@ class EscuelaViewSet(viewsets.ModelViewSet):
     permission_classes = [IsSuperAdmin]
     filter_backends = [filters.SearchFilter]
     search_fields = ["nombre", "codigo"]
+
+    def get_permissions(self):
+        return [AllowAny()] if self.request.method == "GET" else [IsSuperAdmin()]
 
     def get_queryset(self):
         queryset = Escuela.objects.all().order_by("nombre")

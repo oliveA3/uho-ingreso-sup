@@ -1,5 +1,6 @@
 from django.db.models import Count
 from django.db import transaction
+from django.conf import settings
 from django.utils import timezone
 from rest_framework import serializers, viewsets
 from rest_framework.response import Response
@@ -165,7 +166,7 @@ class PublicEtapasDisponibilidadView(APIView):
             previous_completed = etapa.estado == 'completada'
         return Response({
             "etapas": serialized,
-            "registro_estudiantil": any(
+            "registro_estudiantil": settings.DEBUG or any(
                 etapa['numero'] in (1, 2) and etapa['estado'] == 'en_curso'
                 for etapa in serialized
             ),
@@ -243,6 +244,9 @@ class ProvincialCerrarEtapaView(APIView):
             )
         etapa.estado = 'completada'
         etapa.save(update_fields=["estado"])
+        if etapa.nombre == ETAPAS_NOMBRES[1]:
+            from apps.gestion_escuela.models import Escalafon
+            Escalafon.objects.filter(estado="pendiente").update(estado="enviado")
         return Response(ProvincialEtapaSerializer(etapa).data)
 
 

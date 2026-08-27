@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { fetchRegistrationAvailability, register } from "../../services/api";
 import axios from "axios";
+import FeedbackMessage from "../../components/FeedbackMessage";
 
 export default function RegisterPage() {
     const [form, setForm] = useState({
@@ -29,8 +30,10 @@ export default function RegisterPage() {
     const navigate = useNavigate();
 
     useEffect(() => {
-        axios.get("/api/superadmin/provincias/").then((res) => setProvincias(res.data));
-        fetchRegistrationAvailability()
+        axios.get("/api/superadmin/provincias/")
+            .then((res) => setProvincias(res.data))
+            .catch(() => setError("No se pudieron cargar las provincias."));
+            fetchRegistrationAvailability()
             .then((data) => setRegistrationOpen(data.registro_estudiantil))
             .catch(() => setRegistrationOpen(false));
     }, []);
@@ -51,7 +54,8 @@ export default function RegisterPage() {
                 setMunicipioId("");
                 setEscuelas([]);
                 setEscuelaId("");
-            });
+            })
+            .catch(() => setError("No se pudieron cargar los municipios."));
     }, [provinciaId]);
 
     useEffect(() => {
@@ -66,7 +70,8 @@ export default function RegisterPage() {
             .then((res) => {
                 setEscuelas(res.data);
                 setEscuelaId("");
-            });
+            })
+            .catch(() => setError("No se pudieron cargar las escuelas."));
     }, [municipioId]);
 
     const updateField = (field) => (event) => {
@@ -107,7 +112,9 @@ export default function RegisterPage() {
         }
     };
 
-    const registrationDisabled = registrationOpen !== true;
+    const registrationDisabled = import.meta.env.DEV
+        ? registrationOpen === false
+        : registrationOpen !== true;
 
     return (
         <div className="mx-auto max-w-2xl rounded-3xl border border-slate-200 bg-white p-8 my-10 shadow-sm">
@@ -127,21 +134,9 @@ export default function RegisterPage() {
             <p className="mt-2 text-sm text-slate-600">
                 Solo estudiantes de 12grado pueden registrarse.
             </p>
-            {registrationDisabled && (
-                <div className="mt-6 rounded-2xl bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                    El registro estudiantil estará disponible durante la Etapa 1 o la Etapa 2 del proceso de ingreso.
-                </div>
-            )}
-            {error && (
-                <div className="mt-6 rounded-2xl bg-rose-50 px-4 py-3 text-sm text-rose-800">
-                    {error}
-                </div>
-            )}
-            {success && (
-                <div className="mt-6 rounded-2xl bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-                    {success}
-                </div>
-            )}
+            {registrationDisabled && <FeedbackMessage type="warning" className="mt-6 rounded-2xl">El registro estudiantil estará disponible durante la Etapa 1 o la Etapa 2 del proceso de ingreso.</FeedbackMessage>}
+            {error && <FeedbackMessage type="error" className="mt-6 rounded-2xl">{error}</FeedbackMessage>}
+            {success && <FeedbackMessage type="success" className="mt-6 rounded-2xl">{success}</FeedbackMessage>}
             <form
                 onSubmit={handleSubmit}
                 inert={registrationDisabled ? "" : undefined}

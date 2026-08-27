@@ -105,6 +105,11 @@ export async function fetchCurrentUser() {
   return handleResponse(response);
 }
 
+export async function fetchStudentDashboard() {
+  const response = await fetch(`${API_BASE}/gestion-personal/estudiante/dashboard/`, { credentials: "include" });
+  return handleResponse(response);
+}
+
 export async function fetchSuperAdminMetrics() {
   const response = await fetch(`${API_BASE}/superadmin/dashboard/`, {
     credentials: "include",
@@ -283,6 +288,28 @@ export async function fetchEscalafon() {
   return handleResponse(response);
 }
 
+export async function fetchStudentsWithoutAccount() {
+  const response = await fetch(`${API_BASE}/gestion-escuela/estudiantes/sin-cuenta/`, { credentials: "include" });
+  return handleResponse(response);
+}
+
+export async function fetchProvincialEscalafonSummary() {
+  const response = await fetch(`${API_BASE}/import-export/escalafon/resumen-provincial/`, { credentials: "include" });
+  return handleResponse(response);
+}
+
+export async function downloadProvincialEscalafon() {
+  const response = await fetch(`${API_BASE}/import-export/escalafon/exportar-provincial/`, { credentials: "include" });
+  if (!response.ok) throw new Error("No se pudo exportar el escalafón provincial.");
+  return response.blob();
+}
+
+export async function downloadSchoolEscalafon(schoolId) {
+  const response = await fetch(`${API_BASE}/import-export/export/escalafon/?escuela=${schoolId}&anio=${new Date().getFullYear()}`, { credentials: "include" });
+  if (!response.ok) throw new Error("No se pudo exportar el escalafón de la escuela.");
+  return response.blob();
+}
+
 export async function importEscalafon(file, escuela, anio) {
   const csrf = await csrfHeaders();
   const form = new FormData();
@@ -316,6 +343,12 @@ export async function updateEscalafonEntry(id, payload) {
 export async function sendEscalafonToCommission() {
   const csrf = await csrfHeaders();
   const response = await fetch(`${API_BASE}/import-export/escalafon/enviar-comision/`, { method: "POST", credentials: "include", headers: csrf });
+  return handleResponse(response);
+}
+
+export async function markEscalafonReviewAsReviewed(id) {
+  const csrf = await csrfHeaders();
+  const response = await fetch(`${API_BASE}/import-export/escalafon/${id}/revisar/`, { method: "POST", credentials: "include", headers: csrf });
   return handleResponse(response);
 }
 

@@ -1,0 +1,8 @@
+from django.urls import path
+
+from .views import StudentDashboardView
+
+
+urlpatterns = [
+    path("estudiante/dashboard/", StudentDashboardView.as_view(), name="student-dashboard"),
+]

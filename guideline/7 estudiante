@@ -13,7 +13,7 @@ Sidemenu (abre automaticamente en el Dashboard) con:
         - datos del tutor
         - boton guardar
     
-    Indice Academico -> 
+    Escalafon -> 
         - indice 10mo, 11no, 12mo, general
         - estado del indice
         - boton para aceptar o solicitar revision (revision con modal para describir el por que)

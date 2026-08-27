@@ -3,19 +3,22 @@ import BaseSidebar from "./BaseSidebar";
 export default function EstudianteSidebar({ scope, onLogout, activeStageLabel }) {
   const sections = [
     {
-      title: "Mi Información",
+      title: "Mi Proceso",
       items: [
-        { label: "Boleta de Solicitud", icon: "📝", to: "/estudiante/boleta" },
+        { label: "Inicio", icon: "🏠", to: "/estudiante", exact: true },
         { label: "Escalafón", icon: "📋", to: "/estudiante/escalafon" },
         { label: "Boleta de Interés", icon: "🎯", to: "/estudiante/boleta-interes" },
+        { label: "Boleta de Solicitud", icon: "📝", to: "/estudiante/boleta" },
         { label: "Confirmación de Pruebas", icon: "✏️", to: "/estudiante/confirmacion-pruebas" },
         { label: "Resultados", icon: "📊", to: "/estudiante/resultados" },
-        { label: "Mi Otorgamiento", icon: "🎓", to: "/estudiante/otorgamiento" },
+        { label: "Carrera Otorgada", icon: "🎓", to: "/estudiante/otorgamiento" },
       ],
     },
     {
       title: "Cuenta",
-      items: [{ label: "Cerrar Sesión", icon: "🚪", action: "logout" }],
+      items: [
+        { label: "Cerrar Sesión", icon: "🚪", action: "logout" },
+      ],
     },
   ];
 

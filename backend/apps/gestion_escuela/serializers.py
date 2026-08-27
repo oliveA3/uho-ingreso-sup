@@ -1,26 +1,44 @@
 from rest_framework import serializers
 
-from .models import EstudianteEscalafon
+from apps.authentication.models import Estudiante
+from .models import EscalafonItem
 
 
-class EstudianteEscalafonSerializer(serializers.ModelSerializer):
+class StudentsWithoutAccountSerializer(serializers.ModelSerializer):
+    indice_general = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Estudiante
+        fields = ["id", "ci", "nombre", "apellidos", "indice_general"]
+
+    def get_indice_general(self, student):
+        entry = student.escalafones.order_by("-escalafon__proceso__anio", "-id").first()
+        return float(entry.indice_general) if entry else student.indice_general
+
+
+class EscalafonItemSerializer(serializers.ModelSerializer):
     ci = serializers.CharField(source="estudiante.ci", read_only=True)
     nombre = serializers.CharField(required=False)
     apellidos = serializers.CharField(required=False)
     sexo = serializers.CharField(required=False)
     direccion = serializers.CharField(required=False)
     escuela = serializers.IntegerField(source="escalafon.escuela_id", read_only=True)
+    escuela_nombre = serializers.CharField(source="escalafon.escuela.nombre", read_only=True)
+    estado_escalafon = serializers.CharField(source="escalafon.estado", read_only=True)
     anio = serializers.IntegerField(source="escalafon.proceso.anio.year", read_only=True)
     tiene_cuenta = serializers.BooleanField(source="estudiante.usuario_id", read_only=True)
+    estado_revision = serializers.SerializerMethodField()
+    aceptado = serializers.SerializerMethodField()
 
     class Meta:
-        model = EstudianteEscalafon
+        model = EscalafonItem
         fields = [
-            "id", "ci", "nombre", "apellidos", "sexo", "direccion", "escuela", "anio",
+            "id", "ci", "nombre", "apellidos", "sexo", "direccion", "escuela", "escuela_nombre", "anio", "estado_escalafon",
             "indice_10", "indice_11", "indice_12", "indice_general", "indices_bloqueados",
-            "estado_revision", "causa_revision", "aceptado", "tiene_cuenta",
+            "estado", "causa_revision", "estado_revision", "aceptado", "tiene_cuenta",
+            "fecha_revision",
         ]
-        read_only_fields = ["indices_bloqueados", "estado_revision", "aceptado"]
+        read_only_fields = ["indices_bloqueados", "estado", "estado_revision", "aceptado", "fecha_revision"]
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
@@ -31,6 +49,14 @@ class EstudianteEscalafonSerializer(serializers.ModelSerializer):
             "direccion": instance.estudiante.direccion,
         })
         return data
+
+    def get_estado_revision(self, instance):
+        return "pendiente" if instance.estado == "por_revisar" else "revisada"
+
+    def get_aceptado(self, instance):
+        if instance.estado == "sin_respuesta":
+            return None
+        return instance.estado == "aceptado"
 
     def update(self, instance, validated_data):
         request = self.context["request"]

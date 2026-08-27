@@ -8,6 +8,7 @@ import {
   fetchProvincialSchools,
   updateProvincialSchool,
 } from "../../services/api";
+import FeedbackMessage from "../../components/FeedbackMessage";
 
 const emptySchool = {
   nombre: "",
@@ -18,7 +19,7 @@ const emptySchool = {
   activa: true,
 };
 
-export default function MunicipiosPage() {
+export default function MunicipiosPage({ user }) {
   const [dashboard, setDashboard] = useState(null);
   const [schools, setSchools] = useState([]);
   const [provinces, setProvinces] = useState([]);
@@ -160,6 +161,7 @@ export default function MunicipiosPage() {
 
   return (
     <div className="space-y-6">
+      <p className="px-1 text-sm font-semibold text-slate-600">Provincia: {user?.provincia_nombre || "No asignada"}</p>
       <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -168,7 +170,7 @@ export default function MunicipiosPage() {
             <p className="mt-2 text-sm text-slate-600">Gestiona las escuelas de tu provincia.</p>
           </div>
         </div>
-        {error && <p className="mt-5 rounded-2xl bg-rose-50 p-4 text-sm text-rose-700">{error}</p>}
+        {error && <FeedbackMessage type="error" className="mt-5 rounded-2xl">{error}</FeedbackMessage>}
         <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {stats.map(([value, label]) => <div key={label} className="rounded-3xl border border-slate-200 bg-slate-50 p-6 text-center"><div className="text-3xl font-semibold text-slate-900">{value}</div><div className="mt-2 text-sm text-slate-600">{label}</div></div>)}
         </div>
