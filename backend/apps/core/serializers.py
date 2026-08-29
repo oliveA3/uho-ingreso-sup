@@ -1,6 +1,13 @@
 from rest_framework import serializers
 
-from .models import LogAuditoria
+from .models import LogAuditoria, Notificacion
+
+
+class NotificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Notificacion
+        fields = ["id", "usuario", "fecha", "titulo", "contenido", "leida"]
+        read_only_fields = ["id", "usuario", "fecha"]
 
 
 class AuditLogSerializer(serializers.ModelSerializer):

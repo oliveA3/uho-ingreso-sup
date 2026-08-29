@@ -59,6 +59,19 @@ class Usuario(AbstractUser):
         ]
 
 
+class EmailVerificationCode(models.Model):
+    user = models.ForeignKey(
+        Usuario, on_delete=models.CASCADE, related_name="verification_codes"
+    )
+    code = models.CharField(max_length=6)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    used_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+
 class Estudiante(models.Model):
     usuario = models.OneToOneField(
         Usuario, on_delete=models.CASCADE, related_name='estudiante', null=True, blank=True)

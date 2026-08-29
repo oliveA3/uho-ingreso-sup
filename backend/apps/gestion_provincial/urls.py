@@ -14,6 +14,9 @@ from .views import (
     ProvincialProcesoViewSet,
     ProvincialReiniciarEtapasView,
     PublicEtapasDisponibilidadView,
+    PublicPlanPlazaLandingView,
+    PlanPlazaViewSet,
+    CommissionSolicitudAuthorizationView,
 )
 
 urlpatterns = [
@@ -29,8 +32,12 @@ urlpatterns = [
     path("ces/", ProvincialCesViewSet.as_view({"get": "list"}), name="provincial-ces"),
     path("etapas/", ProvincialEtapaViewSet.as_view({"get": "list"}), name="provincial-etapas"),
     path("etapas/disponibilidad/", PublicEtapasDisponibilidadView.as_view(), name="etapas-disponibilidad"),
+    path("plan-plazas/landing/", PublicPlanPlazaLandingView.as_view(), name="plan-plazas-landing"),
     path("procesos/", ProvincialProcesoViewSet.as_view({"get": "list", "post": "create"}), name="provincial-procesos"),
     path("etapas/<int:pk>/activar/", ProvincialActivarEtapaView.as_view(), name="provincial-etapa-activar"),
     path("etapas/<int:pk>/cerrar/", ProvincialCerrarEtapaView.as_view(), name="provincial-etapa-cerrar"),
     path("etapas/reiniciar/", ProvincialReiniciarEtapasView.as_view(), name="provincial-etapas-reiniciar"),
+    path("plan-plazas/", PlanPlazaViewSet.as_view({"get": "list", "post": "create"}), name="plan-plazas"),
+    path("plan-plazas/<int:pk>/", PlanPlazaViewSet.as_view({"get": "retrieve", "patch": "partial_update", "delete": "destroy"}), name="plan-plaza-detail"),
+    path("boletas-solicitud/<int:ballot_id>/autorizar-modificacion/", CommissionSolicitudAuthorizationView.as_view(), name="solicitud-authorize-modification"),
 ]

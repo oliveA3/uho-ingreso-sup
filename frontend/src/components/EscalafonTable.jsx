@@ -24,20 +24,35 @@ export default function EscalafonTable({ entries, current, search, onSearchChang
             </tr>
           </thead>
           <tbody>
-            {visibleEntries.map((entry) => (
-              <tr
-                key={entry.id}
-                className={entry.id === current.id ? "bg-sky-50 font-semibold" : "border-t border-slate-200"}
-              >
-                <td className="px-4 py-3">{entries.findIndex((item) => item.id === entry.id) + 1}</td>
-                <td className="px-4 py-3">{entry.ci}</td>
-                <td className="px-4 py-3">{entry.nombre} {entry.apellidos}</td>
-                <td className="px-4 py-3">{entry.indice_10 ?? "--"}</td>
-                <td className="px-4 py-3">{entry.indice_11 ?? "--"}</td>
-                <td className="px-4 py-3">{entry.indice_12 ?? "--"}</td>
-                <td className="px-4 py-3">{entry.indice_general ?? "--"}</td>
-              </tr>
-            ))}
+            {visibleEntries.map((entry) => {
+              const isCurrentStudent = entry.id === current.id;
+              const position = entries.findIndex((item) => item.id === entry.id) + 1;
+
+              return (
+                <tr
+                  key={entry.id}
+                  className={isCurrentStudent
+                    ? "border border-sky-200 bg-gradient-to-r from-sky-100 via-sky-50 to-white shadow-sm ring-1 ring-sky-200"
+                    : "border-t border-slate-200 hover:bg-slate-50"}
+                >
+                  <td className="px-4 py-3">
+                    <span
+                      className={isCurrentStudent
+                        ? "inline-flex items-center rounded-full bg-sky-600 px-2.5 py-1 text-xs font-bold text-white shadow-sm"
+                        : "inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700"}
+                    >
+                      {position}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">{entry.ci}</td>
+                  <td className="px-4 py-3">{entry.nombre} {entry.apellidos}</td>
+                  <td className="px-4 py-3">{entry.indice_10 ?? "--"}</td>
+                  <td className="px-4 py-3">{entry.indice_11 ?? "--"}</td>
+                  <td className="px-4 py-3">{entry.indice_12 ?? "--"}</td>
+                  <td className="px-4 py-3">{entry.indice_general ?? "--"}</td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

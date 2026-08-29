@@ -18,7 +18,7 @@ import IdentidadPage from "./pages/Superadmin/IdentidadPage";
 import AuditLogsPage from "./pages/JefeComision/LogsPage";
 import EstudianteLayout from "./pages/Estudiante/EstudianteLayout";
 import EstudianteHomePage from "./pages/Estudiante/HomePage";
-import BoletaPage from "./pages/Estudiante/BoletaPage";
+import BoletaPage from "./pages/Estudiante/BoletaSolicitudPage";
 import EstudianteEscalafonPage from "./pages/Estudiante/EscalafonPage";
 import ResultadosPage from "./pages/Estudiante/ResultadosPage";
 import EstudianteBoletaInteresPage from "./pages/Estudiante/BoletaInteresPage";
@@ -209,7 +209,7 @@ function AppContent() {
               <Route path="dashboard" element={<SecretarioDashboardPage user={user} />} />
               <Route path="escalafon" element={<StageOneGuard panelName="Escalafón"><SecretarioEscalafonPage /></StageOneGuard>} />
               <Route path="sincuenta" element={<SecretarioSinCuentaPage />} />
-              <Route path="boleta-interes" element={<StageOneGuard stageNumber={2} stageName="Boleta de Interés de Carrera" panelName="Boleta de Interés"><SecretarioBoletaInteresPage /></StageOneGuard>} />
+              <Route path="boleta-interes" element={<StageOneGuard stageNumber={2} stageName="Boleta de Interés de Carrera" panelName="Boleta de Interés"><SecretarioBoletaInteresPage user={user} /></StageOneGuard>} />
               <Route path="boletas-solicitud" element={<StageOneGuard stageNumber={3} stageName="Plan de plazas y boleta de solicitud" panelName="Boletas de Solicitud"><SecretarioBoletasSolicitudPage /></StageOneGuard>} />
               <Route path="confirmacion-pruebas" element={<StageOneGuard stageNumber={4} stageName="Confirmación de las pruebas de ingreso" panelName="Confirmación de Pruebas"><SecretarioConfirmacionPruebasPage /></StageOneGuard>} />
               <Route path="resultados" element={<StageOneGuard stageNumber={5} stageName="Publicación de resultados en las pruebas de ingreso" panelName="Resultados"><SecretarioResultadosPage /></StageOneGuard>} />

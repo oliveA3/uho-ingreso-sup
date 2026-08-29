@@ -1,5 +1,6 @@
 from django.db import models
 
+
 class Provincia(models.Model):
     nombre = models.CharField(max_length=150, unique=True)
     activa = models.BooleanField(default=True)

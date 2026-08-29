@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { fetchRegistrationAvailability, register } from "../../services/api";
+import { fetchRegistrationAvailability, register, verifyEmail } from "../../services/api";
 import axios from "axios";
 import FeedbackMessage from "../../components/FeedbackMessage";
 
@@ -27,6 +27,8 @@ export default function RegisterPage() {
     const [error, setError] = useState(null);
     const [success, setSuccess] = useState(null);
     const [registrationOpen, setRegistrationOpen] = useState(null);
+    const [verificationCode, setVerificationCode] = useState("");
+    const [pendingVerification, setPendingVerification] = useState(false);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -105,10 +107,22 @@ export default function RegisterPage() {
                 tutor_telefono: form.tutor_telefono,
                 escuela: Number(escuelaId),
             });
-            setSuccess("Registro exitoso. Por favor inicia sesión.");
-            setTimeout(() => navigate("/login"), 1200);
+            setPendingVerification(true);
+            setSuccess("Te enviamos un código de verificación a tu correo.");
         } catch (err) {
             setError(err.message || "No se pudo crear la cuenta.");
+        }
+    };
+
+    const handleVerification = async (event) => {
+        event.preventDefault();
+        setError(null);
+        try {
+            await verifyEmail({ username: form.username, code: verificationCode });
+            setSuccess("Correo verificado. Ya puedes iniciar sesión.");
+            setTimeout(() => navigate("/login"), 1200);
+        } catch (err) {
+            setError(err.message || "No se pudo verificar el correo.");
         }
     };
 
@@ -137,7 +151,28 @@ export default function RegisterPage() {
             {registrationDisabled && <FeedbackMessage type="warning" className="mt-6 rounded-2xl">El registro estudiantil estará disponible durante la Etapa 1 o la Etapa 2 del proceso de ingreso.</FeedbackMessage>}
             {error && <FeedbackMessage type="error" className="mt-6 rounded-2xl">{error}</FeedbackMessage>}
             {success && <FeedbackMessage type="success" className="mt-6 rounded-2xl">{success}</FeedbackMessage>}
-            <form
+            {pendingVerification ? (
+                <form onSubmit={handleVerification} className="mt-6 space-y-5">
+                    <p className="text-sm text-slate-600">
+                        Revisa tu correo e introduce el código de 6 dígitos. La cuenta permanecerá inactiva hasta verificarlo.
+                    </p>
+                    <label className="block">
+                        <span className="text-sm font-semibold text-slate-700">Código de verificación</span>
+                        <input
+                            value={verificationCode}
+                            onChange={(event) => setVerificationCode(event.target.value)}
+                            className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 focus:border-sky-500 focus:outline-none"
+                            inputMode="numeric"
+                            pattern="[0-9]{6}"
+                            maxLength={6}
+                            required
+                        />
+                    </label>
+                    <button type="submit" className="w-full rounded-2xl bg-sky-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-sky-700">
+                        Verificar correo
+                    </button>
+                </form>
+            ) : <form
                 onSubmit={handleSubmit}
                 inert={registrationDisabled ? "" : undefined}
                 className={`mt-6 grid gap-5 md:grid-cols-2 ${registrationDisabled ? "pointer-events-none opacity-50 grayscale" : ""}`}
@@ -288,7 +323,7 @@ export default function RegisterPage() {
                 >
                     Crear cuenta
                 </button>
-            </form>
+            </form>}
         </div>
     );
 }

@@ -22,7 +22,6 @@ export default function SecretarioSidebar({ scope, onLogout, activeStageLabel })
     {
       title: "Cuenta",
       items: [
-        { label: "Notificaciones", icon: "🔔", to: "/secretario/notificaciones" },
         { label: "Cerrar Sesión", icon: "🚪", action: "logout" },
       ],
     },

@@ -1,3 +1,5 @@
+import unicodedata
+
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.http import HttpResponse
@@ -8,10 +10,10 @@ from django.db import transaction
 from .services.excel_service import ExcelService
 from .services.mappers import PLAN_PLAZA_MAP, PLAN_PLAZA_FK, OTORGAMIENTO_MAP, OTORGAMIENTO_FK
 from .services.validators import validate_plan_plaza
-from apps.gestion_provincial.models import PlanPlaza, Otorgamiento, Proceso
+from apps.gestion_provincial.models import PlanPlaza, Otorgamiento, Proceso, Etapa
 from apps.authentication.models import Usuario
 from apps.gestion_provincial.permissions import IsCareerManager
-from apps.superadmin.models import Carrera, Escuela
+from apps.superadmin.models import Carrera, Ces, Escuela, Provincia
 from .services.carreras_service import CareerExcelService
 from .services.escalafon_service import EscalafonExcelService, resolve_school
 from apps.gestion_escuela.models import Escalafon, EscalafonItem
@@ -20,28 +22,203 @@ from apps.gestion_escuela.permissions import CanManageEscalafon
 from apps.gestion_provincial.models import ETAPAS_NOMBRES, Etapa
 from django.utils import timezone
 from django.core.mail import send_mail
-from openpyxl import Workbook
+import io
+
+from openpyxl import Workbook, load_workbook
 
 class ImportPlanPlazaView(APIView):
-    permission_classes = [permissions.IsAuthenticated]  # ajustar roles
+    permission_classes = [IsCareerManager]
+
+    def _normalize_header(self, value):
+        text = str(value or "").strip().lower()
+        text = unicodedata.normalize("NFKD", text)
+        text = "".join(ch for ch in text if not unicodedata.combining(ch))
+        return text.replace("_", " ").replace("-", " ").replace(".", " ").replace("/", " ")
+
+    def _get_active_process(self):
+        stage = Etapa.objects.filter(nombre=ETAPAS_NOMBRES[3]).first()
+        if not stage:
+            raise ValueError("No existe la etapa para planes de plaza.")
+        process = Proceso.objects.filter(anio__year=timezone.now().year, etapa=stage).order_by("-id").first()
+        if process is None:
+            process = Proceso.objects.create(
+                anio=timezone.now().date().replace(month=1, day=1),
+                etapa=stage,
+            )
+        return process
+
     def post(self, request):
         file = request.FILES.get("file")
         if not file:
-            return Response({"detail": "No file provided"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"detail": "Debe adjuntar un archivo Excel."}, status=400)
+        required = ["Codigo_Carrera", "Nombre_Carrera", "Cantidad_Plazas", "Tipo_Otorgamiento", "CES", "Provincia", "Sexo"]
+        try:
+            workbook = load_workbook(file, data_only=True)
+            sheet = workbook.active
+            raw_headers = [cell.value for cell in sheet[1]]
+            normalized_headers = {self._normalize_header(header): header for header in raw_headers if header is not None}
+            missing = [header for header in required if self._normalize_header(header) not in normalized_headers]
+            if missing:
+                return Response({"detail": "Faltan columnas requeridas.", "missing": missing}, status=400)
 
-        service = ExcelService(
-            model=PlanPlaza,
-            column_map=PLAN_PLAZA_MAP,
-            fk_resolvers=PLAN_PLAZA_FK,
-            validator=validate_plan_plaza,
-            update_on_conflict=None
+            process = self._get_active_process()
+            result = {"inserted": 0, "updated": 0, "errors": []}
+
+            for row_number, values in enumerate(sheet.iter_rows(min_row=2, values_only=True), start=2):
+                data = {}
+                for index, header in enumerate(raw_headers):
+                    if index < len(values):
+                        key = self._normalize_header(header)
+                        data[key] = values[index]
+                try:
+                    codigo = str(data.get("codigo carrera") or "").strip()
+                    nombre = str(data.get("nombre carrera") or "").strip()
+                    carrera = Carrera.objects.filter(codigo__iexact=codigo).first()
+                    if carrera is None and nombre:
+                        carrera = Carrera.objects.filter(nombre__iexact=nombre).first()
+                    if carrera is None:
+                        raise ValueError(f"No existe una carrera con código o nombre '{codigo or nombre}'.")
+
+                    ces_name = str(data.get("ces") or "").strip()
+                    ces = Ces.objects.filter(nombre__iexact=ces_name).first() if ces_name else None
+                    if ces is None and carrera.ces_id:
+                        ces = carrera.ces
+                    if ces is None:
+                        raise ValueError(f"No existe el CES '{ces_name or 'vacío'}'.")
+
+                    row_provincia = str(data.get("provincia") or "").strip()
+                    universidad_provincia = Provincia.objects.filter(nombre__iexact=row_provincia).first() if row_provincia else None
+                    if universidad_provincia is None and carrera.provincia_id:
+                        universidad_provincia = carrera.provincia
+
+                    if request.user.is_authenticated and getattr(request.user, "rol", None) == "jefe_comision" and request.user.provincia_id:
+                        provincia = request.user.provincia
+                    else:
+                        provincia = universidad_provincia
+
+                    if provincia is None:
+                        raise ValueError(f"No existe la provincia '{row_provincia or 'asociada al usuario'}'.")
+
+                    if universidad_provincia and carrera.provincia_id and universidad_provincia.id != carrera.provincia_id:
+                        # La provincia del CES es informativa; la provincia real del plan se define por el usuario que lo sube.
+                        pass
+
+                    amount = int(data.get("cantidad plazas"))
+                    if amount <= 0:
+                        raise ValueError("Cantidad_Plazas debe ser un entero positivo.")
+
+                    tipo = str(data.get("tipo otorgamiento") or "").strip().lower()
+                    valid_types = {value.lower(): value for value, label in PlanPlaza.TIPOS_OTORGAMIENTO}
+                    if tipo not in valid_types:
+                        raise ValueError("Tipo_Otorgamiento debe ser 'Municipal' o 'Provincial'.")
+                    tipo = valid_types[tipo]
+
+                    sex = str(data.get("sexo") or "").strip().upper()
+                    if sex not in {"A", "F", "M"}:
+                        raise ValueError("Sexo debe ser 'A', 'F' o 'M'.")
+
+                    if nombre and str(carrera.nombre).strip().lower() != str(nombre).strip().lower():
+                        raise ValueError("Nombre_Carrera no coincide con la carrera encontrada.")
+                    if carrera.ces_id != ces.id:
+                        raise ValueError("El CES no coincide con la carrera.")
+
+                    _, created = PlanPlaza.objects.update_or_create(
+                        proceso=process,
+                        carrera=carrera,
+                        sexo=sex,
+                        defaults={
+                            "cantidad_plazas": amount,
+                            "otorgamiento_tipo": tipo,
+                            "ces": ces,
+                            "provincia": provincia,
+                        },
+                    )
+                    result["inserted" if created else "updated"] += 1
+                except Exception as error:
+                    result["errors"].append({
+                        "row": row_number,
+                        "error": str(error),
+                        "data": {key: value for key, value in (data or {}).items() if key is not None},
+                    })
+
+            return Response(result, status=400 if result["errors"] else 201)
+        except Exception as error:
+            return Response({"detail": f"No se pudo leer el Excel: {error}"}, status=400)
+
+
+def _normalize_plan_plaza_filename(provincia, anio):
+    import re
+    import unicodedata
+
+    text = (provincia or "todos").strip()
+    text = unicodedata.normalize("NFKD", text)
+    text = ''.join(ch for ch in text if not unicodedata.combining(ch))
+    text = re.sub(r"[^a-zA-Z0-9]+", "_", text.lower()).strip("_") or "todos"
+    return f"plan_plazas_{text}_{anio}.xlsx"
+
+
+class PlanPlazaTemplateView(APIView):
+    permission_classes = [IsCareerManager]
+
+    def get(self, request):
+        workbook = Workbook()
+        sheet = workbook.active
+        sheet.title = "Plan de Plazas"
+        sheet.append(["Codigo_Carrera", "Nombre_Carrera", "Cantidad_Plazas", "Tipo_Otorgamiento", "CES", "Provincia", "Sexo"])
+        carreras = list(Carrera.objects.filter(activa=True).select_related("ces", "provincia").order_by("nombre")[:25])
+        for index, carrera in enumerate(carreras, start=1):
+            sheet.append([carrera.codigo, carrera.nombre, 10 + (index % 5), "Municipal" if index % 2 == 0 else "Provincial", carrera.ces.nombre, carrera.provincia.nombre, "A" if index % 3 else "F"])
+        output = io.BytesIO()
+        workbook.save(output)
+        response = HttpResponse(output.getvalue(), content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        response["Content-Disposition"] = 'attachment; filename="plan-plazas-prueba.xlsx"'
+        return response
+
+
+class ImportPlanPlazaExportView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        anio = request.query_params.get("anio") or request.query_params.get("year") or timezone.now().year
+        provincia = request.query_params.get("provincia") or request.query_params.get("province") or ""
+
+        queryset = PlanPlaza.objects.select_related("carrera", "carrera__ces", "carrera__provincia", "ces", "provincia", "proceso").filter(
+            proceso__etapa__nombre=ETAPAS_NOMBRES[3],
+            proceso__anio__year=anio,
         )
-        result = service.import_file(file)
-        return Response({
-            "inserted": result.inserted,
-            "updated": result.updated,
-            "errors": result.errors
-        })
+        if provincia:
+            queryset = queryset.filter(provincia__nombre__iexact=provincia)
+
+        workbook = Workbook()
+        sheet = workbook.active
+        sheet.title = "Plan de Plazas"
+        headers = [
+            "Codigo_Carrera",
+            "Nombre_Carrera",
+            "Cantidad_Plazas",
+            "Tipo_Otorgamiento",
+            "CES",
+            "Provincia",
+            "Sexo",
+        ]
+        sheet.append(headers)
+
+        for item in queryset.order_by("carrera__nombre"):
+            sheet.append([
+                item.carrera.codigo,
+                item.carrera.nombre,
+                item.cantidad_plazas,
+                "Municipal" if item.otorgamiento_tipo == "municipal" else "Provincial",
+                item.ces.nombre,
+                item.carrera.provincia.nombre,
+                item.sexo,
+            ])
+
+        output = io.BytesIO()
+        workbook.save(output)
+        response = HttpResponse(output.getvalue(), content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        response["Content-Disposition"] = f'attachment; filename="{_normalize_plan_plaza_filename(provincia or "todos", anio)}"'
+        return response
 
 class ImportOtorgamientoView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -97,9 +274,9 @@ class ImportEscalafonView(APIView):
         try:
             escuela = resolve_school(request.data.get("escuela") or request.user.escuela_id)
             anio = int(request.data.get("anio", request.data.get("año", timezone.now().year)))
-            proceso = Proceso.objects.filter(anio__year=anio).order_by("-id").first()
+            proceso = Proceso.get_for_stage_and_year(anio, ETAPAS_NOMBRES[1])
             if not proceso:
-                raise ValueError("No existe un proceso para el año indicado.")
+                raise ValueError("No existe un proceso para la etapa de escalafón en el año indicado.")
         except (TypeError, ValueError, Escuela.DoesNotExist):
             return Response({"detail": "Debe indicar una escuela válida y el año del escalafón."}, status=status.HTTP_400_BAD_REQUEST)
         try:
@@ -110,6 +287,12 @@ class ImportEscalafonView(APIView):
             return Response({"detail": str(error)}, status=status.HTTP_400_BAD_REQUEST)
         if result.errors:
             return Response({"inserted": 0, "errors": result.errors}, status=status.HTTP_400_BAD_REQUEST)
+        from apps.core.notifications import notify_users
+        notify_users(
+            Usuario.objects.filter(rol="estudiante", escuela=escuela),
+            "Escalafón actualizado",
+            f"El secretario publicó el escalafón de tu escuela para el proceso {anio}.",
+        )
         return Response({"inserted": result.inserted, "errors": []}, status=status.HTTP_201_CREATED)
 
 
@@ -124,7 +307,7 @@ class ExportEscalafonView(APIView):
             if request.user.rol == "jefe_comision" and escuela.municipio.provincia_id != request.user.provincia_id:
                 return Response({"detail": "Solo puedes exportar escalafones de tu provincia."}, status=status.HTTP_403_FORBIDDEN)
             anio = int(request.query_params.get("anio", request.query_params.get("año", timezone.now().year)))
-            proceso = Proceso.objects.filter(anio__year=anio).order_by("-id").first()
+            proceso = Proceso.get_for_stage_and_year(anio, ETAPAS_NOMBRES[1])
             if not proceso:
                 raise Escalafon.DoesNotExist
             escalafon = Escalafon.objects.get(escuela=escuela, proceso=proceso)
@@ -169,12 +352,13 @@ class ProvincialEscalafonSummaryView(APIView):
     permission_classes = [CanManageEscalafon]
 
     def get(self, request):
-        if request.user.rol != "jefe_comision" and not request.user.is_superuser and request.user.rol != "superadmin":
-            return Response({"detail": "Solo el Jefe de Comisión puede consultar este resumen."}, status=403)
+        if request.user.rol not in {"jefe_comision", "secretario_escuela"} and not request.user.is_superuser and request.user.rol != "superadmin":
+            return Response({"detail": "No tienes permiso para consultar este resumen."}, status=403)
         process = Proceso.objects.filter(anio__year=timezone.now().year).order_by("-id").first()
-        municipalities = Escuela.objects.filter(
-            municipio__provincia_id=request.user.provincia_id
-        ).values("municipio_id", "municipio__nombre").annotate(
+        schools = Escuela.objects.filter(municipio__provincia_id=request.user.provincia_id)
+        if request.user.rol == "secretario_escuela":
+            schools = Escuela.objects.filter(municipio__provincia_id=request.user.provincia_id)
+        municipalities = schools.values("municipio_id", "municipio__nombre").annotate(
             schools_count=Count("id"),
             sent_count=Count("escalafones", filter=Q(escalafones__proceso=process, escalafones__estado="enviado"), distinct=True),
             students_count=Count("escalafones__estudiantes", filter=Q(escalafones__proceso=process, escalafones__estado="enviado"), distinct=True),
@@ -273,6 +457,12 @@ class EscalafonSendView(APIView):
         with transaction.atomic():
             escalafones.update(estado="enviado")
             entries.update(indices_bloqueados=True)
+        from apps.core.notifications import notify_users
+        notify_users(
+            Usuario.objects.filter(rol="jefe_comision", provincia_id=request.user.provincia_id),
+            "Escalafón enviado a comisión",
+            f"La escuela {request.user.escuela.nombre} envió su escalafón a la Comisión de Ingreso.",
+        )
         return Response({"updated": entries.count()})
 
 
@@ -300,7 +490,7 @@ class StudentEscalafonActionView(APIView):
         secretaries = Usuario.objects.filter(rol="secretario_escuela", escuela=entry.escalafon.escuela)
         message = f"El estudiante {entry.estudiante.nombre} {entry.estudiante.apellidos} {'solicitó revisión' if action == 'revision' else 'aceptó sus índices'}."
         for secretary in secretaries:
-            Notificacion.objects.create(usuario=secretary, mensaje=message)
+            Notificacion.objects.create(usuario=secretary, titulo="Solicitud de revisión", contenido=message)
             if secretary.email:
                 send_mail("Actualización de escalafón", message, None, [secretary.email], fail_silently=True)
         return Response(EscalafonItemSerializer(entry, context={"request": request}).data)
@@ -320,4 +510,10 @@ class EscalafonReviewView(APIView):
             return Response({"detail": "Esta reclamación no está pendiente."}, status=400)
         entry.estado = "sin_respuesta"
         entry.save(update_fields=["estado"])
+        from apps.core.models import Notificacion
+        Notificacion.objects.create(
+            usuario=entry.estudiante.usuario,
+            titulo="Revisión atendida",
+            contenido="El secretario revisó tu solicitud de revisión del escalafón.",
+        )
         return Response(EscalafonItemSerializer(entry, context={"request": request}).data)

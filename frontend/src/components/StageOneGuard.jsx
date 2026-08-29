@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { fetchProvincialEtapas } from "../services/api";
 
-const allStagesActive = import.meta.env.VITE_ALL_STAGES_ACTIVE === "true";
+const allStagesActive = import.meta.env.DEV || import.meta.env.VITE_ALL_STAGES_ACTIVE === "true";
 
 export default function StageOneGuard({
   children,

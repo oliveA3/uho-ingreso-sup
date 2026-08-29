@@ -35,6 +35,19 @@ function formatApiError(body) {
   if (typeof body === "string") return body;
   if (body.detail || body.error) return body.detail || body.error;
 
+  if (Array.isArray(body.errors)) {
+    return body.errors
+      .map((error) => {
+        if (typeof error === "string") return error;
+        if (typeof error === "object") {
+          const rowText = error.row ? `Fila ${error.row}: ` : "";
+          return `${rowText}${error.error || error.detail || error.message || JSON.stringify(error)}`;
+        }
+        return String(error);
+      })
+      .join(" | ");
+  }
+
   const labels = {
     username: "Usuario",
     email: "Correo",
@@ -47,8 +60,14 @@ function formatApiError(body) {
     last_name: "Apellidos",
   };
   const messages = Object.entries(body).flatMap(([field, errors]) => {
+    if (field === "errors") return [];
     const values = Array.isArray(errors) ? errors : [errors];
-    return values.map((error) => `${labels[field] || field}: ${error}`);
+    return values.map((error) => {
+      if (typeof error === "object" && error !== null) {
+        return `${labels[field] || field}: ${error.error || error.detail || JSON.stringify(error)}`;
+      }
+      return `${labels[field] || field}: ${error}`;
+    });
   });
   return messages.join(" ") || "Ocurrió un error en la comunicación con el servidor.";
 }
@@ -71,6 +90,16 @@ export async function login(credentials) {
 
 export async function register(payload) {
   const response = await fetch(`${API_BASE}/authentication/register/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(payload),
+  });
+  return handleResponse(response);
+}
+
+export async function verifyEmail(payload) {
+  const response = await fetch(`${API_BASE}/authentication/verify-email/`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "include",
@@ -105,8 +134,85 @@ export async function fetchCurrentUser() {
   return handleResponse(response);
 }
 
+export async function fetchNotifications() {
+  const response = await fetch(`${API_BASE}/core/notificaciones/`, { credentials: "include" });
+  return handleResponse(response);
+}
+
+export async function markNotificationAsRead(id) {
+  const csrf = await csrfHeaders();
+  const response = await fetch(`${API_BASE}/core/notificaciones/${id}/leer/`, {
+    method: "PATCH",
+    credentials: "include",
+    headers: csrf,
+  });
+  return handleResponse(response);
+}
+
 export async function fetchStudentDashboard() {
   const response = await fetch(`${API_BASE}/gestion-personal/estudiante/dashboard/`, { credentials: "include" });
+  return handleResponse(response);
+}
+
+export async function fetchSchoolInterestMetrics() {
+  const response = await fetch(`${API_BASE}/gestion-escuela/boleta-interes/metricas/`, { credentials: "include" });
+  return handleResponse(response);
+}
+
+export async function fetchStudentInterest() {
+  const response = await fetch(`${API_BASE}/gestion-personal/estudiante/boleta-interes/`, { credentials: "include" });
+  return handleResponse(response);
+}
+
+export async function addStudentInterestCareer(carrera) {
+  const csrf = await csrfHeaders();
+  const response = await fetch(`${API_BASE}/gestion-personal/estudiante/boleta-interes/items/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...csrf },
+    credentials: "include",
+    body: JSON.stringify({ carrera }),
+  });
+  return handleResponse(response);
+}
+
+export async function removeStudentInterestCareer(itemId) {
+  const csrf = await csrfHeaders();
+  const response = await fetch(`${API_BASE}/gestion-personal/estudiante/boleta-interes/items/${itemId}/`, {
+    method: "DELETE",
+    credentials: "include",
+    headers: csrf,
+  });
+  return handleResponse(response);
+}
+
+export async function reorderStudentInterestCareer(itemId, direction) {
+  const csrf = await csrfHeaders();
+  const response = await fetch(`${API_BASE}/gestion-personal/estudiante/boleta-interes/items/${itemId}/`, {
+    method: "PATCH",
+    credentials: "include",
+    headers: { "Content-Type": "application/json", ...csrf },
+    body: JSON.stringify({ direction }),
+  });
+  return handleResponse(response);
+}
+
+export async function sendStudentInterest() {
+  const csrf = await csrfHeaders();
+  const response = await fetch(`${API_BASE}/gestion-personal/estudiante/boleta-interes/enviar/`, {
+    method: "POST",
+    credentials: "include",
+    headers: csrf,
+  });
+  return handleResponse(response);
+}
+
+export async function editStudentInterest() {
+  const csrf = await csrfHeaders();
+  const response = await fetch(`${API_BASE}/gestion-personal/estudiante/boleta-interes/editar/`, {
+    method: "POST",
+    credentials: "include",
+    headers: csrf,
+  });
   return handleResponse(response);
 }
 
@@ -274,6 +380,90 @@ export async function fetchProvincialCes() {
 export async function fetchProvincialEtapas() {
   const response = await fetch(`${API_BASE}/gestion-provincial/etapas/`, {
     credentials: "include",
+  });
+  return handleResponse(response);
+}
+
+export async function fetchPlanPlazas() {
+  const response = await fetch(`${API_BASE}/gestion-provincial/plan-plazas/`, { credentials: "include" });
+  return handleResponse(response);
+}
+
+export async function createPlanPlaza(payload) {
+  const csrf = await csrfHeaders();
+  const response = await fetch(`${API_BASE}/gestion-provincial/plan-plazas/`, {
+    method: "POST", credentials: "include", headers: { "Content-Type": "application/json", ...csrf }, body: JSON.stringify(payload),
+  });
+  return handleResponse(response);
+}
+
+export async function updatePlanPlaza(id, payload) {
+  const csrf = await csrfHeaders();
+  const response = await fetch(`${API_BASE}/gestion-provincial/plan-plazas/${id}/`, {
+    method: "PATCH", credentials: "include", headers: { "Content-Type": "application/json", ...csrf }, body: JSON.stringify(payload),
+  });
+  return handleResponse(response);
+}
+
+export async function deletePlanPlaza(id) {
+  const csrf = await csrfHeaders();
+  const response = await fetch(`${API_BASE}/gestion-provincial/plan-plazas/${id}/`, { method: "DELETE", credentials: "include", headers: csrf });
+  return handleResponse(response);
+}
+
+export async function importPlanPlaza(file) {
+  const csrf = await csrfHeaders();
+  const form = new FormData();
+  form.append("file", file);
+  const response = await fetch(`${API_BASE}/import-export/import/plan-plaza/`, { method: "POST", credentials: "include", headers: csrf, body: form });
+  return handleResponse(response);
+}
+
+export async function downloadPlanPlazaTemplate() {
+  const response = await fetch(`${API_BASE}/import-export/export/plan-plaza/plantilla/`, { credentials: "include" });
+  if (!response.ok) throw new Error("No se pudo descargar la plantilla del plan de plazas.");
+  return response.blob();
+}
+
+export async function downloadPlanPlazaExport({ anio, provincia }) {
+  const params = new URLSearchParams();
+  if (anio) params.set("anio", String(anio));
+  if (provincia && provincia !== "Todos") params.set("provincia", provincia);
+  const query = params.toString();
+  const response = await fetch(`${API_BASE}/import-export/export/plan-plaza/?${query ? `${query}` : ""}`, { credentials: "include" });
+  if (!response.ok) throw new Error("No se pudo exportar el plan de plazas.");
+  return response.blob();
+}
+
+export async function fetchStudentSolicitud() {
+  const response = await fetch(`${API_BASE}/gestion-personal/estudiante/boleta-solicitud/`, { credentials: "include" });
+  return handleResponse(response);
+}
+
+export async function submitStudentSolicitud(planPlazas, confirmar = false) {
+  const csrf = await csrfHeaders();
+  const response = await fetch(`${API_BASE}/gestion-personal/estudiante/boleta-solicitud/`, {
+    method: "POST", credentials: "include", headers: { "Content-Type": "application/json", ...csrf },
+    body: JSON.stringify({ plan_plazas: planPlazas, confirmar }),
+  });
+  return handleResponse(response);
+}
+
+export async function downloadStudentSolicitudPdf() {
+  const response = await fetch(`${API_BASE}/gestion-personal/estudiante/boleta-solicitud/pdf/`, { credentials: "include" });
+  if (!response.ok) throw new Error("No se pudo descargar la boleta de solicitud.");
+  return response.blob();
+}
+
+export async function fetchSchoolSolicitudes() {
+  const response = await fetch(`${API_BASE}/gestion-escuela/boletas-solicitud/`, { credentials: "include" });
+  return handleResponse(response);
+}
+
+export async function approveSchoolSolicitud(id) {
+  const csrf = await csrfHeaders();
+  const response = await fetch(`${API_BASE}/gestion-escuela/boletas-solicitud/${id}/aprobar/`, {
+    method: "POST", credentials: "include", headers: csrf,
   });
   return handleResponse(response);
 }

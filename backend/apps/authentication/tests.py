@@ -1,11 +1,52 @@
 from django.test import TestCase
+from django.utils import timezone
+from datetime import timedelta
 
-from apps.authentication.models import Usuario
+from apps.authentication.models import EmailVerificationCode, Usuario
 from apps.authentication.serializers import SuperAdminUserSerializer, UserSerializer
 from apps.superadmin.models import Escuela, Municipio, Provincia
 
 
 class AutheticationSmokeTests(TestCase):
+    def test_unverified_user_cannot_login(self):
+        user = Usuario.objects.create_user(
+            username="pending.student",
+            email="pending@example.com",
+            password="secret1234",
+            is_active=False,
+        )
+
+        response = self.client.post(
+            "/api/authentication/login/",
+            data={"username": user.username, "password": "secret1234"},
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertIn("verificar tu correo", response.json()["detail"])
+
+    def test_verification_code_activates_user(self):
+        user = Usuario.objects.create_user(
+            username="verify.student",
+            email="verify@example.com",
+            password="secret1234",
+            is_active=False,
+        )
+        EmailVerificationCode.objects.create(
+            user=user,
+            code="123456",
+            expires_at=timezone.now() + timedelta(minutes=15),
+        )
+
+        response = self.client.post(
+            "/api/authentication/verify-email/",
+            data={"username": user.username, "code": "123456"},
+        )
+
+        user.refresh_from_db()
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(user.is_active)
+        self.assertTrue(user.email_verificado)
+
     def test_login_endpoint_returns_400_for_missing_credentials(self):
         response = self.client.post("/api/authentication/login/", data={})
         self.assertEqual(response.status_code, 400)

@@ -49,20 +49,44 @@ class Etapa(models.Model):
 class Proceso(models.Model):
     anio = models.DateField()
     etapa = models.ForeignKey(
-        'Etapa', on_delete=models.PROTECT, related_name='procesos', null=True, blank=True
+        'Etapa', on_delete=models.PROTECT, related_name='procesos', null=False, blank=False
     )
 
     config_consulta_nota_publica = models.BooleanField(default=False)
     config_consulta_otorg_publico = models.BooleanField(default=False)
 
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["anio", "etapa"], name="unique_proceso_anio_etapa"),
+        ]
+
+    @classmethod
+    def get_for_stage_and_year(cls, year, etapa):
+        if isinstance(etapa, str):
+            etapa_obj = Etapa.objects.filter(nombre=etapa).first()
+        elif isinstance(etapa, Etapa):
+            etapa_obj = etapa
+        else:
+            etapa_obj = Etapa.objects.filter(pk=etapa).first()
+        if not etapa_obj:
+            return None
+        return cls.objects.filter(anio__year=year, etapa=etapa_obj).order_by("-id").first()
+
+    def __str__(self):
+        return f"Proceso {self.anio.year} — {self.etapa.nombre}"
+
 
 class PlanPlaza(models.Model):
+    TIPOS_OTORGAMIENTO = [
+        ("municipal", "Municipal"),
+        ("provincial", "Provincial"),
+    ]
     proceso = models.ForeignKey(
         Proceso, on_delete=models.PROTECT, related_name='plan_plaza')
     carrera = models.ForeignKey(
         Carrera, on_delete=models.PROTECT, related_name='plan_plaza')
     cantidad_plazas = models.PositiveIntegerField()
-    # otorgamiento_tipo = models.ForeignKey(OtorgamientoTipo, on_delete=models.PROTECT, related_name='plan_plaza')
+    otorgamiento_tipo = models.CharField(max_length=32, choices=TIPOS_OTORGAMIENTO)
     ces = models.ForeignKey(
         Ces, on_delete=models.PROTECT, related_name='plan_plaza')
     provincia = models.ForeignKey(

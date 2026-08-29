@@ -7,6 +7,8 @@ from .views import (
     RoleListView,
     AuditLogExportView,
     AuditLogPdfView,
+    NotificationListView,
+    NotificationReadView,
 )
 
 urlpatterns = [
@@ -14,4 +16,6 @@ urlpatterns = [
     path("logs/", AuditLogListView.as_view(), name="audit-logs"),
     path("logs/export/", AuditLogExportView.as_view(), name="audit-logs-export"),
     path("logs/export/pdf/", AuditLogPdfView.as_view(), name="audit-logs-pdf"),
+    path("notificaciones/", NotificationListView.as_view(), name="notifications"),
+    path("notificaciones/<int:pk>/leer/", NotificationReadView.as_view(), name="notification-read"),
 ]

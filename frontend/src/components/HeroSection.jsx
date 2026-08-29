@@ -1,4 +1,4 @@
-export default function HeroSection() {
+export default function HeroSection({ onViewPlan }) {
   return (
     <section className="mb-2 rounded-[2rem] bg-gradient-to-r from-sky-700 via-cyan-600 to-teal-500 px-6 py-12 text-white shadow-lg sm:px-10">
       <div className="mx-auto max-w-5xl">
@@ -9,12 +9,13 @@ export default function HeroSection() {
           diseñado para crecer con los futuros módulos de boletas, escalafón y reportes.
         </p>
         <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
-          <a
-            href="#plazas"
+          <button
+            type="button"
+            onClick={onViewPlan}
             className="inline-flex items-center justify-center rounded-full bg-white px-6 py-3 text-sm font-semibold text-sky-700 transition hover:bg-slate-100"
           >
-            📋 Ver plan de plazas
-          </a>
+            📋 Ver planes de plazas
+          </button>
           <a
             href="#noticias"
             className="inline-flex items-center justify-center rounded-full border border-white/30 bg-white/10 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/20"

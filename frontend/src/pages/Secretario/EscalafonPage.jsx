@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   downloadEscalafonTemplate,
   fetchEscalafon,
+  fetchProvincialEscalafonSummary,
   getEscalafonExportUrl,
   importEscalafon,
   markEscalafonReviewAsReviewed,
@@ -104,6 +105,7 @@ function StudentRow({ entry, position, isEditing, draft, stageActive, saving, sh
 
 export default function SecretarioEscalafonPage() {
   const [entries, setEntries] = useState([]);
+  const [summary, setSummary] = useState(null);
   const [stageActive, setStageActive] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [draft, setDraft] = useState({});
@@ -123,9 +125,10 @@ export default function SecretarioEscalafonPage() {
   async function load() {
     try {
       setError("");
-      const data = await fetchEscalafon();
+      const [data, summaryData] = await Promise.all([fetchEscalafon(), fetchProvincialEscalafonSummary()]);
       setEntries(data.entries || []);
       setStageActive(Boolean(data.stage_active));
+      setSummary(summaryData);
     } catch (requestError) {
       setError(requestError.message);
     } finally {
@@ -240,6 +243,12 @@ export default function SecretarioEscalafonPage() {
         </div>
         <p className="mt-1 text-sm text-slate-600">Importa, revisa y actualiza los datos antes de enviarlos a la Comisión.</p>
       </header>
+
+      <div className="mb-5 grid gap-4 sm:grid-cols-3">
+        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5"><p className="text-sm text-slate-600">Escuelas que enviaron</p><p className="mt-2 text-3xl font-semibold text-slate-900">{summary?.escuelas_enviaron ?? "-"}</p></div>
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5"><p className="text-sm text-slate-600">Escuelas pendientes</p><p className="mt-2 text-3xl font-semibold text-slate-900">{summary?.escuelas_pendientes ?? "-"}</p></div>
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5"><p className="text-sm text-slate-600">Total estudiantes</p><p className="mt-2 text-3xl font-semibold text-slate-900">{summary?.total_estudiantes ?? "-"}</p></div>
+      </div>
 
       <div className="mb-4 flex flex-wrap gap-2">
         <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden" disabled={!stageActive && !import.meta.env.DEV} onChange={handleImport} />

@@ -1,12 +1,11 @@
 import { useEffect, useState } from "react";
 import HeroSection from "../components/HeroSection";
-import StageBanner from "../components/StageBanner";
 import ProcessTimeline from "../components/ProcessTimeline";
 import NewsSection from "../components/NewsSection";
-import PlanPlazasSection from "../components/PlanPlazasSection";
+import PlanPlazasModal from "../components/Modals/PlanPlazasModal";
 import CutoffSection from "../components/CutoffSection";
 import OfferingsSection from "../components/OfferingsSection";
-import { newsItems, planPlazas, cutoffIndices, offerings } from "../data/landingData";
+import { newsItems, cutoffIndices, offerings } from "../data/landingData";
 import { fetchLandingData } from "../services/api";
 
 const stageTitles = {
@@ -30,6 +29,7 @@ function toTimelineStep(stage) {
 
 export default function LandingPage() {
   const [processData, setProcessData] = useState(null);
+  const [planModalOpen, setPlanModalOpen] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -48,6 +48,9 @@ export default function LandingPage() {
 
   const stages = processData?.etapas || [];
   const activeStage = stages.find((stage) => stage.estado === "en_curso");
+  const planData = processData?.plan_de_plazas || { items: [], years: [], provincias: [], provincia_nombre: "Todas" };
+  const planYears = planData.years || [];
+  const defaultProvinceName = planData.provincia_nombre || "Todas";
   const landingStage = activeStage
     ? {
         label: `Etapa ${activeStage.numero} — ${stageTitles[activeStage.numero] || activeStage.nombre}`,
@@ -68,16 +71,24 @@ export default function LandingPage() {
     <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900">
 
       <main className="flex-1 space-y-5 py-5 px-4 sm:px-6 lg:px-8">
-        <HeroSection />
-        <StageBanner stage={landingStage} />
+        <HeroSection onViewPlan={() => setPlanModalOpen(true)} />
         {processData?.error && <p className="text-sm text-rose-700">No se pudo actualizar el estado del proceso.</p>}
         {stages.length > 0 && <ProcessTimeline steps={stages.map(toTimelineStep)} />}
+        
         <div className="space-y-5">
           <NewsSection items={newsItems} />
-          <PlanPlazasSection items={planPlazas} />
           <CutoffSection items={cutoffIndices} />
           <OfferingsSection items={offerings} />
         </div>
+
+        {planModalOpen && (
+          <PlanPlazasModal
+            items={planData.items || []}
+            years={planYears}
+            defaultProvince={defaultProvinceName}
+            onClose={() => setPlanModalOpen(false)}
+          />
+        )}
       </main>
     </div>
   );

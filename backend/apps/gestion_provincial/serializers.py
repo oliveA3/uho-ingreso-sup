@@ -7,15 +7,18 @@ from .models import ETAPAS_NOMBRES, Etapa, Proceso
 
 
 class ProvincialProcesoSerializer(serializers.ModelSerializer):
+    etapa = serializers.PrimaryKeyRelatedField(queryset=Etapa.objects.all())
+
     class Meta:
         model = Proceso
         fields = ["id", "anio", "etapa"]
-        read_only_fields = ["etapa"]
 
-    def validate_anio(self, value):
-        if Proceso.objects.filter(anio__year=value.year).exists():
-            raise serializers.ValidationError("Ya existe un proceso para ese año.")
-        return value
+    def validate(self, attrs):
+        anio = attrs.get("anio")
+        etapa = attrs.get("etapa")
+        if anio and etapa and Proceso.objects.filter(anio=anio, etapa=etapa).exists():
+            raise serializers.ValidationError({"detail": "Ya existe un proceso para ese año y esa etapa."})
+        return attrs
 
 
 class ProvincialEtapaSerializer(serializers.ModelSerializer):

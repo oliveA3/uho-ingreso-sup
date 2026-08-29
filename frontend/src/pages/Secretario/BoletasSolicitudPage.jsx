@@ -1,4 +1,18 @@
+import { useEffect, useState } from "react";
+import { approveSchoolSolicitud, fetchSchoolSolicitudes } from "../../services/api";
+
 export default function SecretarioBoletasSolicitudPage() {
+  const [items, setItems] = useState([]);
+
+  useEffect(() => {
+    fetchSchoolSolicitudes().then((data) => setItems(data.items || []));
+  }, []);
+
+  const approve = async (id) => {
+    await approveSchoolSolicitud(id);
+    setItems((current) => current.map((item) => item.id === id ? { ...item, estado: "aprobada" } : item));
+  };
+
   return (
     <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
       <h1 className="text-2xl font-semibold text-slate-900">Boletas de Solicitud</h1>
@@ -7,19 +21,19 @@ export default function SecretarioBoletasSolicitudPage() {
       <div className="mt-6 grid gap-4 sm:grid-cols-4">
         <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
           <p className="text-sm uppercase tracking-[0.24em] text-slate-500">Enviadas</p>
-          <p className="mt-3 text-3xl font-semibold text-slate-900">24</p>
+              <p className="mt-3 text-3xl font-semibold text-slate-900">{items.length}</p>
         </div>
         <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
           <p className="text-sm uppercase tracking-[0.24em] text-slate-500">Pendientes</p>
-          <p className="mt-3 text-3xl font-semibold text-slate-900">8</p>
+              <p className="mt-3 text-3xl font-semibold text-slate-900">{items.filter((item) => item.estado === "por_aprobar").length}</p>
         </div>
         <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
           <p className="text-sm uppercase tracking-[0.24em] text-slate-500">Aprobadas</p>
-          <p className="mt-3 text-3xl font-semibold text-slate-900">15</p>
+              <p className="mt-3 text-3xl font-semibold text-slate-900">{items.filter((item) => item.estado === "aprobada").length}</p>
         </div>
         <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
           <p className="text-sm uppercase tracking-[0.24em] text-slate-500">Modificaciones</p>
-          <p className="mt-3 text-3xl font-semibold text-slate-900">3</p>
+              <p className="mt-3 text-3xl font-semibold text-slate-900">0</p>
         </div>
       </div>
 
@@ -34,25 +48,14 @@ export default function SecretarioBoletasSolicitudPage() {
               <th className="px-4 py-3">Acciones</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-200 bg-white">
-            <tr>
-              <td className="px-4 py-4 font-medium text-slate-900">Lucía Pérez</td>
-              <td className="px-4 py-4 text-slate-600">95.2</td>
-              <td className="px-4 py-4 text-slate-600">Medicina</td>
-              <td className="px-4 py-4 text-emerald-600">Aprobada</td>
-              <td className="px-4 py-4">
-                <button className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold">Ver</button>
-              </td>
-            </tr>
-            <tr>
-              <td className="px-4 py-4 font-medium text-slate-900">Daniela Ruiz</td>
-              <td className="px-4 py-4 text-slate-600">90.4</td>
-              <td className="px-4 py-4 text-slate-600">Ingeniería</td>
-              <td className="px-4 py-4 text-amber-600">Pendiente</td>
-              <td className="px-4 py-4">
-                <button className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold">Revisar</button>
-              </td>
-            </tr>
+              <tbody className="divide-y divide-slate-200 bg-white">
+                {items.map((item) => <tr key={item.id}>
+                  <td className="px-4 py-4 font-medium text-slate-900">{item.student?.nombre} {item.student?.apellidos}</td>
+                  <td className="px-4 py-4 text-slate-600">{item.student?.indice_general ?? "-"}</td>
+                  <td className="px-4 py-4 text-slate-600">{item.items?.[0]?.carrera_nombre || "-"}</td>
+                  <td className="px-4 py-4 text-slate-600">{item.estado}</td>
+                  <td className="px-4 py-4"><button type="button" onClick={() => approve(item.id)} disabled={item.estado !== "por_aprobar"} className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold disabled:opacity-50">Aprobar</button></td>
+                </tr>)}
           </tbody>
         </table>
       </div>

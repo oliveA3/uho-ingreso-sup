@@ -1,9 +1,24 @@
 import { Link, useLocation } from "react-router-dom";
+import { useEffect, useState } from "react";
+import NotificationModal from "../Modals/NotificationModal";
+import { fetchNotifications } from "../../services/api";
 
 export default function BaseSidebar({ title, roleLabel, scope, sections, onLogout }) {
   const location = useLocation();
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
   const isItemActive = (item) => location.pathname === item.to
     || (!item.exact && location.pathname.startsWith(`${item.to}/`));
+
+  const refreshUnreadNotifications = () => {
+    fetchNotifications()
+      .then((data) => setUnreadNotifications((data.notifications || []).filter((notification) => !notification.leida).length))
+      .catch(() => setUnreadNotifications(0));
+  };
+
+  useEffect(() => {
+    refreshUnreadNotifications();
+  }, []);
 
   return (
     <aside className="flex h-full min-h-0 flex-col overflow-hidden rounded-3xl p-5 shadow-sm">
@@ -25,6 +40,12 @@ export default function BaseSidebar({ title, roleLabel, scope, sections, onLogou
               {section.title}
             </div>
             <nav className="mt-3 space-y-2 text-sm text-slate-600">
+              {section.title === "Cuenta" && (
+                <button type="button" onClick={() => setNotificationsOpen(true)} className="relative block w-full rounded-2xl px-4 py-3 text-left transition hover:bg-slate-100 hover:text-slate-900">
+                  {unreadNotifications > 0 && <span className="mr-2 inline-block h-2.5 w-2.5 rounded-full bg-rose-500 align-middle" aria-label={`${unreadNotifications} notificaciones sin leer`} />}
+                  🔔 Notificaciones
+                </button>
+              )}
               {section.items.map((item) => (
               item.action === "logout" ? (
                 <button
@@ -70,6 +91,7 @@ export default function BaseSidebar({ title, roleLabel, scope, sections, onLogou
           </div>
         ))}
       </div>
+      {notificationsOpen && <NotificationModal onClose={() => { setNotificationsOpen(false); refreshUnreadNotifications(); }} />}
     </aside>
   );
 }

@@ -9,9 +9,83 @@ from rest_framework.permissions import AllowAny
 
 from apps.authentication.models import Estudiante, Usuario
 from apps.gestion_personal.models import BoletaInteres, BoletaInteresItem
+from apps.gestion_personal.models import BoletaSolicitud
 from apps.superadmin.models import Carrera, Ces, Escuela, Municipio, Provincia
 
-from .models import ETAPAS_NOMBRES, Etapa, Proceso
+
+def build_plan_plaza_landing_payload(request):
+    active_stage = Etapa.objects.filter(estado='en_curso').order_by('id').first()
+    plan_stage = Etapa.objects.filter(nombre=ETAPAS_NOMBRES[3]).first()
+    default_province = None
+
+    if request.user.is_authenticated and getattr(request.user, 'provincia_id', None):
+        default_province = request.user.provincia
+    if default_province is None:
+        default_province = Provincia.objects.filter(nombre__iexact='La Habana').first()
+
+    if not plan_stage:
+        return {
+            'year': timezone.now().year,
+            'provincia_id': default_province.id if default_province else None,
+            'provincia_nombre': default_province.nombre if default_province else None,
+            'items': [],
+            'years': [],
+            'active_stage': active_stage.id if active_stage else None,
+            'active_stage_nombre': active_stage.nombre if active_stage else None,
+        }
+
+    years = list(
+        PlanPlaza.objects.filter(proceso__etapa=plan_stage)
+        .values_list('proceso__anio__year', flat=True)
+        .distinct()
+        .order_by('-proceso__anio__year')
+    )
+    if not years:
+        years = [timezone.now().year]
+
+    if active_stage and active_stage.id == plan_stage.id:
+        selected_year = timezone.now().year if timezone.now().year in years else years[0]
+    else:
+        selected_year = years[0] if years else timezone.now().year
+
+    selected_items = list(
+        PlanPlaza.objects.filter(proceso__etapa=plan_stage, proceso__anio__year=selected_year)
+        .select_related('carrera', 'ces', 'provincia', 'proceso')
+        .order_by('carrera__nombre')
+    )
+
+    if default_province:
+        selected_items = [item for item in selected_items if item.provincia_id == default_province.id]
+
+    province_names = sorted({
+        item.provincia.nombre for item in selected_items
+    })
+
+    return {
+        'year': selected_year,
+        'provincia_id': default_province.id if default_province else None,
+        'provincia_nombre': default_province.nombre if default_province else None,
+        'items': [
+            {
+                'id': item.id,
+                'carrera': item.carrera.nombre,
+                'carrera_codigo': item.carrera.codigo,
+                'cantidad_plazas': item.cantidad_plazas,
+                'otorgamiento_tipo': item.otorgamiento_tipo,
+                'ces': item.ces.nombre,
+                'provincia': item.provincia.nombre,
+                'sexo': item.sexo,
+                'year': selected_year,
+            }
+            for item in selected_items
+        ],
+        'years': years,
+        'provincias': province_names,
+        'active_stage': active_stage.id if active_stage else None,
+        'active_stage_nombre': active_stage.nombre if active_stage else None,
+    }
+
+from .models import ETAPAS_NOMBRES, Etapa, PlanPlaza, Proceso
 from .permissions import CanAccessEscalafon, CanViewProvincialDashboard, IsCommissionChief, IsProvincialRepresentative
 from .serializers import (
     ActivarEtapaSerializer,
@@ -25,6 +99,7 @@ from .serializers import (
     ProvincialCesSerializer,
 )
 from .permissions import IsCareerManager
+from .serializers_plan import PlanPlazaSerializer
 
 
 class ProvincialScopedMixin:
@@ -164,13 +239,22 @@ class PublicEtapasDisponibilidadView(APIView):
                 data['estado'] = 'bloqueada'
             serialized.append(data)
             previous_completed = etapa.estado == 'completada'
-        return Response({
+        payload = {
             "etapas": serialized,
             "registro_estudiantil": settings.DEBUG or any(
                 etapa['numero'] in (1, 2) and etapa['estado'] == 'en_curso'
                 for etapa in serialized
             ),
-        })
+        }
+        payload["plan_de_plazas"] = build_plan_plaza_landing_payload(request)
+        return Response(payload)
+
+
+class PublicPlanPlazaLandingView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        return Response(build_plan_plaza_landing_payload(request))
 
 
 class ProvincialProcesoViewSet(viewsets.GenericViewSet):
@@ -178,16 +262,29 @@ class ProvincialProcesoViewSet(viewsets.GenericViewSet):
     permission_classes = [IsCommissionChief]
 
     def list(self, request):
-        proceso = Proceso.objects.order_by("-anio", "-id").first()
-        return Response(
-            self.get_serializer(proceso).data if proceso else None
-        )
+        procesos = Proceso.objects.select_related("etapa").order_by("-anio", "etapa_id")
+        return Response(self.get_serializer(procesos, many=True).data)
 
     def create(self, request):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         proceso = serializer.save()
         return Response(self.get_serializer(proceso).data, status=201)
+
+
+class CommissionSolicitudAuthorizationView(APIView):
+    permission_classes = [IsCommissionChief]
+
+    def post(self, request, ballot_id):
+        ballot = BoletaSolicitud.objects.filter(pk=ballot_id, estado="aprobada").first()
+        if not ballot:
+            return Response({"detail": "No existe una boleta aprobada para autorizar."}, status=404)
+        ballot.estado = "por_enviar"
+        ballot.aprobada_por = None
+        ballot.fecha_aprobada = None
+        ballot.fecha_enviada = None
+        ballot.save(update_fields=["estado", "aprobada_por", "fecha_aprobada", "fecha_enviada"])
+        return Response({"detail": "La boleta fue autorizada para modificación."})
 
 
 class ProvincialActivarEtapaView(APIView):
@@ -228,6 +325,8 @@ class ProvincialActivarEtapaView(APIView):
         etapa.estado = 'en_curso'
         etapa.full_clean()
         etapa.save(update_fields=["fecha_inicio", "fecha_fin", "estado"])
+        from apps.core.notifications import notify_users
+        notify_users(Usuario.objects.all(), "Etapa activada", f"Se activó {etapa.nombre} desde {etapa.fecha_inicio} hasta {etapa.fecha_fin}.")
         return Response(ProvincialEtapaSerializer(etapa).data)
 
 
@@ -308,3 +407,19 @@ class ProvincialCarreraViewSet(viewsets.ModelViewSet):
         if search:
             queryset = queryset.filter(nombre__icontains=search)
         return queryset
+
+
+class PlanPlazaViewSet(viewsets.ModelViewSet):
+    serializer_class = PlanPlazaSerializer
+    permission_classes = [IsCommissionChief]
+
+    def get_queryset(self):
+        queryset = PlanPlaza.objects.select_related("proceso", "carrera", "ces", "provincia").order_by("carrera__nombre")
+        proceso_id = self.request.query_params.get("proceso")
+        if proceso_id:
+            return queryset.filter(proceso_id=proceso_id)
+
+        current_process = Proceso.get_for_stage_and_year(timezone.now().year, ETAPAS_NOMBRES[3])
+        if current_process is None:
+            return queryset.none()
+        return queryset.filter(proceso=current_process)

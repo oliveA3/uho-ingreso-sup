@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { fetchEscalafon, submitEscalafonAction } from "../../services/api";
 import FeedbackMessage from "../../components/FeedbackMessage";
 import EscalafonTable from "../../components/EscalafonTable";
-import ReviewModal from "../../components/ReviewModal";
+import ReviewModal from "../../components/Modals/ReviewModal";
 
 export default function EstudianteEscalafonPage() {
   const [entries, setEntries] = useState([]);

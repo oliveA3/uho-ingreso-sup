@@ -21,6 +21,12 @@ class BoletaInteresItem(models.Model):
         Carrera, on_delete=models.CASCADE, related_name="boleta_interes")
     prioridad = models.PositiveSmallIntegerField()  # 1 - 10
 
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["boleta_interes", "carrera"], name="unique_carrera_boleta_interes"),
+            models.UniqueConstraint(fields=["boleta_interes", "prioridad"], name="unique_prioridad_boleta_interes"),
+        ]
+
 
 class BoletaSolicitud(models.Model):
     estudiante = models.ForeignKey(
@@ -36,6 +42,13 @@ class BoletaSolicitud(models.Model):
     aprobada_por = models.CharField(max_length=150, null=True, blank=True)
     fecha_aprobada = models.DateField(null=True, blank=True)
 
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["estudiante", "proceso"], name="unique_solicitud_estudiante_proceso"
+            ),
+        ]
+
 
 class BoletaSolicitudItem(models.Model):
     boleta_solicitud = models.ForeignKey(
@@ -43,6 +56,16 @@ class BoletaSolicitudItem(models.Model):
     plan_plaza = models.ForeignKey(
         PlanPlaza, on_delete=models.CASCADE, related_name="boleta_solicitud")
     prioridad = models.PositiveSmallIntegerField()  # 1 - 10
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["boleta_solicitud", "plan_plaza"], name="unique_plan_solicitud"
+            ),
+            models.UniqueConstraint(
+                fields=["boleta_solicitud", "prioridad"], name="unique_prioridad_solicitud"
+            ),
+        ]
 
 
 class ConfirmacionPrueba(models.Model):

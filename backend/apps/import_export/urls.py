@@ -3,11 +3,14 @@ from .views import (
     EscalafonEntryView, EscalafonListView, EscalafonSendView, EscalafonTemplateView,
     EscalafonReviewView, ProvincialEscalafonSummaryView, ProvincialEscalafonExportView,
     ExportCarrerasView, ExportEscalafonView, ImportCarrerasView, ImportEscalafonView,
-    ImportPlanPlazaView, ImportOtorgamientoView, StudentEscalafonActionView,
+    ImportPlanPlazaView, ImportPlanPlazaExportView, PlanPlazaTemplateView,
+    ImportOtorgamientoView, StudentEscalafonActionView,
 )
 
 urlpatterns = [
     path("import/plan-plaza/", ImportPlanPlazaView.as_view(), name="import-plan-plaza"),
+    path("export/plan-plaza/", ImportPlanPlazaExportView.as_view(), name="export-plan-plaza"),
+    path("export/plan-plaza/plantilla/", PlanPlazaTemplateView.as_view(), name="plan-plaza-template"),
     path("import/otorgamiento/", ImportOtorgamientoView.as_view(), name="import-otorgamiento"),
     path("import/carreras/", ImportCarrerasView.as_view(), name="import-carreras"),
     path("export/carreras/", ExportCarrerasView.as_view(), name="export-carreras"),

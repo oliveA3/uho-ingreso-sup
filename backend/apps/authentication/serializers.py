@@ -1,8 +1,11 @@
 from rest_framework import serializers
+import secrets
+from datetime import timedelta
+from django.core.mail import send_mail
 from django.db import transaction
 from django.utils import timezone
 
-from apps.authentication.models import ROLES, Usuario, Estudiante
+from apps.authentication.models import EmailVerificationCode, ROLES, Usuario, Estudiante
 from apps.gestion_escuela.models import EscalafonItem
 from apps.superadmin.models import Escuela, Municipio, Provincia
 
@@ -207,11 +210,31 @@ class RegisterSerializer(serializers.Serializer):
                 municipio=escuela.municipio,
                 provincia=escuela.municipio.provincia,
             )
+            user.is_active = False
+            user.email_verificado = False
+            user.save(update_fields=["is_active", "email_verificado"])
+            code = f"{secrets.randbelow(1000000):06d}"
+            EmailVerificationCode.objects.create(
+                user=user,
+                code=code,
+                expires_at=timezone.now() + timedelta(minutes=15),
+            )
             estudiante.usuario = user
             estudiante.whatsapp = validated_data.get("whatsapp", "")
             estudiante.tutor_nombre = validated_data.get("tutor_nombre", "")
             estudiante.tutor_email = validated_data.get("tutor_email", "")
             estudiante.tutor_telefono = validated_data.get("tutor_telefono", "")
             estudiante.save(update_fields=["usuario", "whatsapp", "tutor_nombre", "tutor_email", "tutor_telefono"])
+
+            send_mail(
+                subject="Código de verificación de IngresoSUP",
+                message=(
+                    f"Tu código de verificación es: {code}\n\n"
+                    "Este código vence en 15 minutos."
+                ),
+                from_email=None,
+                recipient_list=[user.email],
+                fail_silently=False,
+            )
 
         return user

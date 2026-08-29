@@ -3,14 +3,15 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from rest_framework import viewsets, filters, status
 from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.response import Response
 from django.http import HttpResponse
 from openpyxl import Workbook
 from rest_framework.views import APIView
 
 from apps.authentication.models import Usuario
-from .models import LogAuditoria
+from .models import LogAuditoria, Notificacion
 from .permissions import CanViewAuditLogs
-from .serializers import AuditLogSerializer
+from .serializers import AuditLogSerializer, NotificationSerializer
 from .permissions import IsSuperAdmin
 
 
@@ -19,6 +20,24 @@ class HealthCheckView(APIView):
 
     def get(self, request):
         return JsonResponse({"status": "ok", "service": "IngresoSUP backend"})
+
+
+class NotificationListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        notifications = Notificacion.objects.filter(usuario=request.user).order_by("-fecha")[:30]
+        return Response({"notifications": NotificationSerializer(notifications, many=True).data})
+
+
+class NotificationReadView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request, pk):
+        notification = get_object_or_404(Notificacion, pk=pk, usuario=request.user)
+        notification.leida = True
+        notification.save(update_fields=["leida"])
+        return Response(NotificationSerializer(notification).data)
 
 
 class RoleAdminView(APIView):
