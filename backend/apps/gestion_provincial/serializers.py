@@ -26,7 +26,7 @@ class ProvincialEtapaSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Etapa
-        fields = ["id", "numero", "nombre", "fecha_inicio", "fecha_fin", "estado"]
+        fields = ["id", "numero", "nombre", "fecha_inicio", "fecha_fin", "fecha_matematica", "fecha_espanol", "fecha_historia", "estado"]
         read_only_fields = ["estado"]
 
     def get_numero(self, obj):
@@ -36,6 +36,9 @@ class ProvincialEtapaSerializer(serializers.ModelSerializer):
 class ActivarEtapaSerializer(serializers.Serializer):
     fecha_inicio = serializers.DateField()
     fecha_fin = serializers.DateField()
+    fecha_matematica = serializers.DateField(required=False)
+    fecha_espanol = serializers.DateField(required=False)
+    fecha_historia = serializers.DateField(required=False)
 
     def validate(self, attrs):
         if attrs["fecha_inicio"] > attrs["fecha_fin"]:

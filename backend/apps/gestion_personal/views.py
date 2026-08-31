@@ -7,10 +7,11 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.core.models import Notificacion
+from apps.authentication.models import Usuario
 from apps.gestion_escuela.models import EscalafonItem
 from apps.gestion_provincial.models import ETAPAS_NOMBRES, Etapa, PlanPlaza, Proceso
 from apps.superadmin.models import Carrera
-from .models import BoletaInteres, BoletaInteresItem, BoletaSolicitud, BoletaSolicitudItem, ConfirmacionPrueba
+from .models import BoletaInteres, BoletaInteresItem, BoletaSolicitud, BoletaSolicitudItem, BoletaSolicitudItemAnterior, ConfirmacionPrueba
 from .serializers import AddBoletaInteresItemSerializer, BoletaInteresItemSerializer, BoletaSolicitudSerializer
 
 
@@ -43,7 +44,7 @@ class StudentInterestView(APIView):
 		available = Carrera.objects.filter(activa=True).values(
 			"id", "codigo", "nombre", "ces__nombre", "provincia__nombre"
 		).order_by("nombre")
-		stage_active = settings.DEBUG or bool(stage and stage.estado == "en_curso")
+		stage_active = bool(stage and stage.estado == "en_curso")
 		return Response({
 			"id": ballot.id, "proceso": process.anio, "enviada": ballot.enviada,
 			"fecha_enviada": ballot.fecha_enviada,
@@ -68,7 +69,7 @@ class StudentInterestItemView(APIView):
 		if error:
 			return error
 		process, stage = context
-		if not process or (not settings.DEBUG and (not stage or stage.estado != "en_curso")):
+		if not process or not stage or stage.estado != "en_curso":
 			return Response({"detail": "La boleta no está disponible para edición."}, status=403)
 		ballot, _ = BoletaInteres.objects.get_or_create(estudiante=student, proceso=process)
 		if ballot.enviada:
@@ -89,7 +90,7 @@ class StudentInterestItemView(APIView):
 			return error
 		process, stage = context
 		ballot = BoletaInteres.objects.filter(estudiante=student, proceso=process).first() if process else None
-		if not ballot or ballot.enviada or (not settings.DEBUG and (not stage or stage.estado != "en_curso")):
+		if not ballot or ballot.enviada or not stage or stage.estado != "en_curso":
 			return Response({"detail": "La boleta no está disponible para edición."}, status=403)
 		item = ballot.boleta_interes.filter(pk=item_id).first()
 		if not item:
@@ -107,7 +108,7 @@ class StudentInterestItemView(APIView):
 			return error
 		process, stage = context
 		ballot = BoletaInteres.objects.filter(estudiante=student, proceso=process).first() if process else None
-		if not ballot or ballot.enviada or (not settings.DEBUG and (not stage or stage.estado != "en_curso")):
+		if not ballot or ballot.enviada or not stage or stage.estado != "en_curso":
 			return Response({"detail": "La boleta no está disponible para edición."}, status=403)
 		item = ballot.boleta_interes.filter(pk=item_id).first()
 		if not item:
@@ -141,7 +142,7 @@ class StudentInterestSendView(APIView):
 			return error
 		process, stage = context
 		ballot = BoletaInteres.objects.filter(estudiante=student, proceso=process).first() if process else None
-		if not ballot or (not settings.DEBUG and (not stage or stage.estado != "en_curso")):
+		if not ballot or not stage or stage.estado != "en_curso":
 			return Response({"detail": "La boleta no está disponible para envío."}, status=403)
 		if ballot.enviada:
 			return Response({"detail": "La boleta ya fue enviada."}, status=400)
@@ -150,6 +151,12 @@ class StudentInterestSendView(APIView):
 		ballot.enviada = True
 		ballot.fecha_enviada = timezone.localdate()
 		ballot.save(update_fields=["enviada", "fecha_enviada"])
+		from apps.core.notifications import notify_users
+		notify_users(
+			Usuario.objects.filter(rol="secretario_escuela", escuela=student.escuela),
+			"Boleta de interés enviada",
+			f"El estudiante {student.nombre} {student.apellidos} envió su boleta de interés.",
+		)
 		return Response({"detail": "Boleta de interés enviada correctamente."})
 
 
@@ -162,7 +169,7 @@ class StudentInterestEditView(APIView):
 			return error
 		process, stage = context
 		ballot = BoletaInteres.objects.filter(estudiante=student, proceso=process).first() if process else None
-		if not ballot or (not settings.DEBUG and (not stage or stage.estado != "en_curso")):
+		if not ballot or not stage or stage.estado != "en_curso":
 			return Response({"detail": "La boleta no está disponible para edición."}, status=403)
 		if not ballot.enviada:
 			return Response({"detail": "La boleta ya está pendiente de envío."}, status=400)
@@ -184,6 +191,14 @@ def current_solicitud_context(request):
 	return student, (process, stage), None
 
 
+def student_escalafon_index(student):
+	entry = EscalafonItem.objects.filter(
+		estudiante=student,
+		escalafon__proceso__anio__year=timezone.now().year,
+	).order_by("-escalafon__proceso__anio", "-escalafon_id", "-id").first()
+	return entry.indice_general if entry else student.indice_general
+
+
 class StudentSolicitudView(APIView):
 	permission_classes = [IsAuthenticated]
 
@@ -197,15 +212,25 @@ class StudentSolicitudView(APIView):
 		ballot, _ = BoletaSolicitud.objects.get_or_create(estudiante=student, proceso=process)
 		province_id = student.escuela.municipio.provincia_id
 		plans = PlanPlaza.objects.filter(proceso=process, provincia_id=province_id).select_related("carrera", "ces", "provincia").order_by("carrera__nombre")
+		active_stage = Etapa.objects.filter(estado="en_curso").order_by("id").first()
+		active_stage_number = next((number for number, name in ETAPAS_NOMBRES.items() if active_stage and name == active_stage.nombre), None)
+		allow_modification = active_stage_number == 3
+		stage_is_active = bool(stage and stage.estado == "en_curso") and active_stage_number == 3
 		return Response({
 			**BoletaSolicitudSerializer(ballot).data,
 			"student": {"nombre": student.nombre, "apellidos": student.apellidos, "ci": student.ci,
-				"escuela": student.escuela.nombre, "indice_general": student.indice_general},
+				"escuela": student.escuela.nombre, "municipio": student.escuela.municipio.nombre,
+				"provincia": student.escuela.municipio.provincia.nombre, "indice_general": student_escalafon_index(student)},
 			"available_plans": [{"id": plan.id, "carrera_nombre": plan.carrera.nombre, "carrera_codigo": plan.carrera.codigo,
 				"ces_nombre": plan.ces.nombre, "provincia_nombre": plan.provincia.nombre,
 				"cantidad_plazas": plan.cantidad_plazas, "otorgamiento_tipo": plan.otorgamiento_tipo, "sexo": plan.sexo}
 				for plan in plans],
-			"max_items": 10, "stage_active": settings.DEBUG or bool(stage and stage.estado == "en_curso"),
+			"max_items": 10,
+			"stage": {"numero": active_stage_number or (3 if stage and stage.estado == "en_curso" else None),
+				"active": stage_is_active,
+				"fecha_fin": stage.fecha_fin if stage else None,
+				"dias_restantes": max((stage.fecha_fin - timezone.localdate()).days, 0) if stage and stage.fecha_fin else None,
+				"permite_modificacion": allow_modification},
 		})
 
 	def post(self, request):
@@ -213,15 +238,27 @@ class StudentSolicitudView(APIView):
 		if error:
 			return error
 		process, stage = context
-		if not process or (not settings.DEBUG and (not stage or stage.estado != "en_curso")):
-			return Response({"detail": "La boleta no está disponible para edición."}, status=403)
+		active_stage = Etapa.objects.filter(estado="en_curso").order_by("id").first()
+		active_stage_number = next((number for number, name in ETAPAS_NOMBRES.items() if active_stage and name == active_stage.nombre), None)
+		can_submit = bool(stage and stage.estado == "en_curso") and active_stage_number == 3
+		if not process or not can_submit:
+			return Response({"detail": "La boleta no está disponible para edición. Solo puede modificarse durante la etapa 3."}, status=403)
 		ballot, _ = BoletaSolicitud.objects.get_or_create(estudiante=student, proceso=process)
 		if ballot.estado == "aprobada":
-			return Response({"detail": "La boleta aprobada requiere autorización del Jefe de Comisión para modificarse."}, status=409)
+			return Response({"detail": "La boleta ya fue aprobada; solicita una modificación desde la opción correspondiente."}, status=409)
+		is_modification = ballot.estado == "modificada"
+		if ballot.estado in {"por_enviar", "pendiente", "modificada"}:
+			ballot.estado = "modificada" if is_modification else "pendiente"
+		else:
+			return Response({"detail": "La boleta no está en un estado editable."}, status=400)
 		plan_ids = request.data.get("plan_plazas", [])
 		confirm = request.data.get("confirmar", False)
-		if not isinstance(plan_ids, list) or len(plan_ids) == 0 or len(plan_ids) > 10 or len(set(plan_ids)) != len(plan_ids):
-			return Response({"detail": "Debes seleccionar entre 1 y 10 carreras sin repetir."}, status=400)
+		try:
+			plan_ids = [int(plan_id) for plan_id in plan_ids]
+		except (TypeError, ValueError):
+			plan_ids = []
+		if len(plan_ids) != 10 or len(set(plan_ids)) != len(plan_ids):
+			return Response({"detail": "Debes seleccionar exactamente 10 carreras sin repetir."}, status=400)
 		plans = list(PlanPlaza.objects.filter(id__in=plan_ids, proceso=process, provincia_id=student.escuela.municipio.provincia_id))
 		if len(plans) != len(plan_ids):
 			return Response({"detail": "Una o más carreras no pertenecen al plan de plazas disponible."}, status=400)
@@ -233,10 +270,66 @@ class StudentSolicitudView(APIView):
 				BoletaSolicitudItem(boleta_solicitud=ballot, plan_plaza=next(plan for plan in plans if plan.id == plan_id), prioridad=priority)
 				for priority, plan_id in enumerate(plan_ids, start=1)
 			])
-			ballot.estado = "por_aprobar"
+			ballot.estado = "modificada" if is_modification else "pendiente"
 			ballot.fecha_enviada = timezone.localdate()
 			ballot.save(update_fields=["estado", "fecha_enviada"])
+		from apps.core.notifications import notify_users
+		if is_modification:
+			notify_users(
+				Usuario.objects.filter(rol="jefe_comision", provincia_id=student.escuela.municipio.provincia_id),
+				"Solicitud de modificación recibida",
+				f"El estudiante {student.nombre} {student.apellidos} envió una modificación de su boleta para revisión.",
+			)
+		else:
+			notify_users(
+				Usuario.objects.filter(rol="secretario_escuela", escuela=student.escuela),
+				"Boleta de solicitud enviada",
+				f"El estudiante {student.nombre} {student.apellidos} envió su boleta de solicitud para aprobación.",
+			)
 		return Response(BoletaSolicitudSerializer(ballot).data, status=201)
+
+
+class StudentSolicitudEditView(APIView):
+	permission_classes = [IsAuthenticated]
+
+	@transaction.atomic
+	def post(self, request):
+		student, context, error = current_solicitud_context(request)
+		if error:
+			return error
+		process, _ = context
+		ballot = BoletaSolicitud.objects.filter(estudiante=student, proceso=process).first() if process else None
+		active_stage = Etapa.objects.filter(estado="en_curso").order_by("id").first()
+		active_stage_number = next((number for number, name in ETAPAS_NOMBRES.items() if active_stage and name == active_stage.nombre), None)
+		if not ballot:
+			return Response({"detail": "No existe una boleta de solicitud para este estudiante."}, status=404)
+		if active_stage_number != 3:
+			return Response({"detail": "La solicitud de modificación solo está habilitada durante la etapa 3."}, status=403)
+		if ballot.estado == "modificada":
+			return Response({"detail": "Ya existe una solicitud de modificación pendiente de revisión."}, status=400)
+		if ballot.estado == "pendiente":
+			ballot.aprobada_por = None
+			ballot.fecha_aprobada = None
+			ballot.save(update_fields=["aprobada_por", "fecha_aprobada"])
+			return Response(BoletaSolicitudSerializer(ballot).data)
+		if ballot.estado not in {"por_enviar", "aprobada"}:
+			return Response({"detail": "La boleta no está en un estado editable."}, status=400)
+		if ballot.estado == "aprobada":
+			BoletaSolicitudItemAnterior.objects.filter(boleta_solicitud=ballot).delete()
+			BoletaSolicitudItemAnterior.objects.bulk_create([
+				BoletaSolicitudItemAnterior(
+					boleta_solicitud=ballot,
+					plan_plaza=item.plan_plaza,
+					prioridad=item.prioridad,
+				)
+				for item in ballot.boleta_solicitud.all()
+			])
+			ballot.estado = "modificada"
+			ballot.save(update_fields=["estado"])
+			return Response(BoletaSolicitudSerializer(ballot).data)
+		ballot.estado = "por_enviar"
+		ballot.save(update_fields=["estado"])
+		return Response(BoletaSolicitudSerializer(ballot).data)
 
 
 class StudentSolicitudPdfView(APIView):
@@ -251,13 +344,77 @@ class StudentSolicitudPdfView(APIView):
 		if not ballot:
 			return Response({"detail": "No existe una boleta de solicitud."}, status=404)
 		lines = ["BOLETA DE SOLICITUD", f"Nombre: {student.nombre} {student.apellidos}", f"CI: {student.ci}",
-			f"Escuela: {student.escuela.nombre}", f"Indice general: {student.indice_general or ''}", "", "Prioridad | Carrera"]
-		lines += [f"{item.prioridad} | {item.plan_plaza.carrera.nombre}" for item in ballot.boleta_solicitud.select_related("plan_plaza__carrera").order_by("prioridad")]
+			f"Escuela: {student.escuela.nombre}", f"Indice general: {student_escalafon_index(student) or ''}", "", "Prioridad | Carrera | CES | Provincia universidad"]
+		lines += [f"{item.prioridad} | {item.plan_plaza.carrera.nombre} | {item.plan_plaza.carrera.ces.nombre} | {item.plan_plaza.carrera.provincia.nombre}" for item in ballot.boleta_solicitud.select_related("plan_plaza__carrera__ces", "plan_plaza__carrera__provincia").order_by("prioridad")]
 		content = "BT /F1 11 Tf 40 800 Td " + " ".join(f"({line.replace('(', '[').replace(')', ']')}) Tj 0 -18 Td" for line in lines) + " ET"
 		objects = [b"1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj", b"2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj", b"3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 612 842]/Resources<</Font<</F1 4 0 R>>>>/Contents 5 0 R>>endobj", b"4 0 obj<</Type/Font/Subtype/Type1/BaseFont/Courier>>endobj", f"5 0 obj<</Length {len(content.encode())}>>stream\n{content}\nendstream endobj".encode()]
 		response = HttpResponse(b"%PDF-1.4\n" + b"\n".join(objects) + b"\ntrailer<</Root 1 0 R>>\n%%EOF", content_type="application/pdf")
 		response["Content-Disposition"] = 'attachment; filename="boleta-solicitud.pdf"'
 		return response
+
+
+class StudentExamConfirmationView(APIView):
+	permission_classes = [IsAuthenticated]
+
+	def _context(self, request):
+		if request.user.rol != "estudiante":
+			return None, None, Response({"detail": "Solo un estudiante puede gestionar las confirmaciones."}, status=403)
+		try:
+			student = request.user.estudiante
+		except Exception:
+			return None, None, Response({"detail": "El usuario no tiene un perfil de estudiante."}, status=400)
+		stage = Etapa.objects.filter(nombre=ETAPAS_NOMBRES[4]).first()
+		process = Proceso.get_for_stage_and_year(timezone.now().year, ETAPAS_NOMBRES[4])
+		return student, (process, stage), None
+
+	def get(self, request):
+		student, context, error = self._context(request)
+		if error:
+			return error
+		process, stage = context
+		if not process:
+			return Response({"detail": "No hay pruebas de ingreso disponibles para este año."}, status=404)
+		confirmations = ConfirmacionPrueba.objects.filter(
+			estudiante=student, proceso=process
+		).select_related("asignatura").order_by("fecha_prueba", "asignatura__nombre")
+		return Response({
+			"process_year": process.anio.year,
+			"stage": {"active": bool(stage and stage.estado == "en_curso"), "fecha_fin": stage.fecha_fin if stage else None},
+			"exams": [{
+				"id": confirmation.id,
+				"subject": confirmation.asignatura.nombre,
+				"date": confirmation.fecha_prueba,
+				"confirmed": confirmation.confirmada,
+				"status": "pending" if confirmation.confirmada is None else ("confirmed" if confirmation.confirmada else "absent"),
+			} for confirmation in confirmations],
+		})
+
+	@transaction.atomic
+	def post(self, request):
+		student, context, error = self._context(request)
+		if error:
+			return error
+		process, stage = context
+		if not process or not stage or stage.estado != "en_curso":
+			return Response({"detail": "La confirmación solo está disponible durante la etapa 4."}, status=403)
+		confirmation = ConfirmacionPrueba.objects.filter(
+			pk=request.data.get("id"), estudiante=student, proceso=process
+		).select_related("asignatura").first()
+		if not confirmation:
+			return Response({"detail": "No existe esa prueba para tu proceso."}, status=404)
+		if not isinstance(request.data.get("confirmada"), bool):
+			return Response({"detail": "Debes indicar si asistirás a la prueba."}, status=400)
+		was_confirmed = confirmation.confirmada
+		confirmation.confirmada = request.data["confirmada"]
+		confirmation.save(update_fields=["confirmada"])
+		if confirmation.confirmada is False and was_confirmed is not False:
+			from apps.core.notifications import notify_users
+			notify_users(
+				Usuario.objects.filter(rol="secretario_escuela", escuela=student.escuela),
+				"Estudiante no asistirá a una prueba",
+				f"El estudiante {student.nombre} {student.apellidos} indicó que no asistirá a {confirmation.asignatura.nombre} en el proceso {confirmation.proceso.anio.year}.",
+			)
+		return Response({"id": confirmation.id, "subject": confirmation.asignatura.nombre, "confirmed": confirmation.confirmada})
 
 
 class StudentDashboardView(APIView):
@@ -268,24 +425,27 @@ class StudentDashboardView(APIView):
 			return Response({"detail": "Solo un estudiante puede consultar este resumen."}, status=403)
 
 		student = request.user.estudiante
-		process = Proceso.get_for_stage_and_year(timezone.now().year, ETAPAS_NOMBRES[1])
+		escalafon_process = Proceso.get_for_stage_and_year(timezone.now().year, ETAPAS_NOMBRES[1])
+		interest_process = Proceso.get_for_stage_and_year(timezone.now().year, ETAPAS_NOMBRES[2])
 		current_entry = EscalafonItem.objects.filter(
 			estudiante__usuario=request.user,
-			escalafon__proceso=process,
-		).first() if process else None
+			escalafon__proceso=escalafon_process,
+		).first() if escalafon_process else None
 		school_entries = EscalafonItem.objects.filter(
 			escalafon__escuela=student.escuela,
-			escalafon__proceso=process,
-		).order_by("-indice_general", "estudiante__apellidos", "estudiante__nombre") if process else EscalafonItem.objects.none()
+			escalafon__proceso=escalafon_process,
+		).order_by("-indice_general", "estudiante__apellidos", "estudiante__nombre") if escalafon_process else EscalafonItem.objects.none()
 
 		position = next((index for index, entry in enumerate(school_entries, start=1) if entry.id == getattr(current_entry, "id", None)), None)
-		interest = student.boleta_interes.filter(proceso=process).first() if process else None
-		confirmations = ConfirmacionPrueba.objects.filter(estudiante=student, proceso=process) if process else ConfirmacionPrueba.objects.none()
+		interest = student.boleta_interes.filter(proceso=interest_process).first() if interest_process else None
+		confirmations_process = Proceso.get_for_stage_and_year(timezone.now().year, ETAPAS_NOMBRES[4])
+		confirmations = ConfirmacionPrueba.objects.filter(estudiante=student, proceso=confirmations_process) if confirmations_process else ConfirmacionPrueba.objects.none()
 		active_stage = Etapa.objects.filter(estado="en_curso").order_by("id").first()
 		stages = []
 		for number, name in ETAPAS_NOMBRES.items():
 			stage = Etapa.objects.filter(nombre=name).first()
-			stages.append({"numero": number, "nombre": name, "estado": stage.estado if stage else "no_iniciada"})
+			stages.append({"numero": number, "nombre": name, "estado": stage.estado if stage else "no_iniciada",
+				"fecha_inicio": stage.fecha_inicio if stage else None, "fecha_fin": stage.fecha_fin if stage else None})
 
 		notifications = Notificacion.objects.filter(usuario=request.user).order_by("-fecha")[:5]
 		return Response({

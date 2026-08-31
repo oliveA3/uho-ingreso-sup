@@ -61,7 +61,7 @@ export default function EstudianteHomePage() {
           ))}
         </div>
 
-        <div className="mt-6 grid gap-6 lg:grid-cols-2">
+        <div className="mt-6 grid gap-6 lg:grid-cols-1">
           <section className="min-w-0 rounded-3xl border border-slate-200 bg-slate-50 p-6">
             <h2 className="font-semibold text-slate-900">📈 Estado del Proceso</h2>
             <div className="mt-6 grid grid-cols-3 gap-3 sm:grid-cols-6">
@@ -74,23 +74,10 @@ export default function EstudianteHomePage() {
                         {completed ? "✓" : stage.numero}
                       </div>
                       <p className={`mt-2 text-xs ${active ? "font-semibold text-sky-700" : "text-slate-600"}`}>{stageLabels[stage.numero]}</p>
+                      <p className="mt-1 text-[10px] leading-tight text-slate-500">{stage.fecha_inicio ? formatDate(stage.fecha_inicio) : "Sin inicio"}<br />{stage.fecha_fin ? `al ${formatDate(stage.fecha_fin)}` : "Sin cierre"}</p>
                     </div>
                   );
                 })}
-            </div>
-          </section>
-
-          <section className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
-            <h2 className="font-semibold text-slate-900">🔔 Notificaciones</h2>
-            <div className="mt-3 space-y-2">
-              {!dashboard && <p className="text-xs text-slate-500">Cargando notificaciones...</p>}
-              {dashboard && !dashboard.notifications.length && <p className="text-xs text-slate-500">No tienes notificaciones nuevas.</p>}
-              {dashboard?.notifications.map((notification) => (
-                <div key={notification.id} className="border-b border-slate-200 pb-2 text-xs last:border-0 last:pb-0">
-                  <p className="font-semibold text-slate-800">{notification.mensaje}</p>
-                  <p className="mt-0.5 text-[11px] text-slate-500">{formatDate(notification.created_at?.slice(0, 10))}</p>
-                </div>
-              ))}
             </div>
           </section>
         </div>

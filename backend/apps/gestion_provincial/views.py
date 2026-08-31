@@ -2,15 +2,16 @@ from django.db.models import Count
 from django.db import transaction
 from django.conf import settings
 from django.utils import timezone
+from datetime import datetime, time
 from rest_framework import serializers, viewsets
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny
 
 from apps.authentication.models import Estudiante, Usuario
-from apps.gestion_personal.models import BoletaInteres, BoletaInteresItem
+from apps.gestion_personal.models import BoletaInteres, BoletaInteresItem, BoletaSolicitud, BoletaSolicitudItem, BoletaSolicitudItemAnterior, ConfirmacionPrueba
 from apps.gestion_personal.models import BoletaSolicitud
-from apps.superadmin.models import Carrera, Ces, Escuela, Municipio, Provincia
+from apps.superadmin.models import Asignatura, Carrera, Ces, Escuela, Municipio, Provincia
 
 
 def build_plan_plaza_landing_payload(request):
@@ -127,20 +128,63 @@ class ProvincialDashboardView(APIView):
             schools = Escuela.objects.all()
             representatives = Usuario.objects.filter(rol="ingreso_municipal")
             users = Usuario.objects.exclude(rol="estudiante")
-            students = Estudiante.objects.all()
-            interest_forms = BoletaInteres.objects.all()
+            escalafon_process = Proceso.get_for_stage_and_year(timezone.now().year, ETAPAS_NOMBRES[1])
+            interest_process = Proceso.get_for_stage_and_year(timezone.now().year, ETAPAS_NOMBRES[2])
+            students = Estudiante.objects.filter(escalafones__escalafon__proceso=escalafon_process).distinct() if escalafon_process else Estudiante.objects.none()
+            interest_forms = BoletaInteres.objects.filter(proceso=interest_process) if interest_process else BoletaInteres.objects.none()
         else:
             schools = Escuela.objects.filter(municipio__provincia_id=province_id)
             representatives = Usuario.objects.filter(rol="ingreso_municipal", municipio__provincia_id=province_id)
             users = Usuario.objects.filter(provincia_id=province_id).exclude(rol="estudiante")
-            students = Estudiante.objects.filter(escuela__municipio__provincia_id=province_id)
+            escalafon_process = Proceso.get_for_stage_and_year(timezone.now().year, ETAPAS_NOMBRES[1])
+            interest_process = Proceso.get_for_stage_and_year(timezone.now().year, ETAPAS_NOMBRES[2])
+            students = Estudiante.objects.filter(escuela__municipio__provincia_id=province_id, escalafones__escalafon__proceso=escalafon_process).distinct() if escalafon_process else Estudiante.objects.none()
             interest_forms = BoletaInteres.objects.filter(
-                estudiante__escuela__municipio__provincia_id=province_id
-            )
+                estudiante__escuela__municipio__provincia_id=province_id,
+                proceso=interest_process,
+            ) if interest_process else BoletaInteres.objects.none()
         active_stage = Etapa.objects.filter(estado="en_curso").order_by("id").first()
-        top_careers = BoletaInteresItem.objects.filter(
-            boleta_interes__in=interest_forms
-        ).values("carrera__nombre").annotate(total=Count("id")).order_by("-total", "carrera__nombre")[:5]
+        solicitud_process = Proceso.get_for_stage_and_year(timezone.now().year, ETAPAS_NOMBRES[3])
+        solicitud_forms = BoletaSolicitud.objects.filter(
+            proceso=solicitud_process,
+            estado__in={"por_aprobar", "aprobada"},
+        ) if solicitud_process else BoletaSolicitud.objects.none()
+        if province_id and not (request.user.is_superuser or request.user.rol == "superadmin"):
+            solicitud_forms = solicitud_forms.filter(estudiante__escuela__municipio__provincia_id=province_id)
+        top_careers = BoletaSolicitudItem.objects.filter(
+            boleta_solicitud__in=solicitud_forms
+        ).values("plan_plaza__carrera__nombre").annotate(total=Count("id")).order_by("-total", "plan_plaza__carrera__nombre")[:10]
+        using_solicitud = bool(active_stage and next((number for number, name in ETAPAS_NOMBRES.items() if name == active_stage.nombre), 0) >= 3)
+        progress_process = solicitud_process if using_solicitud else escalafon_process
+        progress_label = "Boletas de solicitud enviadas" if using_solicitud else "Escalafones enviados"
+        municipality_progress = {}
+        for municipality in municipalities:
+            municipality_schools = schools.filter(municipio_id=municipality.id)
+            total_schools = municipality_schools.count()
+            completed_schools = 0
+            for school in municipality_schools:
+                school_students = Estudiante.objects.filter(
+                    escalafones__escalafon__escuela=school,
+                    escalafones__escalafon__proceso=escalafon_process,
+                ).distinct() if escalafon_process else Estudiante.objects.none()
+                if not school_students.exists():
+                    continue
+                if using_solicitud:
+                    completed = not school_students.exclude(
+                        boleta_solicitud__proceso=progress_process,
+                        boleta_solicitud__estado__in={"por_aprobar", "aprobada"},
+                    ).exists()
+                else:
+                    completed = not school_students.exclude(
+                        escalafones__escalafon__proceso=progress_process,
+                        escalafones__escalafon__estado="enviado",
+                    ).exists()
+                completed_schools += int(completed)
+            municipality_progress[municipality.id] = {
+                "completed": completed_schools,
+                "total": total_schools,
+                "label": progress_label,
+            }
         return Response({
             "municipios": municipalities.count(),
             "municipios_activos": municipalities.filter(activo=True).count(),
@@ -154,8 +198,12 @@ class ProvincialDashboardView(APIView):
             "boletas_interes_enviadas": interest_forms.filter(enviada=True).count(),
             "boletas_interes_pendientes": interest_forms.filter(enviada=False).count(),
             "etapa_activa": ProvincialEtapaSerializer(active_stage).data if active_stage else None,
-            "top_carreras": list(top_careers),
-            "municipios_lista": ProvincialMunicipioSerializer(municipalities, many=True).data,
+            "top_carreras": [{"carrera__nombre": career["plan_plaza__carrera__nombre"], "total": career["total"]} for career in top_careers],
+            "municipios_lista": [
+                {**ProvincialMunicipioSerializer(municipality).data, **municipality_progress.get(municipality.id, {"completed": 0, "total": 0, "label": progress_label})}
+                for municipality in municipalities
+            ],
+            "avance": {"label": progress_label, "proceso": progress_process.anio if progress_process else None},
         })
 
 
@@ -275,16 +323,105 @@ class ProvincialProcesoViewSet(viewsets.GenericViewSet):
 class CommissionSolicitudAuthorizationView(APIView):
     permission_classes = [IsCommissionChief]
 
+    def get(self, request):
+        current_stage = Etapa.objects.filter(estado="en_curso").order_by("id").first()
+        if not current_stage or current_stage.nombre != ETAPAS_NOMBRES[3]:
+            return Response({"items": [], "metrics": {"total": 0, "pendientes": 0, "aprobadas": 0}})
+        user_province_id = getattr(request.user, "provincia_id", None)
+        year = timezone.now().year
+
+        approved_ballots = BoletaSolicitud.objects.filter(
+            estado="aprobada",
+            proceso__anio__year=year,
+            proceso__etapa__nombre=ETAPAS_NOMBRES[3],
+        )
+        if user_province_id:
+            approved_ballots = approved_ballots.filter(estudiante__escuela__municipio__provincia_id=user_province_id)
+
+        pending_ballots = BoletaSolicitud.objects.filter(
+            estado="modificada",
+            proceso__anio__year=year,
+            proceso__etapa__nombre=ETAPAS_NOMBRES[3],
+        )
+        if user_province_id:
+            pending_ballots = pending_ballots.filter(estudiante__escuela__municipio__provincia_id=user_province_id)
+
+        items = []
+        for ballot in pending_ballots.select_related("estudiante__escuela__municipio__provincia", "estudiante__usuario").prefetch_related("boleta_solicitud__plan_plaza__carrera"):
+            old_items = list(ballot.boleta_solicitud.order_by("prioridad"))
+            items.append({
+                "id": ballot.id,
+                "student": f"{ballot.estudiante.nombre} {ballot.estudiante.apellidos}",
+                "school": ballot.estudiante.escuela.nombre,
+                "municipio": ballot.estudiante.escuela.municipio.nombre,
+                "provincia": ballot.estudiante.escuela.municipio.provincia.nombre,
+                "date": ballot.fecha_enviada.strftime("%d/%m/%Y") if ballot.fecha_enviada else "-",
+                "estado": ballot.estado,
+                "items": [
+                    {
+                        "prioridad": item.prioridad,
+                        "carrera_nombre": item.plan_plaza.carrera.nombre,
+                        "ces_nombre": item.plan_plaza.ces.nombre,
+                    }
+                    for item in old_items
+                ],
+            })
+
+        return Response({
+            "items": items,
+            "metrics": {
+                "total": approved_ballots.count(),
+                "pendientes": len(items),
+                "aprobadas": approved_ballots.count(),
+            },
+        })
+
+    @transaction.atomic
     def post(self, request, ballot_id):
-        ballot = BoletaSolicitud.objects.filter(pk=ballot_id, estado="aprobada").first()
+        current_stage = Etapa.objects.filter(estado="en_curso").order_by("id").first()
+        if not current_stage or current_stage.nombre != ETAPAS_NOMBRES[3]:
+            return Response({"detail": "Las decisiones del Jefe de Comisión solo están disponibles durante la etapa 3."}, status=403)
+        action = request.data.get("action")
+        if action not in {"approve", "reject"}:
+            return Response({"detail": "Acción inválida."}, status=400)
+        ballot = BoletaSolicitud.objects.filter(pk=ballot_id, estado="modificada").first()
         if not ballot:
-            return Response({"detail": "No existe una boleta aprobada para autorizar."}, status=404)
-        ballot.estado = "por_enviar"
-        ballot.aprobada_por = None
-        ballot.fecha_aprobada = None
-        ballot.fecha_enviada = None
-        ballot.save(update_fields=["estado", "aprobada_por", "fecha_aprobada", "fecha_enviada"])
-        return Response({"detail": "La boleta fue autorizada para modificación."})
+            return Response({"detail": "No existe una solicitud de modificación pendiente para esta boleta."}, status=404)
+        if action == "approve":
+            ballot.estado = "aprobada"
+            ballot.aprobada_por = request.user.get_full_name() or request.user.username
+            ballot.fecha_aprobada = timezone.localdate()
+            ballot.save(update_fields=["estado", "aprobada_por", "fecha_aprobada"])
+            BoletaSolicitudItemAnterior.objects.filter(boleta_solicitud=ballot).delete()
+            from apps.core.notifications import notify_users
+            notify_users(
+                [Usuario.objects.filter(pk=ballot.estudiante.usuario_id).first()],
+                "Modificación de boleta aprobada",
+                f"El Jefe de Comisión aprobó tu solicitud de modificación de la boleta del proceso {ballot.proceso.anio.year}.",
+            )
+            return Response({"detail": "La modificación fue aprobada."})
+        previous_items = list(BoletaSolicitudItemAnterior.objects.filter(boleta_solicitud=ballot))
+        if not previous_items:
+            return Response({"detail": "No existe un respaldo de la boleta anterior para restaurarla."}, status=409)
+        ballot.boleta_solicitud.all().delete()
+        BoletaSolicitudItem.objects.bulk_create([
+            BoletaSolicitudItem(
+                boleta_solicitud=ballot,
+                plan_plaza=item.plan_plaza,
+                prioridad=item.prioridad,
+            )
+            for item in previous_items
+        ])
+        BoletaSolicitudItemAnterior.objects.filter(boleta_solicitud=ballot).delete()
+        ballot.estado = "aprobada"
+        ballot.save(update_fields=["estado"])
+        from apps.core.notifications import notify_users
+        notify_users(
+            [Usuario.objects.filter(pk=ballot.estudiante.usuario_id).first()],
+            "Modificación de boleta rechazada",
+            f"El Jefe de Comisión rechazó tu solicitud de modificación de la boleta del proceso {ballot.proceso.anio.year}. Se conservaron tus preferencias anteriores.",
+        )
+        return Response({"detail": "La modificación fue rechazada."})
 
 
 class ProvincialActivarEtapaView(APIView):
@@ -322,11 +459,52 @@ class ProvincialActivarEtapaView(APIView):
 
         etapa.fecha_inicio = serializer.validated_data["fecha_inicio"]
         etapa.fecha_fin = serializer.validated_data["fecha_fin"]
+        if stage_index == 3:
+            exam_dates = [serializer.validated_data.get(field) for field in ("fecha_matematica", "fecha_espanol", "fecha_historia")]
+            if any(date is None for date in exam_dates):
+                return Response({"detail": "Debes indicar las fechas de Matemática, Español e Historia."}, status=400)
+            if any(date < etapa.fecha_inicio or date > etapa.fecha_fin for date in exam_dates):
+                return Response({"detail": "Las fechas de los exámenes deben estar dentro de la etapa 4."}, status=400)
+            etapa.fecha_matematica, etapa.fecha_espanol, etapa.fecha_historia = exam_dates
         etapa.estado = 'en_curso'
         etapa.full_clean()
-        etapa.save(update_fields=["fecha_inicio", "fecha_fin", "estado"])
+        update_fields = ["fecha_inicio", "fecha_fin", "estado"]
+        if stage_index == 3:
+            update_fields.extend(["fecha_matematica", "fecha_espanol", "fecha_historia"])
+        etapa.save(update_fields=update_fields)
+        process, _ = Proceso.objects.get_or_create(
+            anio=timezone.localdate().replace(month=1, day=1),
+            etapa=etapa,
+        )
+        if stage_index == 3:
+            students = Estudiante.objects.filter(
+                escalafones__escalafon__proceso__anio__year=timezone.now().year,
+            ).distinct()
+            subjects = {
+                "Matemática": etapa.fecha_matematica,
+                "Español": etapa.fecha_espanol,
+                "Historia": etapa.fecha_historia,
+            }
+            for subject_name, exam_date in subjects.items():
+                subject = Asignatura.objects.filter(nombre__iexact=subject_name, activa=True).first()
+                if subject is None and subject_name == "Historia":
+                    subject = Asignatura.objects.filter(nombre__iexact="Historia de Cuba", activa=True).first()
+                if not subject:
+                    return Response({"detail": f"No existe la asignatura activa '{subject_name}'."}, status=400)
+                for student in students:
+                    ConfirmacionPrueba.objects.get_or_create(
+                        estudiante=student,
+                        proceso=process,
+                        asignatura=subject,
+                        defaults={"confirmada": None, "fecha_prueba": timezone.make_aware(datetime.combine(exam_date, time.min))},
+                    )
         from apps.core.notifications import notify_users
-        notify_users(Usuario.objects.all(), "Etapa activada", f"Se activó {etapa.nombre} desde {etapa.fecha_inicio} hasta {etapa.fecha_fin}.")
+        recipients = Usuario.objects.exclude(rol="superadmin").exclude(is_superuser=True)
+        notify_users(
+            recipients,
+            "Etapa activada",
+            f"Se activó {etapa.nombre} desde {etapa.fecha_inicio} hasta {etapa.fecha_fin}.",
+        )
         return Response(ProvincialEtapaSerializer(etapa).data)
 
 

@@ -60,15 +60,16 @@ export default function DashboardPage({ user }) {
       <div className="grid gap-6 lg:grid-cols-2">
         <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
           <div className="text-sm font-semibold text-slate-900">🗺️ Avance por Municipio</div>
+          <p className="mt-2 text-xs text-slate-500">{dashboard.avance?.label || "Avance del proceso actual"}</p>
           <div className="mt-5 space-y-4">
             {dashboard.municipios_lista.map((municipio) => (
-              <div key={municipio.name} className="space-y-2">
+              <div key={municipio.id} className="space-y-2">
                 <div className="flex items-center justify-between text-sm text-slate-700">
                   <span>{municipio.nombre}</span>
-                  <span>{municipio.escuelas_count} escuelas</span>
+                  <span>{municipio.completed}/{municipio.total} escuelas</span>
                 </div>
                 <div className="h-2 overflow-hidden rounded-full bg-slate-200">
-                  <div className="h-2 rounded-full bg-sky-600" style={{ width: `${Math.min(100, municipio.escuelas_count ? municipio.escuelas_count / Math.max(1, dashboard.escuelas) * 100 : 0)}%` }} />
+                  <div className="h-2 rounded-full bg-sky-600" style={{ width: `${municipio.total ? municipio.completed / municipio.total * 100 : 0}%` }} />
                 </div>
               </div>
             ))}
@@ -79,7 +80,7 @@ export default function DashboardPage({ user }) {
           <div className="text-sm font-semibold text-slate-900">🏆 Top Carreras Solicitadas</div>
           <div className="mt-5 space-y-4">
             {dashboard.top_carreras.map((career) => (
-              <div key={career.name} className="space-y-2">
+              <div key={career.carrera__nombre} className="space-y-2">
                 <div className="flex items-center justify-between text-sm text-slate-700">
                   <span>{career.carrera__nombre}</span>
                   <span>{career.total}</span>

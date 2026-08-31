@@ -7,6 +7,7 @@ import {
   removeStudentInterestCareer,
   reorderStudentInterestCareer,
   sendStudentInterest,
+  downloadStudentInterestPdf,
 } from "../../services/api";
 
 export default function EstudianteBoletaInteresPage() {
@@ -35,6 +36,20 @@ export default function EstudianteBoletaInteresPage() {
 
   const reopenBallot = () => update(editStudentInterest);
 
+  const download = async () => {
+    try {
+      const blob = await downloadStudentInterestPdf();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "boleta-interes.pdf";
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (requestError) {
+      setError(requestError.message);
+    }
+  };
+
   if (!ballot) {
     return <div className="rounded-3xl border border-slate-200 bg-white p-8 text-sm text-slate-600 shadow-sm">Cargando boleta de interés...</div>;
   }
@@ -50,6 +65,7 @@ export default function EstudianteBoletaInteresPage() {
         <p className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-700">Boleta de Interés</p>
         <h1 className="mt-2 text-3xl font-semibold text-slate-900">Carreras de interés</h1>
         <p className="mt-3 text-sm text-slate-600">Selecciona hasta 10 carreras en orden de prioridad para el proceso {new Date(ballot.proceso).getFullYear()}.</p>
+        <button type="button" onClick={download} disabled={!ballot.items.length} className="mt-4 rounded-2xl bg-sky-600 px-4 py-3 text-sm font-semibold text-white disabled:opacity-50">Descargar boleta PDF</button>
         {error && <FeedbackMessage type="error" className="mt-6 rounded-2xl">{error}</FeedbackMessage>}
         {message && <FeedbackMessage type="success" className="mt-6 rounded-2xl">{message}</FeedbackMessage>}
         <div className="mt-6 rounded-3xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900">

@@ -52,6 +52,7 @@ import SecretarioResultadosPage from "./pages/Secretario/ResultadosPage";
 import SecretarioOtorgamientosPage from "./pages/Secretario/OtorgamientosPage";
 import SecretarioNotificacionesPage from "./pages/Secretario/NotificacionesPage";
 import DirectorLayout from "./pages/Director/DirectorLayout";
+import DirectorDashboardPage from "./pages/Director/DashboardPage";
 import DirectorBoletaInteresPage from "./pages/Director/BoletaInteresPage";
 import DirectorBoletasSolicitudPage from "./pages/Director/BoletasSolicitudPage";
 import DirectorConfirmacionPruebasPage from "./pages/Director/ConfirmacionPruebasPage";
@@ -217,8 +218,8 @@ function AppContent() {
               <Route path="notificaciones" element={<SecretarioNotificacionesPage />} />
             </Route>
             <Route path="/director/*" element={<DirectorLayout user={user} onLogout={handleLogout} />}>
-              <Route index element={<Navigate to="boleta-interes" replace />} />
-              <Route path="dashboard" element={<Navigate to="boleta-interes" replace />} />
+              <Route index element={<Navigate to="dashboard" replace />} />
+              <Route path="dashboard" element={<DirectorDashboardPage user={user} />} />
               <Route path="sincuenta" element={<SecretarioSinCuentaPage />} />
               <Route path="boleta-interes" element={<StageOneGuard stageNumber={2} stageName="Boleta de Interés de Carrera" panelName="Boletas de Interés"><DirectorBoletaInteresPage user={user} /></StageOneGuard>} />
               <Route path="boletas-solicitud" element={<StageOneGuard stageNumber={3} stageName="Plan de plazas y boleta de solicitud" panelName="Estadísticas de Boletas"><DirectorBoletasSolicitudPage /></StageOneGuard>} />

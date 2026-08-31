@@ -48,6 +48,11 @@ export default function InterestMetricsView({ metrics, title, schoolName }) {
           <p className="mt-6 rounded-2xl bg-slate-50 p-5 text-sm text-slate-500">Aún no hay carreras solicitadas.</p>
         )}
       </section>
+
+      <section className="grid gap-6 lg:grid-cols-2">
+        <Distribution title="Distribución por sexo" items={metrics.sexo || []} />
+        <Distribution title="Tipo de otorgamiento" items={metrics.tipo_otorgamiento || []} />
+      </section>
     </div>
   );
 }
@@ -59,4 +64,9 @@ function Metric({ label, value, color }) {
       <p className={`mt-3 text-3xl font-semibold ${color}`}>{value}</p>
     </div>
   );
+}
+
+function Distribution({ title, items }) {
+  const total = items.reduce((sum, item) => sum + item.total, 0);
+  return <section className="rounded-3xl border border-slate-200 bg-white p-8"><h2 className="text-xl font-semibold text-slate-900">{title}</h2>{items.length ? <div className="mt-5 space-y-3">{items.map((item) => <div key={item.label} className="flex items-center justify-between rounded-2xl bg-slate-50 p-4"><span className="font-medium text-slate-700">{item.label}</span><span className="font-semibold text-slate-900">{item.total} <span className="text-xs font-normal text-slate-500">({total ? Math.round((item.total / total) * 100) : 0}%)</span></span></div>)}</div> : <p className="mt-5 rounded-2xl bg-slate-50 p-5 text-sm text-slate-500">Sin datos disponibles.</p>}</section>;
 }

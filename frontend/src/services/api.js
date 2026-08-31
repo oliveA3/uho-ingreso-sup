@@ -159,6 +159,11 @@ export async function fetchSchoolInterestMetrics() {
   return handleResponse(response);
 }
 
+export async function fetchSchoolDashboard() {
+  const response = await fetch(`${API_BASE}/gestion-escuela/dashboard/`, { credentials: "include" });
+  return handleResponse(response);
+}
+
 export async function fetchStudentInterest() {
   const response = await fetch(`${API_BASE}/gestion-personal/estudiante/boleta-interes/`, { credentials: "include" });
   return handleResponse(response);
@@ -449,14 +454,49 @@ export async function submitStudentSolicitud(planPlazas, confirmar = false) {
   return handleResponse(response);
 }
 
+export async function editStudentSolicitud() {
+  const csrf = await csrfHeaders();
+  const response = await fetch(`${API_BASE}/gestion-personal/estudiante/boleta-solicitud/editar/`, {
+    method: "POST", credentials: "include", headers: csrf,
+  });
+  return handleResponse(response);
+}
+
 export async function downloadStudentSolicitudPdf() {
-  const response = await fetch(`${API_BASE}/gestion-personal/estudiante/boleta-solicitud/pdf/`, { credentials: "include" });
+  const response = await fetch(`${API_BASE}/import-export/export/boleta-solicitud/`, { credentials: "include" });
   if (!response.ok) throw new Error("No se pudo descargar la boleta de solicitud.");
+  return response.blob();
+}
+
+export async function fetchStudentExamConfirmations() {
+  const response = await fetch(`${API_BASE}/gestion-personal/estudiante/confirmacion-pruebas/`, { credentials: "include" });
+  return handleResponse(response);
+}
+
+export async function updateStudentExamConfirmation(id, confirmed) {
+  const csrf = await csrfHeaders();
+  const response = await fetch(`${API_BASE}/gestion-personal/estudiante/confirmacion-pruebas/`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json", ...csrf },
+    body: JSON.stringify({ id, confirmada: confirmed }),
+  });
+  return handleResponse(response);
+}
+
+export async function downloadStudentInterestPdf() {
+  const response = await fetch(`${API_BASE}/import-export/export/boleta-interes/`, { credentials: "include" });
+  if (!response.ok) throw new Error("No se pudo descargar la boleta de interés.");
   return response.blob();
 }
 
 export async function fetchSchoolSolicitudes() {
   const response = await fetch(`${API_BASE}/gestion-escuela/boletas-solicitud/`, { credentials: "include" });
+  return handleResponse(response);
+}
+
+export async function fetchSchoolExamConfirmationMetrics() {
+  const response = await fetch(`${API_BASE}/gestion-escuela/confirmacion-pruebas/metricas/`, { credentials: "include" });
   return handleResponse(response);
 }
 
@@ -466,6 +506,12 @@ export async function approveSchoolSolicitud(id) {
     method: "POST", credentials: "include", headers: csrf,
   });
   return handleResponse(response);
+}
+
+export async function downloadSchoolSolicitudPdf(id) {
+  const response = await fetch(`${API_BASE}/import-export/export/boleta-solicitud/${id}/`, { credentials: "include" });
+  if (!response.ok) throw new Error("No se pudo descargar la boleta del estudiante.");
+  return response.blob();
 }
 
 export async function fetchRegistrationAvailability() {
@@ -589,6 +635,24 @@ export async function closeProvincialEtapa(id) {
     method: "POST",
     credentials: "include",
     headers: csrf,
+  });
+  return handleResponse(response);
+}
+
+export async function fetchCommissionPendingModifications() {
+  const response = await fetch(`${API_BASE}/gestion-provincial/boletas-solicitud/modificaciones/`, {
+    credentials: "include",
+  });
+  return handleResponse(response);
+}
+
+export async function resolveCommissionModification(ballotId, action, message = "") {
+  const csrf = await csrfHeaders();
+  const response = await fetch(`${API_BASE}/gestion-provincial/boletas-solicitud/${ballotId}/autorizar-modificacion/`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json", ...csrf },
+    body: JSON.stringify({ action, mensaje: message }),
   });
   return handleResponse(response);
 }

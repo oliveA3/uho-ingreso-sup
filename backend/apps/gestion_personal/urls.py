@@ -1,6 +1,6 @@
 from django.urls import path
 
-from .views import StudentDashboardView, StudentInterestEditView, StudentInterestItemView, StudentInterestSendView, StudentInterestView, StudentSolicitudPdfView, StudentSolicitudView
+from .views import StudentDashboardView, StudentExamConfirmationView, StudentInterestEditView, StudentInterestItemView, StudentInterestSendView, StudentInterestView, StudentSolicitudEditView, StudentSolicitudPdfView, StudentSolicitudView
 
 
 urlpatterns = [
@@ -11,5 +11,7 @@ urlpatterns = [
     path("estudiante/boleta-interes/enviar/", StudentInterestSendView.as_view(), name="student-interest-send"),
     path("estudiante/boleta-interes/editar/", StudentInterestEditView.as_view(), name="student-interest-edit"),
     path("estudiante/boleta-solicitud/", StudentSolicitudView.as_view(), name="student-solicitud"),
+    path("estudiante/boleta-solicitud/editar/", StudentSolicitudEditView.as_view(), name="student-solicitud-edit"),
     path("estudiante/boleta-solicitud/pdf/", StudentSolicitudPdfView.as_view(), name="student-solicitud-pdf"),
+    path("estudiante/confirmacion-pruebas/", StudentExamConfirmationView.as_view(), name="student-exam-confirmation"),
 ]

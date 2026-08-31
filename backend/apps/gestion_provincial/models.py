@@ -29,6 +29,9 @@ class Etapa(models.Model):
     )
     fecha_inicio = models.DateField(null=True, blank=True)
     fecha_fin = models.DateField(null=True, blank=True)
+    fecha_matematica = models.DateField(null=True, blank=True)
+    fecha_espanol = models.DateField(null=True, blank=True)
+    fecha_historia = models.DateField(null=True, blank=True)
     estado = models.CharField(max_length=20, choices=ESTADOS, default='no_iniciada')
 
     class Meta:

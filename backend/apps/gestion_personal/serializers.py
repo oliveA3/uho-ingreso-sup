@@ -43,5 +43,8 @@ class BoletaSolicitudSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = BoletaSolicitud
-        fields = ["id", "proceso", "estado", "fecha_enviada", "fecha_aprobada", "items"]
+        fields = [
+            "id", "proceso", "estado",
+            "fecha_enviada", "fecha_aprobada", "items",
+        ]
         read_only_fields = fields

@@ -29,6 +29,7 @@ function formatDates(stage) {
 export default function EtapasPage() {
   const [etapas, setEtapas] = useState([]);
   const [dates, setDates] = useState({ fecha_inicio: "", fecha_fin: "" });
+  const [examDates, setExamDates] = useState({ fecha_matematica: "", fecha_espanol: "", fecha_historia: "" });
   const [selectedStage, setSelectedStage] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -52,6 +53,7 @@ export default function EtapasPage() {
   function openActivation(stage) {
     setSelectedStage(stage);
     setDates({ fecha_inicio: "", fecha_fin: "" });
+    setExamDates({ fecha_matematica: "", fecha_espanol: "", fecha_historia: "" });
     setError("");
   }
 
@@ -61,9 +63,13 @@ export default function EtapasPage() {
       setError("La fecha de fin debe ser posterior o igual a la fecha de inicio.");
       return;
     }
+    if (selectedStage.numero === 4 && Object.values(examDates).some((date) => !date)) {
+      setError("Indica las fechas de Matemática, Español e Historia.");
+      return;
+    }
     setSaving(true);
     try {
-      await activateProvincialEtapa(selectedStage.id, dates);
+      await activateProvincialEtapa(selectedStage.id, { ...dates, ...(selectedStage.numero === 4 ? examDates : {}) });
       setSelectedStage(null);
       setNotice("Etapa activada correctamente.");
       await loadEtapas();
@@ -154,6 +160,7 @@ export default function EtapasPage() {
               <label className="text-sm font-medium text-slate-700">Fecha de inicio<input required type="date" value={dates.fecha_inicio} onChange={(event) => { setDates({ ...dates, fecha_inicio: event.target.value }); setError(""); }} className="mt-2 w-full rounded-xl border border-slate-300 px-3 py-2" /></label>
               <label className="text-sm font-medium text-slate-700">Fecha de fin<input required type="date" min={dates.fecha_inicio || undefined} value={dates.fecha_fin} onChange={(event) => { setDates({ ...dates, fecha_fin: event.target.value }); setError(""); }} className="mt-2 w-full rounded-xl border border-slate-300 px-3 py-2" /></label>
             </div>
+            {selectedStage.numero === 4 && <div className="mt-5 grid gap-4 sm:grid-cols-3"><label className="text-sm font-medium text-slate-700">Matemática<input required type="date" min={dates.fecha_inicio || undefined} max={dates.fecha_fin || undefined} value={examDates.fecha_matematica} onChange={(event) => { setExamDates({ ...examDates, fecha_matematica: event.target.value }); setError(""); }} className="mt-2 w-full rounded-xl border border-slate-300 px-3 py-2" /></label><label className="text-sm font-medium text-slate-700">Español<input required type="date" min={dates.fecha_inicio || undefined} max={dates.fecha_fin || undefined} value={examDates.fecha_espanol} onChange={(event) => { setExamDates({ ...examDates, fecha_espanol: event.target.value }); setError(""); }} className="mt-2 w-full rounded-xl border border-slate-300 px-3 py-2" /></label><label className="text-sm font-medium text-slate-700">Historia<input required type="date" min={dates.fecha_inicio || undefined} max={dates.fecha_fin || undefined} value={examDates.fecha_historia} onChange={(event) => { setExamDates({ ...examDates, fecha_historia: event.target.value }); setError(""); }} className="mt-2 w-full rounded-xl border border-slate-300 px-3 py-2" /></label></div>}
             <div className="mt-6 flex justify-end gap-3">
               <button type="button" onClick={() => setSelectedStage(null)} className="rounded-2xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700">Cancelar</button>
               <button type="submit" disabled={saving} className="rounded-2xl bg-sky-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{saving ? "Guardando..." : "Confirmar"}</button>

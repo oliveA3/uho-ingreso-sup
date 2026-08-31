@@ -35,8 +35,9 @@ class BoletaSolicitud(models.Model):
         Proceso, on_delete=models.PROTECT, related_name='boleta_solicitud')
 
     ESTADOS = [('por_enviar', 'Por enviar'),
-               ('por_aprobar', 'Por aprobar'),
-               ('aprobada', 'Aprobada')]
+               ('pendiente', 'Pendiente'),
+               ('aprobada', 'Aprobada'),
+               ('modificada', 'Modificada')]
     estado = models.CharField(max_length=100, choices=ESTADOS, default='por_enviar')
     fecha_enviada = models.DateField(null=True, blank=True)
     aprobada_por = models.CharField(max_length=150, null=True, blank=True)
@@ -68,13 +69,28 @@ class BoletaSolicitudItem(models.Model):
         ]
 
 
+class BoletaSolicitudItemAnterior(models.Model):
+    boleta_solicitud = models.ForeignKey(
+        BoletaSolicitud, on_delete=models.CASCADE, related_name="items_anteriores")
+    plan_plaza = models.ForeignKey(PlanPlaza, on_delete=models.PROTECT)
+    prioridad = models.PositiveSmallIntegerField()
+
+
 class ConfirmacionPrueba(models.Model):
     estudiante = models.ForeignKey(Estudiante, on_delete=models.CASCADE)
     proceso = models.ForeignKey(
         Proceso, on_delete=models.PROTECT, related_name='confirmacion_prueba')
     asignatura = models.ForeignKey(Asignatura, on_delete=models.PROTECT)
-    confirmada = models.BooleanField(null=True, blank=True)
+    confirmada = models.BooleanField(null=True, blank=True, default=None)
     fecha_prueba = models.DateTimeField()
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["estudiante", "proceso", "asignatura"],
+                name="unique_confirmacion_estudiante_proceso_asignatura",
+            ),
+        ]
 
 
 class ResultadoExamen(models.Model):

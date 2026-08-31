@@ -25,6 +25,79 @@ from django.core.mail import send_mail
 import io
 
 from openpyxl import Workbook, load_workbook
+from apps.gestion_personal.models import BoletaInteres, BoletaSolicitud
+
+
+def _ballot_pdf(title, student, items, career_getter):
+    escalafon_entry = EscalafonItem.objects.filter(
+        estudiante=student,
+        escalafon__proceso__anio__year=timezone.now().year,
+    ).order_by("-escalafon__proceso__anio", "-escalafon_id", "-id").first()
+    index = escalafon_entry.indice_general if escalafon_entry else student.indice_general
+    lines = [
+        title,
+        f"Nombre: {student.nombre} {student.apellidos}",
+        f"CI: {student.ci}",
+        f"Escuela: {student.escuela.nombre}",
+        f"Indice general: {index or ''}",
+        "",
+        "Prioridad | Carrera | CES | Provincia universidad",
+    ]
+    for item in items:
+        career = career_getter(item)
+        lines.append(f"{item.prioridad} | {career.nombre} | {career.ces.nombre} | {career.provincia.nombre}")
+    safe_lines = []
+    for line in lines:
+        normalized = unicodedata.normalize("NFKD", str(line))
+        safe_lines.append("".join(char for char in normalized if not unicodedata.combining(char)))
+    content = "BT /F1 10 Tf 40 800 Td " + " ".join(
+        f"({line.replace('\\', '\\\\').replace('(', '[').replace(')', ']')}) Tj 0 -16 Td" for line in safe_lines
+    ) + " ET"
+    objects = [
+        b"1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj",
+        b"2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj",
+        b"3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 612 842]/Resources<</Font<</F1 4 0 R>>>>/Contents 5 0 R>>endobj",
+        b"4 0 obj<</Type/Font/Subtype/Type1/BaseFont/Courier>>endobj",
+        f"5 0 obj<</Length {len(content.encode())}>>stream\n{content}\nendstream endobj".encode(),
+    ]
+    return b"%PDF-1.4\n" + b"\n".join(objects) + b"\ntrailer<</Root 1 0 R>>\n%%EOF"
+
+
+class StudentInterestPdfExportView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        if request.user.rol != "estudiante":
+            return Response({"detail": "Solo un estudiante puede descargar esta boleta."}, status=403)
+        student = getattr(request.user, "estudiante", None)
+        process = Proceso.get_for_stage_and_year(timezone.now().year, ETAPAS_NOMBRES[2])
+        ballot = BoletaInteres.objects.filter(estudiante=student, proceso=process).first() if student and process else None
+        if not ballot:
+            return Response({"detail": "No existe una boleta de interés."}, status=404)
+        items = ballot.boleta_interes.select_related("carrera__ces", "carrera__provincia").order_by("prioridad")
+        response = HttpResponse(_ballot_pdf("BOLETA DE INTERES", student, items, lambda item: item.carrera), content_type="application/pdf")
+        response["Content-Disposition"] = 'attachment; filename="boleta-interes.pdf"'
+        return response
+
+
+class SolicitudPdfExportView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, ballot_id=None):
+        student = getattr(request.user, "estudiante", None)
+        if request.user.rol == "estudiante":
+            process = Proceso.get_for_stage_and_year(timezone.now().year, ETAPAS_NOMBRES[3])
+            ballot = BoletaSolicitud.objects.filter(estudiante=student, proceso=process).select_related("estudiante__escuela").first() if student and process else None
+        elif request.user.rol in {"secretario_escuela", "director_escuela"} and request.user.escuela_id and ballot_id:
+            ballot = BoletaSolicitud.objects.filter(pk=ballot_id, estudiante__escuela_id=request.user.escuela_id).select_related("estudiante__escuela").first()
+        else:
+            return Response({"detail": "No tienes permiso para descargar esta boleta."}, status=403)
+        if not ballot:
+            return Response({"detail": "No existe la boleta de solicitud."}, status=404)
+        items = ballot.boleta_solicitud.select_related("plan_plaza__carrera__ces", "plan_plaza__carrera__provincia").order_by("prioridad")
+        response = HttpResponse(_ballot_pdf("BOLETA DE SOLICITUD", ballot.estudiante, items, lambda item: item.plan_plaza.carrera), content_type="application/pdf")
+        response["Content-Disposition"] = 'attachment; filename="boleta-solicitud.pdf"'
+        return response
 
 class ImportPlanPlazaView(APIView):
     permission_classes = [IsCareerManager]
@@ -326,7 +399,8 @@ def escalafon_stage_active():
 
 
 def visible_entries(request):
-    entries = EscalafonItem.objects.select_related("estudiante", "escalafon__escuela")
+    process = Proceso.get_for_stage_and_year(timezone.now().year, ETAPAS_NOMBRES[1])
+    entries = EscalafonItem.objects.select_related("estudiante", "escalafon__escuela").filter(escalafon__proceso=process) if process else EscalafonItem.objects.none()
     user = request.user
     if user.rol == "estudiante":
         return entries.filter(escalafon__escuela_id=user.escuela_id)
@@ -354,7 +428,7 @@ class ProvincialEscalafonSummaryView(APIView):
     def get(self, request):
         if request.user.rol not in {"jefe_comision", "secretario_escuela"} and not request.user.is_superuser and request.user.rol != "superadmin":
             return Response({"detail": "No tienes permiso para consultar este resumen."}, status=403)
-        process = Proceso.objects.filter(anio__year=timezone.now().year).order_by("-id").first()
+        process = Proceso.get_for_stage_and_year(timezone.now().year, ETAPAS_NOMBRES[1])
         schools = Escuela.objects.filter(municipio__provincia_id=request.user.provincia_id)
         if request.user.rol == "secretario_escuela":
             schools = Escuela.objects.filter(municipio__provincia_id=request.user.provincia_id)
@@ -400,7 +474,7 @@ class ProvincialEscalafonExportView(APIView):
     def get(self, request):
         if request.user.rol != "jefe_comision" and not request.user.is_superuser and request.user.rol != "superadmin":
             return Response({"detail": "Solo el Jefe de Comisión puede exportar este resumen."}, status=403)
-        process = Proceso.objects.filter(anio__year=timezone.now().year).order_by("-id").first()
+        process = Proceso.get_for_stage_and_year(timezone.now().year, ETAPAS_NOMBRES[1])
         entries = EscalafonItem.objects.filter(
             escalafon__proceso=process,
             escalafon__escuela__municipio__provincia_id=request.user.provincia_id,

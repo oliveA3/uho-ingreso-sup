@@ -39,5 +39,6 @@ urlpatterns = [
     path("etapas/reiniciar/", ProvincialReiniciarEtapasView.as_view(), name="provincial-etapas-reiniciar"),
     path("plan-plazas/", PlanPlazaViewSet.as_view({"get": "list", "post": "create"}), name="plan-plazas"),
     path("plan-plazas/<int:pk>/", PlanPlazaViewSet.as_view({"get": "retrieve", "patch": "partial_update", "delete": "destroy"}), name="plan-plaza-detail"),
+    path("boletas-solicitud/modificaciones/", CommissionSolicitudAuthorizationView.as_view(), name="solicitud-modifications"),
     path("boletas-solicitud/<int:ballot_id>/autorizar-modificacion/", CommissionSolicitudAuthorizationView.as_view(), name="solicitud-authorize-modification"),
 ]

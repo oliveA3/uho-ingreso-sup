@@ -4,6 +4,12 @@ git checkout develop
 git checkout -b feature/[name]
 git push origin feature/[name]
 
+### Rename branch
+
+git branch -m [old-branch-name] [new-branch-name]
+git push origin --delete [old-branch-name]
+git push -u origin [new-branch-name]
+
 ### Merge and delete used branch
 
 git checkout develop
