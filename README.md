@@ -93,5 +93,5 @@ El endpoint `POST /api/authentication/change-pending-email/` permite cambiar el 
 - [x] Módulo de boletas
 - [x] Módulo de confirmación de pruebas
 - [x] Módulo de resultados
-- [ ] Módulo de otorgamiento y corte
-- [ ] Módulo de reportes
+- [x] Módulo de otorgamiento y corte
+- [x] Módulo de reportes
