@@ -18,6 +18,7 @@ import IdentidadPage from "./pages/Superadmin/IdentidadPage";
 import AuditLogsPage from "./pages/JefeComision/LogsPage";
 import EstudianteLayout from "./pages/Estudiante/EstudianteLayout";
 import EstudianteHomePage from "./pages/Estudiante/HomePage";
+import EstudiantePerfilPage from "./pages/Estudiante/PerfilPage";
 import BoletaPage from "./pages/Estudiante/BoletaSolicitudPage";
 import EstudianteEscalafonPage from "./pages/Estudiante/EscalafonPage";
 import ResultadosPage from "./pages/Estudiante/ResultadosPage";
@@ -57,6 +58,7 @@ import DirectorBoletaInteresPage from "./pages/Director/BoletaInteresPage";
 import DirectorBoletasSolicitudPage from "./pages/Director/BoletasSolicitudPage";
 import DirectorConfirmacionPruebasPage from "./pages/Director/ConfirmacionPruebasPage";
 import DirectorOtorgamientosPage from "./pages/Director/OtorgamientosPage";
+import DirectorResultadosPage from "./pages/Director/ResultadosPage";
 
 function AppContent() {
   const [user, setUser] = useState(null);
@@ -117,6 +119,7 @@ function AppContent() {
           user={user}
           visualConfig={visualConfig}
           onLogout={handleLogout}
+          onViewPlan={() => window.dispatchEvent(new CustomEvent("open-plan-plazas"))}
         />
 
       <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900">
@@ -158,7 +161,7 @@ function AppContent() {
           )}
           <div className={`min-w-0 flex-1 pl-2 ${isMenuOpen ? "lg:pl-0" : "lg:pl-3"}`}>
             <Routes>
-            <Route path="/" element={<LandingPage />} />
+            <Route path="/" element={<LandingPage user={user} />} />
             <Route path="/login" element={<LoginPage onLogin={handleLogin} />} />
             <Route path="/registro" element={<RegisterPage />} />
             <Route path="/superadmin/*" element={<SuperAdminLayout user={user} onLogout={handleLogout} />}>
@@ -173,6 +176,7 @@ function AppContent() {
             </Route>
             <Route path="/estudiante/*" element={<EstudianteLayout user={user} onLogout={handleLogout} />}>
               <Route index element={<EstudianteHomePage user={user} />} />
+              <Route path="perfil" element={<EstudiantePerfilPage />} />
               <Route path="boleta" element={<StageOneGuard stageNumber={3} stageName="Plan de plazas y boleta de solicitud" panelName="Boleta de Solicitud"><BoletaPage /></StageOneGuard>} />
               <Route path="escalafon" element={<StageOneGuard panelName="Escalafón"><EstudianteEscalafonPage /></StageOneGuard>} />
               <Route path="boleta-interes" element={<StageOneGuard stageNumber={2} stageName="Boleta de Interés de Carrera" panelName="Boleta de Interés"><EstudianteBoletaInteresPage /></StageOneGuard>} />
@@ -225,7 +229,7 @@ function AppContent() {
               <Route path="boletas-solicitud" element={<StageOneGuard stageNumber={3} stageName="Plan de plazas y boleta de solicitud" panelName="Estadísticas de Boletas"><DirectorBoletasSolicitudPage /></StageOneGuard>} />
               <Route path="confirmacion-pruebas" element={<StageOneGuard stageNumber={4} stageName="Confirmación de las pruebas de ingreso" panelName="Estadísticas de Confirmación"><DirectorConfirmacionPruebasPage /></StageOneGuard>} />
               <Route path="otorgamientos" element={<StageOneGuard stageNumber={6} stageName="Otorgamiento de carreras" panelName="Otorgamientos"><DirectorOtorgamientosPage /></StageOneGuard>} />
-              <Route path="resultados" element={<div className="rounded-3xl border border-slate-200 bg-white p-8">Resultados</div>} />
+              <Route path="resultados" element={<StageOneGuard stageNumber={5} stageName="Publicación de resultados en las pruebas de ingreso" panelName="Resultados"><DirectorResultadosPage /></StageOneGuard>} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   downloadEscalafonTemplate,
   fetchEscalafon,
@@ -13,6 +13,7 @@ import EntityActionButton from "../../components/Buttons/EntityActionButton";
 import PrimaryButton from "../../components/Buttons/PrimaryButton";
 import SecondaryButton from "../../components/Buttons/SecondaryButton";
 import FeedbackMessage from "../../components/FeedbackMessage";
+import StageStatusNotice from "../../components/StageStatusNotice";
 
 const indexFields = ["indice_10", "indice_11", "indice_12", "indice_general"];
 
@@ -121,6 +122,10 @@ export default function SecretarioEscalafonPage() {
     return indexDifference || String(left.apellidos).localeCompare(String(right.apellidos));
   });
   const escalafonSent = entries[0]?.estado_escalafon === "enviado";
+  const showActions = stageActive && !escalafonSent;
+  const handleStageStatus = useCallback((status) => {
+    setStageActive(status === "en_curso");
+  }, []);
 
   async function load() {
     try {
@@ -234,7 +239,7 @@ export default function SecretarioEscalafonPage() {
     <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
       <header className="mb-4">
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-2xl font-semibold text-slate-900">Escalafón de la escuela</h1>
+          <h1 className="text-2xl font-semibold text-slate-900">Escalafón de la escuela {summary?.year ? `(${summary.year})` : ""}</h1>
           {entries.length > 0 && (
             <span className={`rounded-full px-3 py-1 text-xs font-semibold ${entries[0].estado_escalafon === "enviado" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
               {entries[0].estado_escalafon === "enviado" ? "Enviado" : "Pendiente"}
@@ -243,19 +248,22 @@ export default function SecretarioEscalafonPage() {
         </div>
         <p className="mt-1 text-sm text-slate-600">Importa, revisa y actualiza los datos antes de enviarlos a la Comisión.</p>
       </header>
+      
+      <StageStatusNotice stageNumber={1} onStatusChange={handleStageStatus} />
 
-      <div className="mb-5 grid gap-4 sm:grid-cols-3">
-        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5"><p className="text-sm text-slate-600">Escuelas que enviaron</p><p className="mt-2 text-3xl font-semibold text-slate-900">{summary?.escuelas_enviaron ?? "-"}</p></div>
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5"><p className="text-sm text-slate-600">Escuelas pendientes</p><p className="mt-2 text-3xl font-semibold text-slate-900">{summary?.escuelas_pendientes ?? "-"}</p></div>
+      <div className="my-5 grid gap-4 sm:grid-cols-3">
+        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5"><p className="text-sm text-slate-600">Aceptado</p><p className="mt-2 text-3xl font-semibold text-slate-900">{summary?.estudiantes_aceptaron ?? "-"}</p></div>
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5"><p className="text-sm text-slate-600">Pendientes</p><p className="mt-2 text-3xl font-semibold text-slate-900">{summary?.estudiantes_pendientes ?? "-"}</p></div>
         <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5"><p className="text-sm text-slate-600">Total estudiantes</p><p className="mt-2 text-3xl font-semibold text-slate-900">{summary?.total_estudiantes ?? "-"}</p></div>
       </div>
 
       <div className="mb-4 flex flex-wrap gap-2">
         <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden" disabled={!stageActive && !import.meta.env.DEV} onChange={handleImport} />
-        <PrimaryButton type="button" onClick={() => fileInputRef.current?.click()} disabled={!stageActive && !import.meta.env.DEV}>Importar Excel</PrimaryButton>
+        <PrimaryButton type="button" onClick={() => fileInputRef.current?.click()} disabled={!stageActive}>Importar Excel</PrimaryButton>
         <SecondaryButton onClick={exportExcel} disabled={!entries.length}>Exportar Excel</SecondaryButton>
-        <PrimaryButton type="button" onClick={sendToCommission} disabled={!entries.length || escalafonSent}>Enviar índices a la Comisión</PrimaryButton>
+        <PrimaryButton type="button" onClick={sendToCommission} disabled={!entries.length || !stageActive || escalafonSent}>Enviar índices a la Comisión</PrimaryButton>
       </div>
+
 
       {error && <FeedbackMessage type="error" className="mb-4 rounded-xl">{error}</FeedbackMessage>}
       {notice && <FeedbackMessage type="success" className="mb-4 rounded-xl">{notice}</FeedbackMessage>}
@@ -273,17 +281,17 @@ export default function SecretarioEscalafonPage() {
             <col className="w-[60px]" />
             <col className="w-[100px]" />
             <col className="w-[110px]" />
-            {!escalafonSent && <col className="w-[170px]" />}
+            {showActions && <col className="w-[170px]" />}
           </colgroup>
           <thead className="bg-[#24577f] text-left text-white">
             <tr>
               {["#", "CI", "Estudiante", "Sexo", "Dirección", "10mo", "11mo", "12mo", "Índice general", "Estado"].map((heading) => <th key={heading} className={`whitespace-nowrap px-2 py-2 ${heading === "#" || heading === "Estado" ? "text-center" : ""}`}>{heading}</th>)}
-              {!escalafonSent && <th className="w-[185px] whitespace-nowrap px-1 py-2">Acción</th>}
+              {showActions && <th className="w-[185px] whitespace-nowrap px-1 py-2">Acción</th>}
             </tr>
           </thead>
           <tbody className="bg-white">
-            {loading && <tr><td colSpan={escalafonSent ? 10 : 11} className="px-4 py-8 text-center text-slate-500">Cargando escalafón...</td></tr>}
-            {!loading && !orderedEntries.length && <tr><td colSpan={escalafonSent ? 10 : 11} className="px-2 py-8 text-center text-slate-500">No hay estudiantes cargados.</td></tr>}
+            {loading && <tr><td colSpan={showActions ? 11 : 10} className="px-4 py-8 text-center text-slate-500">Cargando escalafón...</td></tr>}
+            {!loading && !orderedEntries.length && <tr><td colSpan={showActions ? 11 : 10} className="px-2 py-8 text-center text-slate-500">No hay estudiantes cargados.</td></tr>}
             {!loading && orderedEntries.map((entry, index) => (
               <StudentRow
                 key={entry.id}
@@ -293,7 +301,7 @@ export default function SecretarioEscalafonPage() {
                 draft={draft}
                 stageActive={stageActive}
                 saving={saving}
-                showActions={!escalafonSent}
+                showActions={showActions}
                 onEdit={() => startEditing(entry)}
                 onComplaint={() => setComplaintEntry(entry)}
                 onChange={changeDraft}

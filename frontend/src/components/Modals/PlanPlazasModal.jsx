@@ -5,7 +5,7 @@ export default function PlanPlazasModal({ items = [], years = [], defaultProvinc
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("Todos");
   const [selectedYear, setSelectedYear] = useState(years[0] || new Date().getFullYear());
-  const [selectedProvince, setSelectedProvince] = useState(defaultProvince || "Todos");
+  const [selectedProvince, setSelectedProvince] = useState(defaultProvince === "Todas" ? "Todos" : (defaultProvince || "Todos"));
   const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
@@ -13,7 +13,8 @@ export default function PlanPlazasModal({ items = [], years = [], defaultProvinc
   }, [years, selectedYear]);
 
   useEffect(() => {
-    if (defaultProvince && defaultProvince !== "Todos") setSelectedProvince(defaultProvince);
+    if (defaultProvince === "Todas" || defaultProvince === "Todos") setSelectedProvince("Todos");
+    else if (defaultProvince) setSelectedProvince(defaultProvince);
   }, [defaultProvince]);
 
   const normalizedItems = useMemo(() =>

@@ -1,6 +1,6 @@
 export default function ProcessTimeline({ steps }) {
   return (
-    <section className="mb-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+    <section id="cronograma" className="mb-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
       <div className="mb-6 flex items-center justify-between gap-4">
         <div>
           <p className="text-sm font-semibold uppercase tracking-[0.24em] text-sky-600">Cronograma</p>

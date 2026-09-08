@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { downloadProvincialEscalafon, downloadSchoolEscalafon, fetchProvincialEscalafonSummary } from "../../services/api";
 import FeedbackMessage from "../../components/FeedbackMessage";
+import StageStatusNotice from "../../components/StageStatusNotice";
 
 const statusStyles = {
   Completo: "bg-emerald-100 text-emerald-700",
@@ -73,6 +74,8 @@ export default function EscalafonesPage() {
         </div>
 
         {error && <FeedbackMessage type="error" className="mt-5 rounded-2xl">{error}</FeedbackMessage>}
+
+        <StageStatusNotice stageNumber={1} />
 
         <div className="mt-6 grid gap-4 sm:grid-cols-3">
           <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5"><p className="text-sm text-slate-600">Escuelas enviaron</p><p className="mt-2 text-3xl font-semibold text-slate-900">{summary?.escuelas_enviaron ?? "-"}</p></div>

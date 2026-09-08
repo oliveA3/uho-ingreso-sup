@@ -17,18 +17,13 @@ from apps.superadmin.models import Asignatura, Carrera, Ces, Escuela, Municipio,
 def build_plan_plaza_landing_payload(request):
     active_stage = Etapa.objects.filter(estado='en_curso').order_by('id').first()
     plan_stage = Etapa.objects.filter(nombre=ETAPAS_NOMBRES[3]).first()
-    default_province = None
-
-    if request.user.is_authenticated and getattr(request.user, 'provincia_id', None):
-        default_province = request.user.provincia
-    if default_province is None:
-        default_province = Provincia.objects.filter(nombre__iexact='La Habana').first()
-
     if not plan_stage:
         return {
             'year': timezone.now().year,
-            'provincia_id': default_province.id if default_province else None,
-            'provincia_nombre': default_province.nombre if default_province else None,
+            'plan_year': None,
+            'provincia_id': None,
+            'provincia_nombre': 'Todas',
+            'ces': [],
             'items': [],
             'years': [],
             'active_stage': active_stage.id if active_stage else None,
@@ -54,9 +49,20 @@ def build_plan_plaza_landing_payload(request):
         .select_related('carrera', 'ces', 'provincia', 'proceso')
         .order_by('carrera__nombre')
     )
-
-    if default_province:
-        selected_items = [item for item in selected_items if item.provincia_id == default_province.id]
+    selected_plan = PlanPlaza.objects.filter(
+        proceso__etapa=plan_stage,
+        proceso__anio__year=selected_year,
+        carrera__activa=True,
+    )
+    ces_data = [
+        {
+            "id": ces.id,
+            "nombre": ces.nombre,
+            "carreras_count": selected_plan.filter(ces=ces).values("carrera_id").distinct().count(),
+            "plan_year": selected_year,
+        }
+        for ces in Ces.objects.filter(activa=True).order_by("nombre")
+    ]
 
     province_names = sorted({
         item.provincia.nombre for item in selected_items
@@ -64,8 +70,10 @@ def build_plan_plaza_landing_payload(request):
 
     return {
         'year': selected_year,
-        'provincia_id': default_province.id if default_province else None,
-        'provincia_nombre': default_province.nombre if default_province else None,
+        'plan_year': selected_year,
+        'provincia_id': None,
+        'provincia_nombre': 'Todas',
+        'ces': ces_data,
         'items': [
             {
                 'id': item.id,
@@ -151,10 +159,21 @@ class ProvincialDashboardView(APIView):
         ) if solicitud_process else BoletaSolicitud.objects.none()
         if province_id and not (request.user.is_superuser or request.user.rol == "superadmin"):
             solicitud_forms = solicitud_forms.filter(estudiante__escuela__municipio__provincia_id=province_id)
-        top_careers = BoletaSolicitudItem.objects.filter(
-            boleta_solicitud__in=solicitud_forms
-        ).values("plan_plaza__carrera__nombre").annotate(total=Count("id")).order_by("-total", "plan_plaza__carrera__nombre")[:10]
-        using_solicitud = bool(active_stage and next((number for number, name in ETAPAS_NOMBRES.items() if name == active_stage.nombre), 0) >= 3)
+        active_stage_number = next(
+            (number for number, name in ETAPAS_NOMBRES.items() if active_stage and name == active_stage.nombre),
+            None,
+        )
+        using_solicitud = active_stage_number is not None and active_stage_number >= 3
+        if using_solicitud:
+            top_careers = BoletaSolicitudItem.objects.filter(
+                boleta_solicitud__in=solicitud_forms
+            ).values("plan_plaza__carrera__nombre").annotate(total=Count("id")).order_by("-total", "plan_plaza__carrera__nombre")[:10]
+            top_career_name = "plan_plaza__carrera__nombre"
+        else:
+            top_careers = BoletaInteresItem.objects.filter(
+                boleta_interes__in=interest_forms.filter(enviada=True)
+            ).values("carrera__nombre").annotate(total=Count("id")).order_by("-total", "carrera__nombre")[:10]
+            top_career_name = "carrera__nombre"
         progress_process = solicitud_process if using_solicitud else escalafon_process
         progress_label = "Boletas de solicitud enviadas" if using_solicitud else "Escalafones enviados"
         municipality_progress = {}
@@ -198,7 +217,7 @@ class ProvincialDashboardView(APIView):
             "boletas_interes_enviadas": interest_forms.filter(enviada=True).count(),
             "boletas_interes_pendientes": interest_forms.filter(enviada=False).count(),
             "etapa_activa": ProvincialEtapaSerializer(active_stage).data if active_stage else None,
-            "top_carreras": [{"carrera__nombre": career["plan_plaza__carrera__nombre"], "total": career["total"]} for career in top_careers],
+            "top_carreras": [{"carrera__nombre": career[top_career_name], "total": career["total"]} for career in top_careers],
             "municipios_lista": [
                 {**ProvincialMunicipioSerializer(municipality).data, **municipality_progress.get(municipality.id, {"completed": 0, "total": 0, "label": progress_label})}
                 for municipality in municipalities
@@ -289,8 +308,8 @@ class PublicEtapasDisponibilidadView(APIView):
             previous_completed = etapa.estado == 'completada'
         payload = {
             "etapas": serialized,
-            "registro_estudiantil": settings.DEBUG or any(
-                etapa['numero'] in (1, 2) and etapa['estado'] == 'en_curso'
+            "registro_estudiantil": any(
+                etapa['numero'] == 1 and etapa['estado'] == 'en_curso'
                 for etapa in serialized
             ),
         }

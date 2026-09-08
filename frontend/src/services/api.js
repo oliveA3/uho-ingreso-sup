@@ -49,6 +49,7 @@ function formatApiError(body) {
   }
 
   const labels = {
+    non_field_errors: "",
     username: "Usuario",
     email: "Correo",
     password: "Contraseña",
@@ -63,10 +64,12 @@ function formatApiError(body) {
     if (field === "errors") return [];
     const values = Array.isArray(errors) ? errors : [errors];
     return values.map((error) => {
-      if (typeof error === "object" && error !== null) {
-        return `${labels[field] || field}: ${error.error || error.detail || JSON.stringify(error)}`;
-      }
-      return `${labels[field] || field}: ${error}`;
+      const label = labels[field] ?? field.replaceAll("_", " ");
+      const text = typeof error === "object" && error !== null
+        ? error.error || error.detail || error.message || "Revisa los datos indicados."
+        : String(error);
+      if (!label) return text;
+      return `${label.charAt(0).toUpperCase()}${label.slice(1)}: ${text}`;
     });
   });
   return messages.join(" ") || "Ocurrió un error en la comunicación con el servidor.";
@@ -103,6 +106,15 @@ export async function verifyEmail(payload) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "include",
+    body: JSON.stringify(payload),
+  });
+  return handleResponse(response);
+}
+
+export async function changePendingEmail(payload) {
+  const response = await fetch(`${API_BASE}/authentication/change-pending-email/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
   return handleResponse(response);
@@ -445,6 +457,22 @@ export async function fetchStudentSolicitud() {
   return handleResponse(response);
 }
 
+export async function fetchStudentProfile() {
+  const response = await fetch(`${API_BASE}/gestion-personal/estudiante/perfil/`, { credentials: "include" });
+  return handleResponse(response);
+}
+
+export async function updateStudentProfile(payload) {
+  const csrf = await csrfHeaders();
+  const response = await fetch(`${API_BASE}/gestion-personal/estudiante/perfil/`, {
+    method: "PATCH",
+    credentials: "include",
+    headers: { "Content-Type": "application/json", ...csrf },
+    body: JSON.stringify(payload),
+  });
+  return handleResponse(response);
+}
+
 export async function submitStudentSolicitud(planPlazas, confirmar = false) {
   const csrf = await csrfHeaders();
   const response = await fetch(`${API_BASE}/gestion-personal/estudiante/boleta-solicitud/`, {
@@ -471,6 +499,125 @@ export async function downloadStudentSolicitudPdf() {
 export async function fetchStudentExamConfirmations() {
   const response = await fetch(`${API_BASE}/gestion-personal/estudiante/confirmacion-pruebas/`, { credentials: "include" });
   return handleResponse(response);
+}
+
+export async function fetchStudentOtorgamiento(anio) {
+  const query = anio ? `?anio=${anio}` : "";
+  const response = await fetch(`${API_BASE}/gestion-personal/estudiante/otorgamiento/${query}`, { credentials: "include" });
+  return handleResponse(response);
+}
+
+export async function fetchResults(anio) {
+  const query = anio ? `?anio=${anio}` : "";
+  const response = await fetch(`${API_BASE}/import-export/resultados/${query}`, { credentials: "include" });
+  return handleResponse(response);
+}
+
+export async function fetchLandingResults(filters = {}) {
+  const params = new URLSearchParams(Object.entries(filters).filter(([, value]) => value));
+  const query = params.toString() ? `?${params.toString()}` : "";
+  const response = await fetch(`${API_BASE}/import-export/resultados/landing/${query}`, { credentials: "include" });
+  return handleResponse(response);
+}
+
+export async function fetchLandingOtorgamientos(filters = {}) {
+  const params = new URLSearchParams(Object.entries(filters).filter(([, value]) => value));
+  const query = params.toString() ? `?${params.toString()}` : "";
+  const response = await fetch(`${API_BASE}/import-export/otorgamiento/landing/${query}`, { credentials: "include" });
+  return handleResponse(response);
+}
+
+export async function fetchLandingCortes(filters = {}) {
+  const params = new URLSearchParams(Object.entries(filters).filter(([, value]) => value));
+  const query = params.toString() ? `?${params.toString()}` : "";
+  const response = await fetch(`${API_BASE}/import-export/cortes/landing/${query}`);
+  return handleResponse(response);
+}
+
+export async function submitStudentResultClaim(resultId, descripcion) {
+  const csrf = await csrfHeaders();
+  const response = await fetch(`${API_BASE}/import-export/resultados/${resultId}/reclamar/`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json", ...csrf },
+    body: JSON.stringify({ descripcion }),
+  });
+  return handleResponse(response);
+}
+
+export async function fetchResultClaims(anio) {
+  const query = anio ? `?anio=${anio}` : "";
+  const response = await fetch(`${API_BASE}/import-export/resultados/reclamaciones/${query}`, { credentials: "include" });
+  return handleResponse(response);
+}
+
+export async function updateResultClaim(claimId, estado, details = {}) {
+  const csrf = await csrfHeaders();
+  const response = await fetch(`${API_BASE}/import-export/resultados/reclamaciones/${claimId}/`, {
+    method: "PATCH",
+    credentials: "include",
+    headers: { "Content-Type": "application/json", ...csrf },
+    body: JSON.stringify({ estado, ...details }),
+  });
+  return handleResponse(response);
+}
+
+export async function importResults(file, anio, asignatura, fechaLimiteReclamo) {
+  const csrf = await csrfHeaders();
+  const form = new FormData();
+  form.append("file", file);
+  form.append("anio", String(anio));
+  form.append("asignatura", asignatura);
+  form.append("fecha_limite_reclamo", fechaLimiteReclamo);
+  const response = await fetch(`${API_BASE}/import-export/import/resultados/`, {
+    method: "POST", credentials: "include", headers: csrf, body: form,
+  });
+  return handleResponse(response);
+}
+
+async function importStageSixFile(path, file) {
+  const csrf = await csrfHeaders();
+  const form = new FormData();
+  form.append("file", file);
+  const response = await fetch(`${API_BASE}/import-export/${path}/`, {
+    method: "POST", credentials: "include", headers: csrf, body: form,
+  });
+  return handleResponse(response);
+}
+
+export function importOtorgamientos(file) {
+  return importStageSixFile("import/otorgamiento", file);
+}
+
+export function importCortesCarrera(file) {
+  return importStageSixFile("import/cortes-carrera", file);
+}
+
+export async function fetchOtorgamientoSummary(anio) {
+  const query = anio ? `?anio=${anio}` : "";
+  const response = await fetch(`${API_BASE}/import-export/otorgamiento/resumen/${query}`, { credentials: "include" });
+  return handleResponse(response);
+}
+
+export async function downloadStageSixExport(kind, anio) {
+  const query = anio ? `?anio=${anio}` : "";
+  const response = await fetch(`${API_BASE}/import-export/otorgamiento/exportar/${kind}/${query}`, { credentials: "include" });
+  if (!response.ok) throw new Error("No se pudo exportar la información.");
+  return response.blob();
+}
+
+export async function fetchSchoolOtorgamientos(anio) {
+  const query = anio ? `?anio=${anio}` : "";
+  const response = await fetch(`${API_BASE}/import-export/otorgamiento/escuela/${query}`, { credentials: "include" });
+  return handleResponse(response);
+}
+
+export async function downloadResultsExport(anio, asignatura) {
+  const params = new URLSearchParams({ anio: String(anio) });
+  if (asignatura) params.set("asignatura", asignatura);
+  const response = await fetch(`${API_BASE}/import-export/resultados/exportar/?${params.toString()}`, { credentials: "include" });
+  if (!response.ok) throw new Error("No se pudieron exportar los resultados.");
+  return response.blob();
 }
 
 export async function updateStudentExamConfirmation(id, confirmed) {

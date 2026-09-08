@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { fetchSuperAdminDashboard } from "../../services/api";
-import ActiveStageNotice from "../../components/ActiveStageNotice";
+import StageStatusNotice from "../../components/StageStatusNotice";
 import FeedbackMessage from "../../components/FeedbackMessage";
 
 export default function DashboardPage({ user }) {
@@ -34,7 +34,7 @@ export default function DashboardPage({ user }) {
         </div>
 
         {error && <FeedbackMessage type="error" className="mt-4 rounded-2xl">{error}</FeedbackMessage>}
-        <ActiveStageNotice />
+        <StageStatusNotice />
         <div className="mt-6 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
           {cards.map((stat) => (
             <div key={stat.label} className="rounded-3xl border border-slate-200 bg-slate-50 p-6">

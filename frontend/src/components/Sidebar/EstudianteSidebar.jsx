@@ -12,11 +12,12 @@ export default function EstudianteSidebar({ scope, onLogout, activeStageLabel })
         { label: "Confirmación de Pruebas", icon: "✏️", to: "/estudiante/confirmacion-pruebas" },
         { label: "Resultados", icon: "📊", to: "/estudiante/resultados" },
         { label: "Carrera Otorgada", icon: "🎓", to: "/estudiante/otorgamiento" },
-      ],
-    },
-    {
-      title: "Cuenta",
-      items: [
+    ],
+},
+{
+    title: "Cuenta",
+    items: [
+        { label: "Mi Perfil", icon: "👤", to: "/estudiante/perfil" },
         { label: "Cerrar Sesión", icon: "🚪", action: "logout" },
       ],
     },

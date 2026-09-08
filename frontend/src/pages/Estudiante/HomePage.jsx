@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { fetchStudentDashboard } from "../../services/api";
 import FeedbackMessage from "../../components/FeedbackMessage";
+import StageStatusNotice from "../../components/StageStatusNotice";
 
 const stageLabels = {
   1: "Escalafón",
@@ -29,6 +30,12 @@ export default function EstudianteHomePage() {
   const activeStage = dashboard?.active_stage;
   const stages = dashboard?.stages || [];
   const studentName = dashboard?.student?.nombre || "Estudiante";
+  const activeEarlyStage = stages.find(
+    (stage) => stage.estado === "en_curso" && stage.numero <= 3,
+  )?.numero;
+  const stageButtonClass = (stageNumber) => activeEarlyStage === stageNumber
+    ? "border-sky-600 bg-sky-600 text-white transition hover:bg-sky-700"
+    : "border-slate-300 bg-white text-slate-700 transition hover:bg-slate-50";
 
   return (
     <div className="space-y-6">
@@ -41,18 +48,14 @@ export default function EstudianteHomePage() {
         </header>
 
         {error && <FeedbackMessage type="error" className="mt-6 rounded-2xl">{error}</FeedbackMessage>}
-        {activeStage && (
-          <FeedbackMessage type="success" className="mt-6 rounded-2xl">
-            <strong>Etapa activa:</strong> {stageLabels[activeStage.numero] || activeStage.nombre} — Hasta el {formatDate(activeStage.fecha_fin)}.
-          </FeedbackMessage>
-        )}
+        <StageStatusNotice />
 
         <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {[
             [academic?.indice_general ?? "--", "Índice General", "text-sky-800"],
             [academic?.position ? `#${academic.position}` : "--", "Posición Escalafón", "text-emerald-700"],
             [`${dashboard?.interest_count ?? 0}/10`, "Carreras Seleccionadas", "text-orange-600"],
-            [activeStage?.numero === 4 ? `${dashboard?.confirmations_count ?? 0}` : "--", "Pruebas Confirmadas", "text-sky-800"],
+            [`${dashboard?.confirmations_count ?? 0}`, "Pruebas Confirmadas", "text-sky-800"],
           ].map(([value, label, color]) => (
             <div key={label} className="rounded-3xl border border-slate-200 bg-slate-50 p-6">
               <p className={`text-3xl font-semibold ${color}`}>{value}</p>
@@ -83,9 +86,9 @@ export default function EstudianteHomePage() {
         </div>
 
         <div className="mt-6 flex flex-wrap gap-3">
-          <Link to="boleta-interes" className="rounded-2xl bg-sky-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-sky-700">🎯 Completar Boleta de Interés</Link>
-          <Link to="escalafon" className="rounded-2xl border border-sky-600 px-4 py-3 text-sm font-semibold text-sky-700">📋 Ver Escalafón</Link>
-          <Link to="boleta" className="rounded-2xl border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-700">📝 Ver Boleta de Solicitud</Link>
+          <Link to="escalafon" className={`rounded-2xl border px-4 py-3 text-sm font-semibold ${stageButtonClass(1)}`}>📋 Ver Escalafón</Link>
+          <Link to="boleta-interes" className={`rounded-2xl border px-4 py-3 text-sm font-semibold ${stageButtonClass(2)}`}>🎯 Completar Boleta de Interés</Link>
+          <Link to="boleta" className={`rounded-2xl border px-4 py-3 text-sm font-semibold ${stageButtonClass(3)}`}>📝 Ver Boleta de Solicitud</Link>
         </div>
       </section>
     </div>

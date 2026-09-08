@@ -101,6 +101,14 @@ class ResultadoExamen(models.Model):
     nota = models.FloatField()
     fecha_limite_reclamo = models.DateField()
 
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["estudiante", "proceso", "asignatura"],
+                name="unique_resultado_estudiante_proceso_asignatura",
+            ),
+        ]
+
 
 class Reclamacion(models.Model):
     estudiante = models.ForeignKey(Estudiante, on_delete=models.CASCADE)

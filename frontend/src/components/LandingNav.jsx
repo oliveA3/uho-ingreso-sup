@@ -5,7 +5,6 @@ export default function LandingNav({ user, visualConfig, onLogout }) {
   return (
     <nav className="sticky top-0 z-40 bg-white/95 backdrop-blur-md shadow-sm border-b border-slate-200">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-3 py-3 sm:gap-3 sm:px-6 sm:py-5">
-        {/* Logo y título */}
         <div className="flex min-w-0 items-center gap-2 sm:gap-3">
           <Link to="/" style={{ color: "var(--brand-primary)" }} className="flex min-w-0 items-center gap-2 truncate text-base font-black tracking-tight sm:text-lg">
             {visualConfig?.logo_url ? <img src={visualConfig.logo_url} alt="Logo" className="h-8 w-8 object-contain" /> : "🎓"}
@@ -16,19 +15,18 @@ export default function LandingNav({ user, visualConfig, onLogout }) {
           </p>
         </div>
 
-        {/* Links de navegación */}
         <div className="hidden items-center gap-3 md:flex">
+          <a href="#cronograma" className="text-sm font-medium text-slate-600 transition hover:text-sky-700">
+            Cronograma
+          </a>
           <a href="#noticias" className="text-sm font-medium text-slate-600 transition hover:text-sky-700">
             Noticias
-          </a>
-          <a href="#plazas" className="text-sm font-medium text-slate-600 transition hover:text-sky-700">
-            Plan de Plazas
           </a>
           <a href="#cortes" className="text-sm font-medium text-slate-600 transition hover:text-sky-700">
             Índices Corte
           </a>
           <a href="#ofertas" className="text-sm font-medium text-slate-600 transition hover:text-sky-700">
-            Carreras
+            Universidades
           </a>
         </div>
 

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { fetchProvincialDashboard } from "../../services/api";
-import ActiveStageNotice from "../../components/ActiveStageNotice";
+import StageStatusNotice from "../../components/StageStatusNotice";
 
 export default function DashboardPage({ user }) {
   const [dashboard, setDashboard] = useState(null);
@@ -45,7 +45,7 @@ export default function DashboardPage({ user }) {
           </div>
         </div>
 
-        <ActiveStageNotice />
+        <StageStatusNotice />
 
         <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
           {stats.map((stat) => (

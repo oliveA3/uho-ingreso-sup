@@ -1,5 +1,7 @@
 import { useState } from "react";
 import BallotDetailModal from "../../../components/Modals/BallotDetailModal";
+import StageStatusNotice from "../../../components/StageStatusNotice";
+import BallotMetrics from "./BallotMetrics";
 
 const statusStyles = {
   pendiente: { label: "Pendiente", className: "bg-amber-100 text-amber-700" },
@@ -18,12 +20,14 @@ export default function SolicitudOverviewView({ data, title, canManage = false, 
       <p className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-700">Boletas de Solicitud</p>
       <h1 className="mt-2 text-3xl font-semibold text-slate-900">{title}</h1>
       <p className="mt-3 text-sm text-slate-600">Resumen actualizado de las boletas de tu escuela.</p>
-      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        <Metric label="Enviadas" value={metrics.enviadas ?? 0} color="text-sky-700" />
-        <Metric label="Pendientes por aprobar" value={metrics.pendientes_aprobar ?? metrics.pendientes ?? 0} color="text-amber-700" />
-        <Metric label="Pendientes por enviar" value={metrics.pendientes_enviar ?? 0} color="text-orange-700" />
-        <Metric label="Aprobadas" value={metrics.aprobadas ?? 0} color="text-emerald-700" />
-        <Metric label="Total boletas" value={metrics.total_boletas ?? 0} color="text-slate-900" />
+      <StageStatusNotice stageNumber={3} />
+      <div className="mt-6">
+        <BallotMetrics items={[
+          { label: "Enviadas", value: metrics.enviadas, color: "text-sky-700" },
+          { label: "Por aprobar", value: metrics.pendientes_aprobar ?? metrics.pendientes, color: "text-amber-700" },
+          { label: "Modificadas", value: metrics.modificadas, color: "text-orange-700" },
+          { label: "Aprobadas", value: metrics.aprobadas, color: "text-emerald-700" },
+        ]} />
       </div>
     </section>
     
@@ -44,10 +48,6 @@ export default function SolicitudOverviewView({ data, title, canManage = false, 
     </section>
 
   </div>;
-}
-
-function Metric({ label, value, color }) {
-  return <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5"><p className="text-sm uppercase tracking-[0.18em] text-slate-500">{label}</p><p className={`mt-3 text-3xl font-semibold ${color}`}>{value}</p></div>;
 }
 
 function Ranking({ items }) {

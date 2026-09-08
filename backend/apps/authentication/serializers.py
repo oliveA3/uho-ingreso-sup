@@ -7,6 +7,7 @@ from django.utils import timezone
 
 from apps.authentication.models import EmailVerificationCode, ROLES, Usuario, Estudiante
 from apps.gestion_escuela.models import EscalafonItem
+from apps.gestion_provincial.models import ETAPAS_NOMBRES
 from apps.superadmin.models import Escuela, Municipio, Provincia
 
 
@@ -158,15 +159,12 @@ class RegisterSerializer(serializers.Serializer):
         return value
 
     def validate_username(self, value):
-        if Usuario.objects.filter(username=value).exists():
+        if Usuario.objects.filter(username=value).exclude(is_active=False, email_verificado=False).exists():
             raise serializers.ValidationError(
                 "El nombre de usuario ya está en uso.")
         return value
 
     def validate_email(self, value):
-        if Usuario.objects.filter(email=value).exists():
-            raise serializers.ValidationError(
-                "Este correo ya está registrado.")
         return value
 
     def validate_escuela(self, value):
@@ -181,12 +179,22 @@ class RegisterSerializer(serializers.Serializer):
         entry = EscalafonItem.objects.filter(
             estudiante__ci=ci,
             estudiante__escuela=school,
+            escalafon__escuela=school,
             escalafon__proceso__anio__year=timezone.now().year,
+            escalafon__proceso__etapa__nombre=ETAPAS_NOMBRES[1],
         ).select_related("estudiante").first()
         if not entry:
             raise serializers.ValidationError(
                 "El CI y la escuela no aparecen en el escalafón del año actual."
             )
+        pending_user = Usuario.objects.filter(
+            username=attrs.get("username"), is_active=False, email_verificado=False
+        ).first()
+        email_owner = Usuario.objects.filter(email__iexact=attrs.get("email")).first()
+        if email_owner and email_owner != pending_user:
+            raise serializers.ValidationError("Este correo ya está registrado.")
+        if pending_user and pending_user.pending_student_id not in {None, entry.estudiante_id}:
+            raise serializers.ValidationError("Ese usuario tiene otro registro pendiente de verificación.")
         if entry.estudiante.usuario_id:
             raise serializers.ValidationError(
                 "Este estudiante ya tiene una cuenta registrada."
@@ -199,33 +207,35 @@ class RegisterSerializer(serializers.Serializer):
         escuela = validated_data["escuela"]
         estudiante = entry.estudiante
         with transaction.atomic():
-            user = Usuario.objects.create_user(
-                username=validated_data["username"],
-                email=validated_data["email"],
-                password=validated_data["password"],
-                first_name=estudiante.nombre,
-                last_name=estudiante.apellidos,
-                rol="estudiante",
-                escuela=escuela,
-                municipio=escuela.municipio,
-                provincia=escuela.municipio.provincia,
-            )
+            user = Usuario.objects.filter(
+                username=validated_data["username"], is_active=False, email_verificado=False
+            ).first()
+            if user:
+                user.email = validated_data["email"]
+                user.set_password(validated_data["password"])
+                user.first_name = estudiante.nombre
+                user.last_name = estudiante.apellidos
+                user.rol = "estudiante"
+                user.escuela = escuela
+                user.municipio = escuela.municipio
+                user.provincia = escuela.municipio.provincia
+            else:
+                user = Usuario.objects.create_user(
+                    username=validated_data["username"], email=validated_data["email"],
+                    password=validated_data["password"], first_name=estudiante.nombre,
+                    last_name=estudiante.apellidos, rol="estudiante", escuela=escuela,
+                    municipio=escuela.municipio, provincia=escuela.municipio.provincia,
+                )
             user.is_active = False
             user.email_verificado = False
-            user.save(update_fields=["is_active", "email_verificado"])
+            user.pending_student = estudiante
+            user.save(update_fields=["email", "password", "first_name", "last_name", "rol", "escuela", "municipio", "provincia", "is_active", "email_verificado", "pending_student"])
             code = f"{secrets.randbelow(1000000):06d}"
             EmailVerificationCode.objects.create(
                 user=user,
                 code=code,
                 expires_at=timezone.now() + timedelta(minutes=15),
             )
-            estudiante.usuario = user
-            estudiante.whatsapp = validated_data.get("whatsapp", "")
-            estudiante.tutor_nombre = validated_data.get("tutor_nombre", "")
-            estudiante.tutor_email = validated_data.get("tutor_email", "")
-            estudiante.tutor_telefono = validated_data.get("tutor_telefono", "")
-            estudiante.save(update_fields=["usuario", "whatsapp", "tutor_nombre", "tutor_email", "tutor_telefono"])
-
             send_mail(
                 subject="Código de verificación de IngresoSUP",
                 message=(

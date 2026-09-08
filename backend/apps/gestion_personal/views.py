@@ -9,10 +9,11 @@ from rest_framework.views import APIView
 from apps.core.models import Notificacion
 from apps.authentication.models import Usuario
 from apps.gestion_escuela.models import EscalafonItem
-from apps.gestion_provincial.models import ETAPAS_NOMBRES, Etapa, PlanPlaza, Proceso
+from apps.gestion_provincial.models import CorteCarrera, ETAPAS_NOMBRES, Etapa, PlanPlaza, Proceso
+from apps.gestion_provincial.models import Otorgamiento
 from apps.superadmin.models import Carrera
 from .models import BoletaInteres, BoletaInteresItem, BoletaSolicitud, BoletaSolicitudItem, BoletaSolicitudItemAnterior, ConfirmacionPrueba
-from .serializers import AddBoletaInteresItemSerializer, BoletaInteresItemSerializer, BoletaSolicitudSerializer
+from .serializers import AddBoletaInteresItemSerializer, BoletaInteresItemSerializer, BoletaSolicitudSerializer, StudentProfileSerializer
 
 
 def current_interest_context(request):
@@ -28,6 +29,30 @@ def current_interest_context(request):
 		stage.estado = "completada"
 		stage.save(update_fields=["estado"])
 	return student, (process, stage), None
+
+
+class StudentProfileView(APIView):
+	permission_classes = [IsAuthenticated]
+
+	def get(self, request):
+		if request.user.rol != "estudiante":
+			return Response({"detail": "Solo un estudiante puede consultar este perfil."}, status=403)
+		try:
+			student = request.user.estudiante
+		except Exception:
+			return Response({"detail": "El usuario no tiene un perfil de estudiante."}, status=400)
+		return Response(StudentProfileSerializer(student).data)
+
+	def patch(self, request):
+		if request.user.rol != "estudiante":
+			return Response({"detail": "Solo un estudiante puede editar este perfil."}, status=403)
+		try:
+			student = request.user.estudiante
+		except Exception:
+			return Response({"detail": "El usuario no tiene un perfil de estudiante."}, status=400)
+		serializer = StudentProfileSerializer(student, data=request.data, partial=True)
+		serializer.is_valid(raise_exception=True)
+		return Response(StudentProfileSerializer(serializer.save()).data)
 
 
 class StudentInterestView(APIView):
@@ -475,6 +500,63 @@ class StudentDashboardView(APIView):
 				{"id": notification.id, "titulo": notification.titulo, "contenido": notification.contenido, "fecha": notification.fecha}
 				for notification in notifications
 			],
+		})
+
+
+class StudentOtorgamientoView(APIView):
+	permission_classes = [IsAuthenticated]
+
+	def get(self, request):
+		if request.user.rol != "estudiante":
+			return Response({"detail": "Solo un estudiante puede consultar su otorgamiento."}, status=403)
+		student = getattr(request.user, "estudiante", None)
+		if not student:
+			return Response({"detail": "El usuario no tiene un perfil de estudiante."}, status=400)
+		try:
+			year = int(request.query_params.get("anio", timezone.now().year))
+		except (TypeError, ValueError):
+			return Response({"detail": "El año indicado no es válido."}, status=400)
+		process = Proceso.get_for_stage_and_year(year, ETAPAS_NOMBRES[6])
+		award = Otorgamiento.objects.filter(
+			proceso=process,
+			estudiante=student,
+		).select_related("carrera__ces") .first() if process else None
+		entry = EscalafonItem.objects.filter(
+			estudiante=student,
+			escalafon__proceso__anio__year=year,
+		).order_by("-id").first()
+		cut = CorteCarrera.objects.filter(
+			proceso=process,
+			carrera=award.carrera,
+		).first() if process and award else None
+		first_choice = BoletaSolicitudItem.objects.filter(
+			boleta_solicitud__estudiante=student,
+			boleta_solicitud__proceso__anio__year=year,
+			prioridad=1,
+		).select_related("plan_plaza__carrera").first()
+		first_choice_cut = CorteCarrera.objects.filter(
+			proceso=process,
+			carrera=first_choice.plan_plaza.carrera,
+		).first() if process and first_choice else None
+		awarded_choice = BoletaSolicitudItem.objects.filter(
+			boleta_solicitud__estudiante=student,
+			boleta_solicitud__proceso__anio__year=year,
+			plan_plaza__carrera=award.carrera,
+		).first() if process and award else None
+		return Response({
+			"year": year,
+			"published": bool(award),
+			"award": {
+				"career": award.carrera.nombre,
+				"career_code": award.carrera.codigo,
+				"ces": award.carrera.ces.nombre,
+				"award_index": award.indice_otorgamiento,
+				"general_index": entry.indice_general if entry else None,
+				"cut_index": cut.indice_corte if cut else None,
+				"first_choice": first_choice.plan_plaza.carrera.nombre if first_choice else None,
+				"first_choice_cut_index": first_choice_cut.indice_corte if first_choice_cut else None,
+				"awarded_priority": awarded_choice.prioridad if awarded_choice else None,
+			} if award else None,
 		})
 
 # Create your views here.

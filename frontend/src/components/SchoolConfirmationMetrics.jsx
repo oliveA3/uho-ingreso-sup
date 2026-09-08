@@ -1,6 +1,7 @@
 import { useState } from "react";
 import ConfirmedStudentsModal from "./Modals/ConfirmedStudentsModal";
 import EntityActionButton from "./Buttons/EntityActionButton";
+import StageStatusNotice from "./StageStatusNotice";
 
 export default function SchoolConfirmationMetrics({ data, title }) {
   const [selectedSubject, setSelectedSubject] = useState(null);
@@ -11,6 +12,7 @@ export default function SchoolConfirmationMetrics({ data, title }) {
       <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
         <h1 className="text-3xl font-semibold text-slate-900">{title}</h1>
         <p className="mt-2 text-sm text-slate-600">Estado de las pruebas de ingreso de tu escuela en {data.year}.</p>
+        <StageStatusNotice stageNumber={4} />
         <div className="mt-6 grid gap-4 sm:grid-cols-3">
           {subjects.map((subject) => (
             <div key={subject.name} className="rounded-3xl border border-slate-200 bg-slate-50 p-5">

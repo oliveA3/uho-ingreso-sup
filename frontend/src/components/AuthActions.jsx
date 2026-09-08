@@ -3,17 +3,11 @@ import { Link } from "react-router-dom";
 import { fetchRegistrationAvailability } from "../services/api";
 import PrimaryButton from "./Buttons/PrimaryButton";
 
-const allStagesActive = import.meta.env.VITE_ALL_STAGES_ACTIVE === "true";
-
 export default function AuthActions({ user, onLogout }) {
   const [registrationOpen, setRegistrationOpen] = useState(false);
 
   useEffect(() => {
     if (user) return;
-    if (allStagesActive) {
-      setRegistrationOpen(true);
-      return;
-    }
     fetchRegistrationAvailability()
       .then((data) => setRegistrationOpen(data.registro_estudiantil))
       .catch(() => setRegistrationOpen(false));

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import FeedbackMessage from "../../components/FeedbackMessage";
+import StageStatusNotice from "../../components/StageStatusNotice";
 import { downloadStudentSolicitudPdf, editStudentSolicitud, fetchStudentSolicitud, submitStudentSolicitud } from "../../services/api";
 
 const statusStyles = {
@@ -113,10 +114,10 @@ export default function BoletaPage() {
         </div>
         {error && <FeedbackMessage type="error" className="mt-6 rounded-2xl">{error}</FeedbackMessage>}
         {message && <FeedbackMessage type="success" className="mt-6 rounded-2xl">{message}</FeedbackMessage>}
+        <StageStatusNotice stageNumber={3} />
         <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {[{ label: "Nombre", value: `${student.nombre} ${student.apellidos}` }, { label: "CI", value: student.ci || "-" }, { label: "Escuela", value: student.escuela || "-" }, { label: "Municipio", value: student.municipio || "-" }, { label: "Provincia", value: student.provincia || "-" }, { label: "Índice general", value: student.indice_general ?? "-" }].map((item) => <div key={item.label} className="rounded-3xl border border-slate-200 bg-slate-50 p-5"><p className="text-xs uppercase tracking-[0.2em] text-slate-500">{item.label}</p><p className="mt-2 text-sm font-semibold text-slate-900">{item.value}</p></div>)}
         </div>
-        <div className="mt-6 rounded-3xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900">{stage.active ? <><strong>{stage.dias_restantes ?? "-"} días restantes.</strong> Puedes editar hasta el {stage.fecha_fin ? new Date(`${stage.fecha_fin}T00:00:00`).toLocaleDateString("es-CU") : "la fecha límite"}.</> : "La etapa de solicitud no está activa."}</div>
         <div className="mt-6 rounded-3xl border border-slate-200 bg-slate-50 p-6 text-sm text-slate-700">
           <div className="flex flex-col gap-3 sm:flex-row"><select value={selectedPlan} onChange={(event) => setSelectedPlan(event.target.value)} disabled={!editing || selected.length === 10} className="min-w-0 flex-1 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900"><option value="">Selecciona una plaza de tu provincia</option>{plansToAdd.map((plan) => <option key={plan.id} value={plan.id}>{plan.carrera_nombre} · {plan.ces_nombre}</option>)}</select><button type="button" onClick={addPlan} disabled={!selectedPlan || !editing} className="rounded-2xl bg-sky-600 px-4 py-2 font-semibold text-white disabled:opacity-50">+ Agregar</button></div>
           <p className="mt-4 text-xs text-slate-500">Carreras seleccionadas: {selected.length}/10 · Catálogo provincial: {available.length}</p>

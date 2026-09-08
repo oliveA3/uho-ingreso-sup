@@ -3,6 +3,7 @@ import FeedbackMessage from "../../components/FeedbackMessage";
 import BallotDetailModal from "../../components/Modals/BallotDetailModal";
 import EntityActionButton from "../../components/Buttons/EntityActionButton";
 import SecondaryButton from "../../components/Buttons/SecondaryButton";
+import StageStatusNotice from "../../components/StageStatusNotice";
 import { fetchCommissionPendingModifications, resolveCommissionModification } from "../../services/api";
 
 export default function SolicitudesPage() {
@@ -11,6 +12,8 @@ export default function SolicitudesPage() {
   const [message, setMessage] = useState(null);
   const [processingId, setProcessingId] = useState(null);
   const [selectedBallot, setSelectedBallot] = useState(null);
+  const [stageStatus, setStageStatus] = useState(null);
+  const stageFinished = stageStatus === "completada";
 
   const loadData = async () => {
     try {
@@ -49,6 +52,7 @@ export default function SolicitudesPage() {
           <h1 className="mt-2 text-3xl font-semibold text-slate-900">Estado de boletas y modificaciones</h1>
         </div>
 
+        <StageStatusNotice stageNumber={3} onStatusChange={setStageStatus} />
         <div className="mt-6 grid gap-4 sm:grid-cols-3">
           <div className="rounded-3xl border border-slate-200 bg-emerald-50 p-6 text-center">
             <p className="text-sm text-slate-600">Aprobadas</p>
@@ -81,7 +85,7 @@ export default function SolicitudesPage() {
                 <th className="border-b border-slate-200 px-4 py-3">Escuela</th>
                 <th className="border-b border-slate-200 px-4 py-3">Municipio</th>
                 <th className="border-b border-slate-200 px-4 py-3">Solicitado</th>
-                <th className="border-b border-slate-200 px-4 py-3">Acción</th>
+                {!stageFinished && <th className="border-b border-slate-200 px-4 py-3">Acción</th>}
               </tr>
             </thead>
             <tbody>
@@ -91,7 +95,7 @@ export default function SolicitudesPage() {
                   <td className="px-4 py-3 text-slate-700">{mod.school}</td>
                   <td className="px-4 py-3 text-slate-700">{mod.municipio}</td>
                   <td className="px-4 py-3 text-slate-700">{mod.date}</td>
-                  <td className="px-4 py-3 text-slate-700">
+                  {!stageFinished && <td className="px-4 py-3 text-slate-700">
                     <div className="flex flex-wrap gap-2">
                       <SecondaryButton onClick={() => setSelectedBallot(mod)}>Ver boleta</SecondaryButton>
                       <EntityActionButton
@@ -109,11 +113,11 @@ export default function SolicitudesPage() {
                         Rechazar
                       </EntityActionButton>
                     </div>
-                  </td>
+                  </td>}
                 </tr>
               )) : (
                 <tr>
-                  <td colSpan="5" className="px-4 py-10 text-center text-sm text-slate-500">No hay modificaciones pendientes.</td>
+                  <td colSpan={stageFinished ? 4 : 5} className="px-4 py-10 text-center text-sm text-slate-500">No hay modificaciones pendientes.</td>
                 </tr>
               )}
             </tbody>

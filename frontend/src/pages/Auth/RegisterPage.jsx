@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { fetchRegistrationAvailability, register, verifyEmail } from "../../services/api";
+import { changePendingEmail, fetchRegistrationAvailability, register, verifyEmail } from "../../services/api";
 import axios from "axios";
 import FeedbackMessage from "../../components/FeedbackMessage";
 
@@ -9,12 +9,9 @@ export default function RegisterPage() {
         username: "",
         ci: "",
         email: "",
+        whatsapp: "",
         password: "",
         confirmPassword: "",
-        whatsapp: "",
-        tutor_nombre: "",
-        tutor_email: "",
-        tutor_telefono: "",
     });
 
     const [provincias, setProvincias] = useState([]);
@@ -29,6 +26,10 @@ export default function RegisterPage() {
     const [registrationOpen, setRegistrationOpen] = useState(null);
     const [verificationCode, setVerificationCode] = useState("");
     const [pendingVerification, setPendingVerification] = useState(false);
+    const [editingPendingEmail, setEditingPendingEmail] = useState(false);
+    const [changingPendingEmail, setChangingPendingEmail] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -102,9 +103,6 @@ export default function RegisterPage() {
                 username: form.username,
                 password: form.password,
                 whatsapp: form.whatsapp,
-                tutor_nombre: form.tutor_nombre,
-                tutor_email: form.tutor_email,
-                tutor_telefono: form.tutor_telefono,
                 escuela: Number(escuelaId),
             });
             setPendingVerification(true);
@@ -123,6 +121,22 @@ export default function RegisterPage() {
             setTimeout(() => navigate("/login"), 1200);
         } catch (err) {
             setError(err.message || "No se pudo verificar el correo.");
+        }
+    };
+
+    const handlePendingEmailChange = async () => {
+        setError(null);
+        setSuccess(null);
+        setChangingPendingEmail(true);
+        try {
+            await changePendingEmail({ username: form.username, email: form.email });
+            setVerificationCode("");
+            setEditingPendingEmail(false);
+            setSuccess("Correo actualizado. Te enviamos un nuevo código de verificación.");
+        } catch (err) {
+            setError(err.message || "No se pudo actualizar el correo.");
+        } finally {
+            setChangingPendingEmail(false);
         }
     };
 
@@ -148,14 +162,27 @@ export default function RegisterPage() {
             <p className="mt-2 text-sm text-slate-600">
                 Solo estudiantes de 12grado pueden registrarse.
             </p>
-            {registrationDisabled && <FeedbackMessage type="warning" className="mt-6 rounded-2xl">El registro estudiantil estará disponible durante la Etapa 1 o la Etapa 2 del proceso de ingreso.</FeedbackMessage>}
+            {registrationDisabled && <FeedbackMessage type="warning" className="mt-6 rounded-2xl">El registro estudiantil solo está disponible durante la Etapa 1 del proceso de ingreso.</FeedbackMessage>}
             {error && <FeedbackMessage type="error" className="mt-6 rounded-2xl">{error}</FeedbackMessage>}
             {success && <FeedbackMessage type="success" className="mt-6 rounded-2xl">{success}</FeedbackMessage>}
             {pendingVerification ? (
                 <form onSubmit={handleVerification} className="mt-6 space-y-5">
                     <p className="text-sm text-slate-600">
-                        Revisa tu correo e introduce el código de 6 dígitos. La cuenta permanecerá inactiva hasta verificarlo.
+                        Revisa tu correo e introduce el código de 6 dígitos. La cuenta permanecerá inactiva hasta verificarla.
                     </p>
+                    <div className="rounded-2xl bg-slate-50 p-4">
+                        <div className="flex items-center justify-between gap-3">
+                            <span className="text-sm font-semibold text-slate-700">Código enviado a</span>
+                            {!editingPendingEmail && <button type="button" onClick={() => setEditingPendingEmail(true)} className="text-sm font-semibold text-sky-700 hover:text-sky-800">Cambiar correo</button>}
+                        </div>
+                        {editingPendingEmail ? (
+                            <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                                <input type="email" value={form.email} onChange={updateField("email")} className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-sky-500 focus:outline-none" required />
+                                <button type="button" onClick={handlePendingEmailChange} disabled={changingPendingEmail} className="rounded-xl bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-700 disabled:opacity-50">{changingPendingEmail ? "Actualizando..." : "Guardar correo"}</button>
+                                <button type="button" onClick={() => setEditingPendingEmail(false)} className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700">Cancelar</button>
+                            </div>
+                        ) : <p className="mt-1 break-all text-sm text-slate-900">{form.email}</p>}
+                    </div>
                     <label className="block">
                         <span className="text-sm font-semibold text-slate-700">Código de verificación</span>
                         <input
@@ -203,18 +230,6 @@ export default function RegisterPage() {
                     />
                 </label>
                 <label className="block">
-                    <span className="text-sm font-semibold text-slate-700">Nombre del tutor</span>
-                    <input value={form.tutor_nombre} onChange={updateField("tutor_nombre")} className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 focus:border-sky-500 focus:outline-none" />
-                </label>
-                <label className="block">
-                    <span className="text-sm font-semibold text-slate-700">Correo del tutor</span>
-                    <input type="email" value={form.tutor_email} onChange={updateField("tutor_email")} className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 focus:border-sky-500 focus:outline-none" />
-                </label>
-                <label className="block">
-                    <span className="text-sm font-semibold text-slate-700">Teléfono del tutor</span>
-                    <input value={form.tutor_telefono} onChange={updateField("tutor_telefono")} className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 focus:border-sky-500 focus:outline-none" />
-                </label>
-                <label className="block md:col-span-2">
                     <span className="text-sm font-semibold text-slate-700">
                         Provincia
                     </span>
@@ -270,7 +285,7 @@ export default function RegisterPage() {
                         ))}
                     </select>
                 </label>
-                <label className="block md:col-span-2">
+                <label className="block">
                     <span className="text-sm font-semibold text-slate-700">
                         Correo electrónico
                     </span>
@@ -279,14 +294,16 @@ export default function RegisterPage() {
                         value={form.email}
                         onChange={updateField("email")}
                         className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 focus:border-sky-500 focus:outline-none"
+                        placeholder="maria.gonzalez@correo.com"
                         required
                     />
                 </label>
                 <label className="block">
                     <span className="text-sm font-semibold text-slate-700">
-                        Whatsapp (opcional)
+                        WhatsApp <span className="font-normal text-slate-500">(opcional)</span>
                     </span>
                     <input
+                        type="tel"
                         value={form.whatsapp}
                         onChange={updateField("whatsapp")}
                         className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 focus:border-sky-500 focus:outline-none"
@@ -297,25 +314,41 @@ export default function RegisterPage() {
                     <span className="text-sm font-semibold text-slate-700">
                         Contraseña
                     </span>
-                    <input
-                        type="password"
-                        value={form.password}
-                        onChange={updateField("password")}
-                        className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 focus:border-sky-500 focus:outline-none"
-                        required
-                    />
+                    <div className="relative mt-2">
+                        <input
+                            type={showPassword ? "text" : "password"}
+                            value={form.password}
+                            onChange={updateField("password")}
+                            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 pr-16 text-sm text-slate-900 focus:border-sky-500 focus:outline-none"
+                            placeholder="Crea una contraseña"
+                            required
+                        />
+                        <button type="button" onClick={() => setShowPassword((visible) => !visible)} className="absolute inset-y-0 right-3 flex items-center text-slate-500 hover:text-slate-800" aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"} title={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}>
+                            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                                {showPassword ? <><path d="M2.5 12S6 5 12 5s9.5 7 9.5 7-3.5 7-9.5 7-9.5-7-9.5-7Z" /><circle cx="12" cy="12" r="2.5" /></> : <path d="m3 3 18 18M10.6 10.6a2 2 0 0 0 2.8 2.8M9.9 4.2A10.7 10.7 0 0 1 12 4c5 0 8.5 4 9.5 6a11.8 11.8 0 0 1-4.1 4.5M6.2 6.2C3.9 6.2 2.5 9.5 2.5 10c1 2 4.5 6 9.5 6 1 0 1.9-.2 2.7-.5" />}
+                            </svg>
+                        </button>
+                    </div>
                 </label>
                 <label className="block">
                     <span className="text-sm font-semibold text-slate-700">
                         Repetir contraseña
                     </span>
-                    <input
-                        type="password"
-                        value={form.confirmPassword}
-                        onChange={updateField("confirmPassword")}
-                        className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 focus:border-sky-500 focus:outline-none"
-                        required
-                    />
+                    <div className="relative mt-2">
+                        <input
+                            type={showConfirmPassword ? "text" : "password"}
+                            value={form.confirmPassword}
+                            onChange={updateField("confirmPassword")}
+                            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 pr-16 text-sm text-slate-900 focus:border-sky-500 focus:outline-none"
+                            placeholder="Repite la contraseña"
+                            required
+                        />
+                        <button type="button" onClick={() => setShowConfirmPassword((visible) => !visible)} className="absolute inset-y-0 right-3 flex items-center text-slate-500 hover:text-slate-800" aria-label={showConfirmPassword ? "Ocultar confirmación de contraseña" : "Mostrar confirmación de contraseña"} title={showConfirmPassword ? "Ocultar confirmación de contraseña" : "Mostrar confirmación de contraseña"}>
+                            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                                {showConfirmPassword ? <><path d="M2.5 12S6 5 12 5s9.5 7 9.5 7-3.5 7-9.5 7-9.5-7-9.5-7Z" /><circle cx="12" cy="12" r="2.5" /></> : <path d="m3 3 18 18M10.6 10.6a2 2 0 0 0 2.8 2.8M9.9 4.2A10.7 10.7 0 0 1 12 4c5 0 8.5 4 9.5 6a11.8 11.8 0 0 1-4.1 4.5M6.2 6.2C3.9 6.2 2.5 9.5 2.5 10c1 2 4.5 6 9.5 6 1 0 1.9-.2 2.7-.5" />}
+                            </svg>
+                        </button>
+                    </div>
                 </label>
                 <button
                     type="submit"

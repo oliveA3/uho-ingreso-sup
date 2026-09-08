@@ -9,7 +9,7 @@ export default function DirectorSidebar({ scope, onLogout, activeStageLabel }) {
         { label: "Sin Cuenta", icon: "👥", to: "/director/sincuenta" },
         { label: "Boletas de Interés", icon: "🎯", to: "/director/boleta-interes" },
         { label: "Boletas Solicitud", icon: "📝", to: "/director/boletas-solicitud" },
-        { label: "Estadísticas de Confirmación", icon: "✏️", to: "/director/confirmacion-pruebas" },
+        { label: "Confirmación Pruebas", icon: "✏️", to: "/director/confirmacion-pruebas" },
         { label: "Resultados", icon: "🏆", to: "/director/resultados" },
         { label: "Otorgamientos", icon: "🎓", to: "/director/otorgamientos" },
       ],

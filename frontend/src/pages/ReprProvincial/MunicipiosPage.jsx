@@ -161,8 +161,8 @@ export default function MunicipiosPage({ user }) {
 
   return (
     <div className="space-y-6">
-      <p className="px-1 text-sm font-semibold text-slate-600">Provincia: {user?.provincia_nombre || "No asignada"}</p>
       <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
+        <p className="mb-4 text-sm font-semibold text-slate-600">Provincia: {user?.provincia_nombre || "No asignada"}</p>
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-700">Municipios y Escuelas</p>

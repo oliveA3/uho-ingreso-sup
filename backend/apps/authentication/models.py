@@ -28,6 +28,8 @@ class Usuario(AbstractUser):
         Municipio, on_delete=models.PROTECT, related_name='usuarios', null=True, blank=True)
     escuela = models.ForeignKey(
         Escuela, on_delete=models.PROTECT, related_name='usuarios', null=True, blank=True)
+    pending_student = models.ForeignKey(
+        'Estudiante', on_delete=models.SET_NULL, related_name='pending_users', null=True, blank=True)
 
     class Meta:
         constraints = [

@@ -33,5 +33,6 @@ pnpm-debug.log*
 # Editor
 .vscode/
 .idea/
-.github_scripts.md
 .DS_Store
+test_data/
+.github_scripts.md

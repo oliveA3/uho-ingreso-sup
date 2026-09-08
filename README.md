@@ -46,6 +46,27 @@ IngresoSUP es la base arquitectónica del sistema de ingreso a la Educación Sup
 
 4. Acceder al frontend en la URL que devuelva Vite y al backend en `http://127.0.0.1:8000/api/`.
 
+### Configuración del correo de verificación
+
+El registro estudiantil y el cambio de correo mientras se espera el código utilizan `send_mail` de Django. En desarrollo, como `DEBUG=True`, el proyecto usa por defecto el backend de consola: el código aparece en la terminal donde se ejecuta Django.
+
+Para enviar los códigos a correos reales, configura estas variables de entorno antes de iniciar el backend:
+
+```powershell
+$env:EMAIL_BACKEND="django.core.mail.backends.smtp.EmailBackend"
+$env:EMAIL_HOST="smtp.example.com"
+$env:EMAIL_PORT="587"
+$env:EMAIL_HOST_USER="tu-correo@example.com"
+$env:EMAIL_HOST_PASSWORD="tu-contraseña-o-clave-de-aplicacion"
+$env:EMAIL_USE_TLS="true"
+$env:DEFAULT_FROM_EMAIL="tu-correo@example.com"
+python manage.py runserver
+```
+
+Sustituye los valores por los proporcionados por tu servidor de correo. Estas variables deben configurarse en la misma terminal desde la que se ejecuta Django; en producción también debes cambiar `SECRET_KEY`, desactivar `DEBUG` y revisar la configuración de seguridad.
+
+El endpoint `POST /api/authentication/change-pending-email/` permite cambiar el correo de una cuenta que todavía no fue verificada. Recibe `username` y `email`, invalida el código anterior y envía un código nuevo al correo actualizado.
+
 ## Rutas de autenticación
 
 - `POST /api/authentication/login/` — iniciar sesión.
@@ -58,14 +79,17 @@ IngresoSUP es la base arquitectónica del sistema de ingreso a la Educación Sup
 ## Roadmap de módulos
 
 - [x] Estructura base de backend Django
+- [x] Conexión de datos reales con APIs REST y backend
+- [ ] Implementar JWT y Single Page App auth completa
 - [x] Modelo de usuario extendido y roles RBAC
 - [x] Endpoints de login/logout y sesión
 - [x] Estructura base del frontend React
 - [x] Landing page con secciones de noticias, plazas, cortes y oferta académica
-- [ ] Dashboards según roles
-- [ ] Módulo de boletas
-- [ ] Módulo de escalafón
+- [x] Dashboards según roles
+- [x] Módulo de gestión de admisión por etapas
+- [x] Módulo de escalafón
+- [x] Módulo de boletas
+- [x] Módulo de confirmación de pruebas
+- [x] Módulo de resultados
+- [ ] Módulo de otorgamiento y corte
 - [ ] Módulo de reportes
-- [ ] Módulo de gestión de admisión por etapas
-- [ ] Implementar JWT y Single Page App auth completa
-- [ ] Conexión de datos reales con APIs REST y backend

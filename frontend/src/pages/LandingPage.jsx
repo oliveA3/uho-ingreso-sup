@@ -3,10 +3,13 @@ import HeroSection from "../components/HeroSection";
 import ProcessTimeline from "../components/ProcessTimeline";
 import NewsSection from "../components/NewsSection";
 import PlanPlazasModal from "../components/Modals/PlanPlazasModal";
+import ResultadosModal from "../components/Modals/ResultadosModal";
+import OtorgamientosModal from "../components/Modals/OtorgamientosModal";
 import CutoffSection from "../components/CutoffSection";
 import OfferingsSection from "../components/OfferingsSection";
-import { newsItems, cutoffIndices, offerings } from "../data/landingData";
+import { newsItems, cutoffIndices } from "../data/landingData";
 import { fetchLandingData } from "../services/api";
+import { fetchLandingCortes } from "../services/api";
 
 const stageTitles = {
   1: "Escalafón",
@@ -27,9 +30,13 @@ function toTimelineStep(stage) {
   };
 }
 
-export default function LandingPage() {
+export default function LandingPage({ user }) {
   const [processData, setProcessData] = useState(null);
   const [planModalOpen, setPlanModalOpen] = useState(false);
+  const [resultadosModalOpen, setResultadosModalOpen] = useState(false);
+  const [otorgamientosModalOpen, setOtorgamientosModalOpen] = useState(false);
+  const [cortesData, setCortesData] = useState({ items: [], year: null });
+  const [cortesModalOpen, setCortesModalOpen] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -46,11 +53,22 @@ export default function LandingPage() {
     };
   }, []);
 
+  useEffect(() => {
+    fetchLandingCortes().then(setCortesData).catch(() => setCortesData({ items: [], year: null }));
+  }, []);
+
+  useEffect(() => {
+    const openPlanModal = () => setPlanModalOpen(true);
+    window.addEventListener("open-plan-plazas", openPlanModal);
+    return () => window.removeEventListener("open-plan-plazas", openPlanModal);
+  }, []);
+
   const stages = processData?.etapas || [];
   const activeStage = stages.find((stage) => stage.estado === "en_curso");
   const planData = processData?.plan_de_plazas || { items: [], years: [], provincias: [], provincia_nombre: "Todas" };
   const planYears = planData.years || [];
   const defaultProvinceName = planData.provincia_nombre || "Todas";
+  const ces = planData.ces || processData?.ces || [];
   const landingStage = activeStage
     ? {
         label: `Etapa ${activeStage.numero} — ${stageTitles[activeStage.numero] || activeStage.nombre}`,
@@ -71,14 +89,14 @@ export default function LandingPage() {
     <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900">
 
       <main className="flex-1 space-y-5 py-5 px-4 sm:px-6 lg:px-8">
-        <HeroSection onViewPlan={() => setPlanModalOpen(true)} />
+        <HeroSection onViewPlan={() => setPlanModalOpen(true)} onViewResults={() => setResultadosModalOpen(true)} onViewAwards={() => setOtorgamientosModalOpen(true)} isAuthenticated={Boolean(user)} activeStageNumber={activeStage?.numero} />
         {processData?.error && <p className="text-sm text-rose-700">No se pudo actualizar el estado del proceso.</p>}
         {stages.length > 0 && <ProcessTimeline steps={stages.map(toTimelineStep)} />}
         
         <div className="space-y-5">
           <NewsSection items={newsItems} />
-          <CutoffSection items={cutoffIndices} />
-          <OfferingsSection items={offerings} />
+          <CutoffSection items={cortesData.items.length ? cortesData.items.slice(0, 4) : cutoffIndices} year={cortesData.year} onViewMore={() => setCortesModalOpen(true)} />
+          <OfferingsSection items={ces} />
         </div>
 
         {planModalOpen && (
@@ -89,6 +107,9 @@ export default function LandingPage() {
             onClose={() => setPlanModalOpen(false)}
           />
         )}
+        {resultadosModalOpen && <ResultadosModal onClose={() => setResultadosModalOpen(false)} />}
+        {otorgamientosModalOpen && <OtorgamientosModal onClose={() => setOtorgamientosModalOpen(false)} />}
+        {cortesModalOpen && <OtorgamientosModal mode="cortes" onClose={() => setCortesModalOpen(false)} />}
       </main>
     </div>
   );

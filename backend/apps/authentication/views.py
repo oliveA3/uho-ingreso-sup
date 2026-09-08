@@ -1,7 +1,10 @@
 from django.contrib.auth import authenticate, login, logout
 from django.conf import settings
+from django.core.mail import send_mail
+from datetime import timedelta
 from django.utils import timezone
 from django.http import JsonResponse
+from django.core.exceptions import ValidationError
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from rest_framework import status
@@ -64,10 +67,50 @@ class VerifyEmailView(APIView):
 
         verification.used_at = timezone.now()
         verification.save(update_fields=["used_at"])
+        if user.pending_student_id:
+            from .models import Estudiante
+            Estudiante.objects.filter(pk=user.pending_student_id, usuario__isnull=True).update(usuario=user)
+            user.pending_student = None
         user.email_verificado = True
         user.is_active = True
-        user.save(update_fields=["email_verificado", "is_active"])
+        user.save(update_fields=["email_verificado", "is_active", "pending_student"])
         return JsonResponse({"detail": "Correo verificado correctamente."}, status=status.HTTP_200_OK)
+
+
+@method_decorator(csrf_exempt, name="dispatch")
+class ChangePendingEmailView(APIView):
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        username = str(request.data.get("username", "")).strip()
+        email = str(request.data.get("email", "")).strip().lower()
+        user = Usuario.objects.filter(username=username, is_active=False, email_verificado=False).first()
+        if not user:
+            return JsonResponse({"detail": "No existe una cuenta pendiente de verificación para ese usuario."}, status=status.HTTP_404_NOT_FOUND)
+        if not email:
+            return JsonResponse({"detail": "El correo es obligatorio."}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            from django.core.validators import validate_email
+            validate_email(email)
+        except ValidationError:
+            return JsonResponse({"detail": "Introduce un correo electrónico válido."}, status=status.HTTP_400_BAD_REQUEST)
+        if Usuario.objects.filter(email__iexact=email).exclude(pk=user.pk).exists():
+            return JsonResponse({"detail": "Este correo ya está registrado."}, status=status.HTTP_400_BAD_REQUEST)
+
+        code = f"{__import__('secrets').randbelow(1000000):06d}"
+        user.email = email
+        user.save(update_fields=["email"])
+        EmailVerificationCode.objects.filter(user=user, used_at__isnull=True).update(used_at=timezone.now())
+        EmailVerificationCode.objects.create(user=user, code=code, expires_at=timezone.now() + timedelta(minutes=15))
+        send_mail(
+            subject="Código de verificación de IngresoSUP",
+            message=f"Tu nuevo código de verificación es: {code}\n\nEste código vence en 15 minutos.",
+            from_email=None,
+            recipient_list=[email],
+            fail_silently=False,
+        )
+        return JsonResponse({"detail": "Correo actualizado. Enviamos un nuevo código de verificación."}, status=status.HTTP_200_OK)
 
 
 @method_decorator(csrf_exempt, name="dispatch")
@@ -81,13 +124,13 @@ class RegisterView(APIView):
 
         from apps.gestion_provincial.models import ETAPAS_NOMBRES, Etapa
 
-        registro_abierto = settings.DEBUG or Etapa.objects.filter(
-            nombre__in=[ETAPAS_NOMBRES[1], ETAPAS_NOMBRES[2]],
+        registro_abierto = Etapa.objects.filter(
+            nombre=ETAPAS_NOMBRES[1],
             estado="en_curso",
         ).exists()
         if not registro_abierto:
             return JsonResponse(
-                {"detail": "El registro estudiantil solo está disponible durante las etapas 1 y 2."},
+                {"detail": "El registro estudiantil solo está disponible durante la etapa 1."},
                 status=status.HTTP_403_FORBIDDEN,
             )
         user = serializer.save()

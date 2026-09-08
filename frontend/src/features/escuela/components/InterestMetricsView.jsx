@@ -1,3 +1,5 @@
+import StageStatusNotice from "../../../components/StageStatusNotice";
+
 export default function InterestMetricsView({ metrics, title, schoolName }) {
   const maximum = Math.max(...metrics.top_carreras.map((career) => career.total), 1);
 
@@ -12,9 +14,7 @@ export default function InterestMetricsView({ metrics, title, schoolName }) {
           </span>
         </div>
         <p className="mt-3 text-sm text-slate-600">Resumen de las boletas de interés de los estudiantes de tu escuela.</p>
-        <div className="mt-6 rounded-3xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900">
-          La Etapa 2 está disponible hasta {metrics.stage.fecha_fin || "el cierre de la etapa"}.
-        </div>
+        <StageStatusNotice stageNumber={2} />
         <div className="mt-6 grid gap-4 sm:grid-cols-3">
           <Metric label="Enviadas" value={metrics.enviadas} color="text-emerald-700" />
           <Metric label="Pendientes" value={metrics.pendientes} color="text-amber-700" />
