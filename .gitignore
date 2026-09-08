@@ -34,5 +34,4 @@ pnpm-debug.log*
 .vscode/
 .idea/
 .DS_Store
-test_data/
 .github_scripts.md

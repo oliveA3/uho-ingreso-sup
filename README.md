@@ -46,6 +46,8 @@ IngresoSUP es la base arquitectónica del sistema de ingreso a la Educación Sup
 
 4. Acceder al frontend en la URL que devuelva Vite y al backend en `http://127.0.0.1:8000/api/`.
 
+5. La carpeta `test_data` en la raíz del proyecto contiene datos de prueba para importar: catálogo de carreras de ejemplo, escalafón de una escuela, plan de plazas de una provincia, resultados en las Pruebas de Ingreso de matematica, español e historia (separados), ejemplo de otorgamientos y cortes de carreras.
+
 ### Configuración del correo de verificación
 
 El registro estudiantil y el cambio de correo mientras se espera el código utilizan `send_mail` de Django. En desarrollo, como `DEBUG=True`, el proyecto usa por defecto el backend de consola: el código aparece en la terminal donde se ejecuta Django.
