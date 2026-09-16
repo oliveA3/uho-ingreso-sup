@@ -1,6 +1,11 @@
 import { useEffect, useState } from "react";
 import { fetchSuperAdminConfig, updateSuperAdminConfig } from "../../services/api";
-import FeedbackMessage from "../../components/FeedbackMessage";
+import { useTheme } from "../../theme/ThemeContext";
+import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
+import PrimaryButton from "../../components/Buttons/PrimaryButton";
+import SecondaryButton from "../../components/Buttons/SecondaryButton";
+import { Card, FormField, Input, PageHeader, Select } from "../../components";
+import styles from "./IdentidadPage.module.css";
 
 const colorFields = [
   ["color_primario", "Primario"],
@@ -24,6 +29,7 @@ const defaultConfig = {
 };
 
 export default function IdentidadPage() {
+  const { refreshTheme } = useTheme();
   const [config, setConfig] = useState(defaultConfig);
   const [logoFile, setLogoFile] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -80,7 +86,7 @@ export default function IdentidadPage() {
       const data = await updateSuperAdminConfig(payload);
       setConfig({ ...defaultConfig, ...data.config });
       setLogoFile(null);
-      window.dispatchEvent(new CustomEvent("visual-identity-updated", { detail: data.config }));
+      await refreshTheme();
       setMessage("Configuración guardada correctamente.");
     } catch (requestError) {
       setError(requestError.message);
@@ -91,54 +97,51 @@ export default function IdentidadPage() {
 
   return (
     <div className="space-y-6">
-      <form onSubmit={handleSubmit} className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-900">🎨 Identidad Visual</h1>
-          <p className="mt-2 text-sm text-slate-600">Configura la apariencia global de IngresoSUP.</p>
-        </div>
+      <Card as="form" padding="p-8" onSubmit={handleSubmit}>
+        <PageHeader title="🎨 Identidad Visual" subtitle="Configura la apariencia global de IngresoSUP." />
 
         {error && <FeedbackMessage type="error" className="mt-5 rounded-2xl">{error}</FeedbackMessage>}
         {message && <FeedbackMessage type="success" className="mt-5 rounded-2xl">{message}</FeedbackMessage>}
 
-        <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <div className={styles.colorGrid}>
           {colorFields.map(([field, label]) => (
-            <label key={field} className="space-y-3 rounded-3xl border border-slate-200 bg-slate-50 p-5 text-center text-sm font-semibold text-slate-900">
-              <span className="block">{label}</span>
-              <input type="color" value={config[field]} onChange={(event) => updateField(field, event.target.value.toUpperCase())} className="mx-auto h-20 w-20 cursor-pointer rounded-3xl border-0 bg-transparent p-0" />
-              <input type="text" pattern="^#[0-9A-Fa-f]{6}$" value={config[field]} onChange={(event) => updateField(field, event.target.value)} className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-center text-xs font-normal text-slate-700" aria-label={`Código de color ${label}`} />
+            <label key={field} className={styles.colorSwatch}>
+              <span className={styles.colorLabel}>{label}</span>
+              <input type="color" value={config[field]} onChange={(event) => updateField(field, event.target.value.toUpperCase())} className={styles.colorPicker} />
+              <input type="text" pattern="^#[0-9A-Fa-f]{6}$" value={config[field]} onChange={(event) => updateField(field, event.target.value)} className={styles.colorHex} aria-label={`Código de color ${label}`} />
             </label>
           ))}
         </div>
 
-        <div className="mt-6 grid gap-4 lg:grid-cols-3">
-          <label className="space-y-2 text-sm text-slate-700">Logo del Sistema (PNG/SVG)
-            <input type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp" onChange={handleLogoChange} className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900" />
-            {logoFile && <span className="block text-xs text-slate-500">{logoFile.name}</span>}
-            {config.logo_url && <img src={config.logo_url} alt="Vista previa del logo" className="mt-3 h-16 max-w-48 object-contain" />}
-          </label>
-          <label className="space-y-2 text-sm text-slate-700">Nombre del Sistema
-            <input value={config.nombre_sistema} onChange={(event) => updateField("nombre_sistema", event.target.value)} required className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900" />
-          </label>
-          <label className="space-y-2 text-sm text-slate-700">Tipografía Principal
-            <select value={config.tipografia} onChange={(event) => updateField("tipografia", event.target.value)} className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900">
+        <div className={styles.fieldsGrid}>
+          <FormField label="Logo del Sistema (PNG/SVG)">
+            <Input type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp" onChange={handleLogoChange} />
+            {logoFile && <span className={styles.logoFileName}>{logoFile.name}</span>}
+            {config.logo_url && <img src={config.logo_url} alt="Vista previa del logo" className={styles.logoPreview} />}
+          </FormField>
+          <FormField label="Nombre del Sistema">
+            <Input value={config.nombre_sistema} onChange={(event) => updateField("nombre_sistema", event.target.value)} required />
+          </FormField>
+          <FormField label="Tipografía Principal">
+            <Select value={config.tipografia} onChange={(event) => updateField("tipografia", event.target.value)}>
               <option>Segoe UI</option>
               <option>Arial</option>
               <option>Roboto</option>
               <option>Georgia</option>
               <option>Verdana</option>
-            </select>
-          </label>
+            </Select>
+          </FormField>
         </div>
 
-        <div className="mt-4 flex flex-wrap gap-3">
-          <button disabled={loading || saving} type="button" onClick={restoreDefaults} className="rounded-2xl border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50">
+        <div className={styles.formActions}>
+          <SecondaryButton disabled={loading || saving} onClick={restoreDefaults}>
             Volver a predeterminado
-          </button>
-          <button disabled={loading || saving} type="submit" className="rounded-2xl bg-slate-900 px-6 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50">
+          </SecondaryButton>
+          <PrimaryButton disabled={loading || saving} type="submit">
             {saving ? "Guardando..." : "💾 Guardar Configuración"}
-          </button>
+          </PrimaryButton>
         </div>
-      </form>
+      </Card>
     </div>
   );
 }

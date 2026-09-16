@@ -1,0 +1,10 @@
+.field {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+.field > * + * {
+  margin-top: 0.5rem;
+}

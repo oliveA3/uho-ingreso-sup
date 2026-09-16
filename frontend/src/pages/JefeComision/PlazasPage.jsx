@@ -1,10 +1,14 @@
 import { useEffect, useRef, useState } from "react";
-import FeedbackMessage from "../../components/FeedbackMessage";
-import StageStatusNotice from "../../components/StageStatusNotice";
+import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
+import StageStatusNotice from "../../components/StageStatusNotice/StageStatusNotice";
+import EntityActionButton from "../../components/Buttons/EntityActionButton";
+import PrimaryButton from "../../components/Buttons/PrimaryButton";
+import SecondaryButton from "../../components/Buttons/SecondaryButton";
+import { Card, DataTable, FormField, Input, Modal, Select, useConfirm } from "../../components";
+import styles from "./PlazasPage.module.css";
 import {
   createPlanPlaza,
   deletePlanPlaza,
-  downloadPlanPlazaTemplate,
   fetchPlanPlazas,
   fetchProvincialCareers,
   fetchProvincialCes,
@@ -30,6 +34,7 @@ const emptyForm = {
 };
 
 export default function PlazasPage() {
+  const confirm = useConfirm();
   const [items, setItems] = useState([]);
   const [form, setForm] = useState(emptyForm);
   const [editingId, setEditingId] = useState(null);
@@ -126,20 +131,6 @@ export default function PlazasPage() {
     }
   }
 
-  async function downloadTemplate() {
-    try {
-      const blob = await downloadPlanPlazaTemplate();
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = "plan-plazas-prueba.xlsx";
-      link.click();
-      URL.revokeObjectURL(url);
-    } catch (requestError) {
-      setError(requestError.message);
-    }
-  }
-
   function edit(item) {
     setEditingId(item.id);
     setForm({
@@ -160,8 +151,20 @@ export default function PlazasPage() {
     setFormOpen(true);
   }
 
+  function closeForm() {
+    setFormOpen(false);
+    setEditingId(null);
+    setForm(emptyForm);
+  }
+
   async function remove(item) {
-    if (!window.confirm(`¿Eliminar ${item.nombre_carrera}?`)) return;
+    const ok = await confirm({
+      title: "Eliminar registro",
+      message: `¿Eliminar ${item.nombre_carrera}?`,
+      confirmLabel: "Eliminar",
+      tone: "danger",
+    });
+    if (!ok) return;
     try {
       await deletePlanPlaza(item.id);
       setNotice("Registro eliminado.");
@@ -171,287 +174,134 @@ export default function PlazasPage() {
     }
   }
 
+  const columns = [
+    { key: "codigo", header: "Código", render: (item) => item.codigo_carrera },
+    { key: "carrera", header: "Carrera", className: styles.strongCell, render: (item) => item.nombre_carrera },
+    { key: "plazas", header: "Plazas", render: (item) => item.cantidad_plazas },
+    { key: "tipo", header: "Tipo", render: (item) => item.tipo_otorgamiento_label },
+    { key: "ces", header: "CES", render: (item) => item.ces_nombre },
+    { key: "provincia", header: "Provincia", render: (item) => item.provincia_nombre },
+    { key: "sexo", header: "Sexo", render: (item) => item.sexo },
+    ...(stageFinished
+      ? []
+      : [
+          {
+            key: "acciones",
+            header: "Acciones",
+            render: (item) => (
+              <>
+                <EntityActionButton variant="edit" onClick={() => edit(item)}>Editar</EntityActionButton>
+                <EntityActionButton variant="delete" className="ml-2" onClick={() => remove(item)}>Eliminar</EntityActionButton>
+              </>
+            ),
+          },
+        ]),
+  ];
+
   return (
-    <div className="space-y-6">
-      <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
-        <div className="flex flex-wrap items-start justify-between gap-4">
+    <div className={styles.page}>
+      <Card padding="p-8">
+        <div className={styles.headerRow}>
           <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-700">
+            <p className={styles.eyebrow}>
               Etapa 3
             </p>
-            <h1 className="mt-2 text-3xl font-semibold text-slate-900">
+            <h1 className={styles.title}>
               Gestión del Plan de Plazas
             </h1>
-            <p className="mt-3 text-sm text-slate-600">
+            <p className={styles.description}>
               Importa y administra las plazas oficiales por carrera.
             </p>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className={styles.actions}>
             <input
               ref={fileInput}
               type="file"
               accept=".xlsx,.xls"
-              className="hidden"
+              className={styles.hiddenInput}
               onChange={handleImport}
             />
-            <button
-              type="button"
-              onClick={() => fileInput.current?.click()}
-              disabled={stageFinished}
-              className="rounded-2xl bg-sky-600 px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
-            >
+            <PrimaryButton onClick={() => fileInput.current?.click()} disabled={stageFinished}>
               Importar Excel
-            </button>
-            <button
-              type="button"
-              onClick={openCreateForm}
-              disabled={stageFinished}
-              className="rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
-            >
+            </PrimaryButton>
+            <PrimaryButton className={styles.darkButton} onClick={openCreateForm} disabled={stageFinished}>
               Añadir carrera
-            </button>
+            </PrimaryButton>
           </div>
         </div>
-        {error && (
-          <FeedbackMessage type="error" className="mt-5 rounded-xl">
-            {error}
-          </FeedbackMessage>
-        )}
-        {notice && (
-          <FeedbackMessage type="success" className="mt-5 rounded-xl">
-            {notice}
-          </FeedbackMessage>
-        )}
+        {error && <FeedbackMessage type="error" className="mt-5 rounded-xl">{error}</FeedbackMessage>}
+        {notice && <FeedbackMessage type="success" className="mt-5 rounded-xl">{notice}</FeedbackMessage>}
         <StageStatusNotice stageNumber={3} onStatusChange={setStageStatus} />
-      </section>
-      <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-sm">
-            <thead className="bg-slate-100 text-left">
-              <tr>
-                {[
-                  "Código",
-                  "Carrera",
-                  "Plazas",
-                  "Tipo",
-                  "CES",
-                  "Provincia",
-                  "Sexo",
-                  ...(stageFinished ? [] : ["Acciones"]),
-                ].map((heading) => (
-                  <th key={heading} className="whitespace-nowrap px-4 py-3">
-                    {heading}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-200">
-              {loading && (
-                <tr>
-                  <td
-                    colSpan={stageFinished ? 7 : 8}
-                    className="px-4 py-10 text-center text-slate-500"
-                  >
-                    Cargando plan de plazas...
-                  </td>
-                </tr>
-              )}
-              {!loading && !items.length && (
-                <tr>
-                  <td
-                    colSpan={stageFinished ? 7 : 8}
-                    className="px-4 py-10 text-center text-slate-500"
-                  >
-                    No hay registros.
-                  </td>
-                </tr>
-              )}
-              {items.map((item) => (
-                <tr key={item.id}>
-                  <td className="px-4 py-3">{item.codigo_carrera}</td>
-                  <td className="px-4 py-3 font-medium">
-                    {item.nombre_carrera}
-                  </td>
-                  <td className="px-4 py-3">{item.cantidad_plazas}</td>
-                  <td className="px-4 py-3">{item.tipo_otorgamiento_label}</td>
-                  <td className="px-4 py-3">{item.ces_nombre}</td>
-                  <td className="px-4 py-3">{item.provincia_nombre}</td>
-                  <td className="px-4 py-3">{item.sexo}</td>
-                  {!stageFinished && (
-                    <td className="flex gap-2 px-4 py-3">
-                      <button
-                        type="button"
-                        onClick={() => edit(item)}
-                        className="rounded-xl bg-sky-100 px-3 py-2 text-xs font-semibold text-sky-700"
-                      >
-                        Editar
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => remove(item)}
-                        className="rounded-xl bg-rose-100 px-3 py-2 text-xs font-semibold text-rose-700"
-                      >
-                        Eliminar
-                      </button>
-                    </td>
-                  )}
-                </tr>
+      </Card>
+      <Card padding="p-0" className={styles.tableCard}>
+        <DataTable
+          columns={columns}
+          data={items}
+          loading={loading}
+          loadingMessage="Cargando plan de plazas..."
+          emptyMessage="No hay registros."
+          className={styles.tableUnwrapped}
+        />
+      </Card>
+      <Modal
+        open={formOpen}
+        onClose={closeForm}
+        title={editingId ? "Editar plaza" : "Añadir carrera al plan"}
+        description="Completa los datos del registro de plazas."
+        size="lg"
+        footer={
+          <>
+            <SecondaryButton onClick={closeForm}>Cancelar</SecondaryButton>
+            <PrimaryButton className="!bg-slate-900 hover:!bg-slate-800" type="submit" form="plaza-form" disabled={stageFinished}>
+              {editingId ? "Actualizar" : "Añadir"}
+            </PrimaryButton>
+          </>
+        }
+      >
+        <form id="plaza-form" onSubmit={save} className={styles.formGrid}>
+          <FormField label="Carrera">
+            <Select required value={form.carrera} onChange={updateField("carrera")}>
+              <option value="">Selecciona una carrera</option>
+              {careers.map((career) => (
+                <option key={career.id} value={career.id}>{career.codigo} · {career.nombre}</option>
               ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
-      {formOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
-          <div className="w-full max-w-2xl rounded-3xl bg-white p-6 shadow-2xl">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <h2 className="text-xl font-semibold text-slate-900">
-                  {editingId ? "Editar plaza" : "Añadir carrera al plan"}
-                </h2>
-                <p className="mt-1 text-sm text-slate-600">
-                  Completa los datos del registro de plazas.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setFormOpen(false);
-                  setEditingId(null);
-                  setForm(emptyForm);
-                }}
-                className="text-2xl text-slate-500"
-                aria-label="Cerrar"
-              >
-                &times;
-              </button>
-            </div>
-            <form onSubmit={save} className="mt-5 grid gap-4 md:grid-cols-2">
-              <label className="text-sm font-semibold text-slate-700">
-                Carrera
-                <select
-                  required
-                  value={form.carrera}
-                  onChange={updateField("carrera")}
-                  className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 font-normal"
-                >
-                  <option value="">Selecciona una carrera</option>
-                  {careers.map((career) => (
-                    <option key={career.id} value={career.id}>
-                      {career.codigo} · {career.nombre}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="text-sm font-semibold text-slate-700">
-                Cantidad de plazas
-                <input
-                  required
-                  min="1"
-                  type="number"
-                  value={form.cantidad_plazas}
-                  onChange={updateField("cantidad_plazas")}
-                  className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 font-normal"
-                />
-              </label>
-              <label className="text-sm font-semibold text-slate-700">
-                Tipo de otorgamiento
-                <select
-                  value={form.otorgamiento_tipo}
-                  onChange={updateField("otorgamiento_tipo")}
-                  className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 font-normal"
-                >
-                  {types.map(([value, label]) => (
-                    <option key={value} value={value}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="text-sm font-semibold text-slate-700">
-                CES
-                <select
-                  required
-                  value={form.ces}
-                  onChange={updateField("ces")}
-                  className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 font-normal"
-                >
-                  <option value="">Selecciona un CES</option>
-                  {ces.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.nombre}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="text-sm font-semibold text-slate-700">
-                Provincia
-                <select
-                  required
-                  value={form.provincia}
-                  onChange={updateField("provincia")}
-                  className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 font-normal"
-                >
-                  <option value="">Selecciona una provincia</option>
-                  {provinces.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.nombre}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="text-sm font-semibold text-slate-700">
-                Proceso
-                <select
-                  required
-                  value={form.proceso}
-                  onChange={updateField("proceso")}
-                  className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 font-normal"
-                >
-                  <option value="">Selecciona un proceso</option>
-                  {process && (
-                    <option value={process.id}>
-                      {new Date(process.anio).getFullYear()}
-                    </option>
-                  )}
-                </select>
-              </label>
-              <label className="text-sm font-semibold text-slate-700">
-                Sexo
-                <select
-                  value={form.sexo}
-                  onChange={updateField("sexo")}
-                  className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 font-normal"
-                >
-                  <option value="A">A (Ambos)</option>
-                  <option value="F">F (Mujeres)</option>
-                  <option value="M">M (Hombres)</option>
-                </select>
-              </label>
-              <div className="flex justify-end gap-2 md:col-span-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setFormOpen(false);
-                    setEditingId(null);
-                    setForm(emptyForm);
-                  }}
-                  className="rounded-2xl border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-700"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  disabled={stageFinished}
-                  className="rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {editingId ? "Actualizar" : "Añadir"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+            </Select>
+          </FormField>
+          <FormField label="Cantidad de plazas">
+            <Input required min="1" type="number" value={form.cantidad_plazas} onChange={updateField("cantidad_plazas")} />
+          </FormField>
+          <FormField label="Tipo de otorgamiento">
+            <Select value={form.otorgamiento_tipo} onChange={updateField("otorgamiento_tipo")}>
+              {types.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+            </Select>
+          </FormField>
+          <FormField label="CES">
+            <Select required value={form.ces} onChange={updateField("ces")}>
+              <option value="">Selecciona un CES</option>
+              {ces.map((item) => <option key={item.id} value={item.id}>{item.nombre}</option>)}
+            </Select>
+          </FormField>
+          <FormField label="Provincia">
+            <Select required value={form.provincia} onChange={updateField("provincia")}>
+              <option value="">Selecciona una provincia</option>
+              {provinces.map((item) => <option key={item.id} value={item.id}>{item.nombre}</option>)}
+            </Select>
+          </FormField>
+          <FormField label="Proceso">
+            <Select required value={form.proceso} onChange={updateField("proceso")}>
+              <option value="">Selecciona un proceso</option>
+              {process && <option value={process.id}>{new Date(process.anio).getFullYear()}</option>}
+            </Select>
+          </FormField>
+          <FormField label="Sexo">
+            <Select value={form.sexo} onChange={updateField("sexo")}>
+              <option value="A">A (Ambos)</option>
+              <option value="F">F (Mujeres)</option>
+              <option value="M">M (Hombres)</option>
+            </Select>
+          </FormField>
+        </form>
+      </Modal>
     </div>
   );
 }

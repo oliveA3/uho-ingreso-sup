@@ -1,0 +1,151 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.headerRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.eyebrow {
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.24em;
+  color: #334155;
+}
+
+.title {
+  margin-top: 0.5rem;
+  font-size: 1.875rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.description {
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  color: #475569;
+}
+
+.darkButton {
+  background-color: #0f172a !important;
+}
+
+.darkButton:hover {
+  background-color: var(--brand-secondary, #2e75b6) !important;
+}
+
+.summaryGrid {
+  margin-top: 1.5rem;
+  display: grid;
+  gap: 1rem;
+}
+
+@media (min-width: 640px) {
+  .summaryGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.summaryCard {
+  border-radius: 1rem;
+  border: 1px solid #e2e8f0;
+  background-color: #f8fafc;
+  padding: 1.25rem;
+}
+
+.summaryCardSuccess {
+  composes: summaryCard;
+  border-color: color-mix(in srgb, var(--brand-success, #1a7a4a) 35%, white);
+  background-color: color-mix(in srgb, var(--brand-success, #1a7a4a) 10%, white);
+}
+
+.summaryCardWarning {
+  composes: summaryCard;
+  border-color: color-mix(in srgb, var(--brand-accent, #5ba3d9) 45%, white);
+  background-color: color-mix(in srgb, var(--brand-accent, #5ba3d9) 14%, white);
+}
+
+.summaryLabel {
+  font-size: 0.875rem;
+  color: #475569;
+}
+
+.summaryValue {
+  margin-top: 0.5rem;
+  font-size: 1.875rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.table {
+  margin-top: 1.5rem;
+}
+
+.statusBadge {
+  display: inline-flex;
+  border-radius: 9999px;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.statusComplete {
+  composes: statusBadge;
+  background-color: color-mix(in srgb, var(--brand-success, #1a7a4a) 14%, white);
+  color: var(--brand-success, #1a7a4a);
+}
+
+.statusPartial {
+  composes: statusBadge;
+  background-color: color-mix(in srgb, var(--brand-accent, #5ba3d9) 20%, white);
+  color: var(--brand-secondary, #2e75b6);
+}
+
+.statusPending {
+  composes: statusBadge;
+  background-color: color-mix(in srgb, var(--brand-error, #c0392b) 12%, white);
+  color: var(--brand-error, #c0392b);
+}
+
+.detailButton {
+  padding: 0.5rem 0.75rem !important;
+  font-size: 0.75rem !important;
+}
+
+.schoolsList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.schoolRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border-radius: 0.75rem;
+  border: 1px solid #e2e8f0;
+  padding: 0.75rem;
+}
+
+.strongCell {
+  font-weight: 500;
+  color: #1e293b;
+}
+
+.schoolStatus {
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.schoolButton {
+  padding: 0.5rem 0.75rem !important;
+  font-size: 0.75rem !important;
+}

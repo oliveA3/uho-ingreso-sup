@@ -1,0 +1,14 @@
+.message {
+  white-space: pre-wrap;
+  font-size: 0.875rem;
+  color: #475569;
+}
+
+.dangerButton {
+  background-color: var(--brand-error, #c0392b) !important;
+  filter: none;
+}
+
+.dangerButton:hover {
+  filter: brightness(0.95);
+}

@@ -1,0 +1,258 @@
+.headerRow {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+@media (min-width: 1024px) {
+  .headerRow {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
+
+.eyebrow {
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.24em;
+  color: #334155;
+}
+
+.title {
+  margin-top: 0.5rem;
+  font-size: 1.875rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.subtitle {
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  color: #475569;
+}
+
+.studentInfoGrid {
+  margin-top: 1.5rem;
+  display: grid;
+  gap: 1rem;
+}
+
+@media (min-width: 640px) {
+  .studentInfoGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .studentInfoGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.infoTile {
+  border-radius: 1.5rem;
+  border: 1px solid var(--border-color, #e2e8f0);
+  background-color: #f8fafc;
+  padding: 1.25rem;
+}
+
+.infoLabel {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: #64748b;
+}
+
+.infoValue {
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.selectionBox {
+  margin-top: 1.5rem;
+  border-radius: 1.5rem;
+  border: 1px solid var(--border-color, #e2e8f0);
+  background-color: #f8fafc;
+  padding: 1.5rem;
+  font-size: 0.875rem;
+  color: #334155;
+}
+
+.addRow {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+@media (min-width: 640px) {
+  .addRow {
+    flex-direction: row;
+  }
+}
+
+.addSelect {
+  min-width: 0;
+  flex: 1;
+}
+
+.countHint {
+  margin-top: 1rem;
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.planList {
+  margin-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.planRow {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  border-radius: 1.5rem;
+  border: 1px solid var(--border-color, #e2e8f0);
+  background-color: #ffffff;
+  padding: 1rem;
+}
+
+.planIndex {
+  display: flex;
+  height: 2rem;
+  width: 2rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background-color: color-mix(in srgb, var(--brand-primary, #0284c7) 15%, white);
+  font-weight: 600;
+  color: var(--brand-primary, #0369a1);
+}
+
+.planDetails {
+  min-width: 0;
+  flex: 1;
+}
+
+.planCareer {
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.planMeta {
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.planActions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.iconButton {
+  border-radius: 0.75rem;
+  padding: 0.5rem;
+  font-size: 1.125rem;
+  color: #64748b;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.iconButton:disabled {
+  opacity: 0.3;
+}
+
+.removeButton {
+  border-radius: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  font-weight: 600;
+  color: var(--brand-error, #dc2626);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.emptyNotice {
+  padding: 1.25rem 0;
+  text-align: center;
+  color: #64748b;
+}
+
+.statusRow {
+  margin-top: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.statusBadge {
+  display: inline-flex;
+  border-radius: 9999px;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.statusPorEnviar {
+  background-color: #f1f5f9;
+  color: #334155;
+}
+
+.statusPendiente {
+  background-color: color-mix(in srgb, var(--brand-accent, #d97706) 15%, white);
+  color: var(--brand-accent, #b45309);
+}
+
+.statusAprobada {
+  background-color: color-mix(in srgb, var(--brand-success, #059669) 15%, white);
+  color: var(--brand-success, #047857);
+}
+
+.statusModificada {
+  background-color: color-mix(in srgb, var(--brand-error, #dc2626) 15%, white);
+  color: var(--brand-error, #b91c1c);
+}
+
+.footerRow {
+  margin-top: 1.25rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  border-top: 1px solid var(--border-color, #e2e8f0);
+  padding-top: 1.25rem;
+}
+
+.noteSuccess {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--brand-success, #047857);
+}
+
+.noteWarning {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--brand-accent, #b45309);
+}
+
+.noteError {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--brand-error, #b91c1c);
+}
+
+.noteMuted {
+  font-size: 0.875rem;
+  color: #64748b;
+}

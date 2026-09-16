@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import FeedbackMessage from "../../components/FeedbackMessage";
+import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
 import InterestMetricsView from "../../features/escuela/components/InterestMetricsView";
 import { fetchSchoolInterestMetrics } from "../../services/api";
 

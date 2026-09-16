@@ -5,8 +5,10 @@ chardet==5.2.0
 click==8.3.1
 colorama==0.4.6
 Django==4.2.30
+argon2-cffi==25.1.0
 django-cors-headers==4.9.0
 django-phonenumber-field==8.4.0
+drf-spectacular==0.28.0
 djangorestframework==3.17.1
 et_xmlfile==2.0.0
 mypy_extensions==1.1.0
@@ -19,5 +21,6 @@ platformdirs==4.9.4
 pycodestyle==2.14.0
 python-dotenv==1.2.1
 pytokens==0.4.1
+djangorestframework-simplejwt==5.5.1
 sqlparse==0.5.3
 tzdata==2025.2

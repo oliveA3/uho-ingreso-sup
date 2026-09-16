@@ -1,0 +1,99 @@
+.section {
+  margin-bottom: 0.5rem;
+  border-radius: 2rem;
+  background: linear-gradient(to right, var(--brand-primary, #1f4e79), var(--brand-secondary, #2e75b6), var(--brand-accent, #5ba3d9));
+  padding: 3rem 1.5rem;
+  color: #ffffff;
+  box-shadow: 0 10px 15px -3px rgba(15, 23, 42, 0.2);
+}
+
+@media (min-width: 640px) {
+  .section {
+    padding: 3rem 2.5rem;
+  }
+}
+
+.inner {
+  margin: 0 auto;
+  max-width: 64rem;
+}
+
+.eyebrow {
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.3em;
+  color: #cffafe;
+}
+
+.title {
+  margin-top: 1rem;
+  font-size: 1.875rem;
+  font-weight: 900;
+  letter-spacing: -0.025em;
+}
+
+@media (min-width: 640px) {
+  .title {
+    font-size: 2.25rem;
+  }
+}
+
+.description {
+  margin-top: 1rem;
+  max-width: 48rem;
+  font-size: 1rem;
+  line-height: 1.75rem;
+  color: #cffafe;
+}
+
+@media (min-width: 640px) {
+  .description {
+    font-size: 1.125rem;
+  }
+}
+
+.actions {
+  margin-top: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+@media (min-width: 640px) {
+  .actions {
+    flex-direction: row;
+    align-items: center;
+  }
+}
+
+.actionButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  padding: 0.75rem 1.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.actionButtonActive {
+  background-color: #ffffff;
+  color: var(--brand-primary, #1f4e79);
+}
+
+.actionButtonActive:hover {
+  background-color: #f1f5f9;
+}
+
+.actionButtonInactive {
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+.actionButtonInactive:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+}

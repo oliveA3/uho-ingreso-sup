@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
-import FeedbackMessage from "../../components/FeedbackMessage";
+import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
 import EntityActionButton from "../../components/Buttons/EntityActionButton";
-import StageStatusNotice from "../../components/StageStatusNotice";
+import StageStatusNotice from "../../components/StageStatusNotice/StageStatusNotice";
+import { Card } from "../../components";
 import { fetchStudentExamConfirmations, updateStudentExamConfirmation } from "../../services/api";
+import styles from "./ConfirmacionPruebasPage.module.css";
 
 const dateFormatter = new Intl.DateTimeFormat("es-CU", {
   day: "numeric",
@@ -43,28 +45,35 @@ export default function EstudianteConfirmacionPruebasPage() {
   };
 
   if (error && !data) return <FeedbackMessage type="error" className="rounded-2xl">{error}</FeedbackMessage>;
-  if (!data) return <div className="rounded-3xl border border-slate-200 bg-white p-8 text-sm text-slate-600 shadow-sm">Cargando pruebas de ingreso...</div>;
+  if (!data) return <Card padding="p-8" className="text-sm text-slate-600">Cargando pruebas de ingreso...</Card>;
 
   const stageActive = data.stage?.active;
-  const formattedDates = data.exams.map((exam) => dayFormatter.format(new Date(exam.date))).join(", ");
   return (
     <div className="space-y-6">
-      <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
-        <div className="flex items-center gap-3">
-            <div><p className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-700">Pruebas de Ingreso</p><h1 className="mt-2 text-3xl font-semibold text-slate-900">Confirmación de Pruebas de Ingreso</h1><p className="mt-2 text-sm text-slate-600">{stageActive ? "Confirma tu presentación en cada prueba." : "La etapa de confirmación no está activa. Puedes consultar tus pruebas, pero ya no modificar tu respuesta."}</p></div>
+      <Card padding="p-8">
+        <div className={styles.headerBlock}>
+          <div>
+            <p className={styles.eyebrow}>Pruebas de Ingreso</p>
+            <h1 className={styles.title}>Confirmación de Pruebas de Ingreso</h1>
+            <p className={styles.subtitle}>{stageActive ? "Confirma tu presentación en cada prueba." : "La etapa de confirmación no está activa. Puedes consultar tus pruebas, pero ya no modificar tu respuesta."}</p>
+          </div>
         </div>
         <StageStatusNotice stageNumber={4} />
         {error && <FeedbackMessage type="error" className="mt-5 rounded-2xl">{error}</FeedbackMessage>}
-          <div className="space-y-3 mt-6">
+        <div className={styles.examList}>
           {data.exams.length ? data.exams.map((exam) => (
-            <div key={exam.id} className="rounded-3xl bg-slate-50 p-5 shadow-sm">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div key={exam.id} className={styles.examRow}>
+              <div className={styles.examRowInner}>
                 <div>
-                  <p className="text-base text-slate-900">{exam.subject === "Matemática" ? "📐" : exam.subject === "Español" ? "📖" : "🗺️"} {exam.subject}</p>
-                  <p className="mt-1 text-sm text-slate-700">{dateFormatter.format(new Date(exam.date))}</p>
+                  <p className={styles.examSubject}>{exam.subject === "Matemática" ? "📐" : exam.subject === "Español" ? "📖" : "🗺️"} {exam.subject}</p>
+                  <p className={styles.examDate}>{dateFormatter.format(new Date(exam.date))}</p>
                 </div>
-                <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-                  {getExamStatus(exam) !== "pending" && <span className={`rounded-full px-3 py-1 text-xs font-semibold ${getExamStatus(exam) === "confirmed" ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}`}>{getExamStatus(exam) === "confirmed" ? "Confirmado" : "No asistiré"}</span>}
+                <div className={styles.examActions}>
+                  {getExamStatus(exam) !== "pending" && (
+                    <span className={`${styles.examBadge} ${getExamStatus(exam) === "confirmed" ? styles.examBadgeConfirmed : styles.examBadgeAbsent}`}>
+                      {getExamStatus(exam) === "confirmed" ? "Confirmado" : "No asistiré"}
+                    </span>
+                  )}
                   {stageActive && <>
                     <EntityActionButton variant="edit" onClick={() => respond(exam.id, true)} disabled={processingId === exam.id}>Confirmar</EntityActionButton>
                     <EntityActionButton variant="delete" onClick={() => respond(exam.id, false)} disabled={processingId === exam.id}>No asistiré</EntityActionButton>
@@ -72,9 +81,9 @@ export default function EstudianteConfirmacionPruebasPage() {
                 </div>
               </div>
             </div>
-          )) : <p className="rounded-2xl bg-slate-50 p-5 text-sm text-slate-500">Aún no hay pruebas disponibles para confirmar.</p>}
-          </div>
-      </section>
+          )) : <p className={styles.emptyNotice}>Aún no hay pruebas disponibles para confirmar.</p>}
+        </div>
+      </Card>
     </div>
   );
 }

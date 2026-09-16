@@ -1,0 +1,145 @@
+.pendingBox {
+  margin-top: 1.5rem;
+  border-radius: 1.5rem;
+  border: 1px solid var(--border-color, #e2e8f0);
+  background-color: #f8fafc;
+  padding: 1.5rem;
+}
+
+.pendingLabel {
+  font-size: 0.875rem;
+  color: #475569;
+}
+
+.pendingValue {
+  margin-top: 0.5rem;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.pendingHint {
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  color: #475569;
+}
+
+.awardBox {
+  margin-top: 1.5rem;
+  border-radius: 1.5rem;
+  background-color: var(--brand-success, #059669);
+  padding: 1.5rem;
+  text-align: center;
+  color: #ffffff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+}
+
+.awardLead {
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.awardCareer {
+  margin-top: 0.5rem;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.awardCes {
+  margin-top: 0.25rem;
+  font-size: 1rem;
+  color: #d1fae5;
+}
+
+.awardIndex {
+  margin-top: 1rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.summaryBox {
+  margin-top: 1.5rem;
+  border-radius: 1.5rem;
+  border: 1px solid var(--border-color, #e2e8f0);
+  background-color: #f8fafc;
+  padding: 1.25rem;
+}
+
+.summaryTitle {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.summaryGrid {
+  margin-top: 0.75rem;
+  display: grid;
+  gap: 0.75rem;
+}
+
+@media (min-width: 640px) {
+  .summaryGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.summaryTile {
+  border-radius: 1rem;
+  padding: 0.75rem;
+}
+
+.summaryTileGeneral {
+  background-color: color-mix(in srgb, var(--brand-primary, #0284c7) 15%, white);
+}
+
+.summaryTileAward {
+  background-color: color-mix(in srgb, var(--brand-success, #059669) 15%, white);
+}
+
+.summaryTileCut {
+  background-color: color-mix(in srgb, var(--brand-accent, #d97706) 15%, white);
+}
+
+.summaryTileLabel {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.summaryTileLabelGeneral {
+  color: var(--brand-primary, #0369a1);
+}
+
+.summaryTileLabelAward {
+  color: var(--brand-success, #047857);
+}
+
+.summaryTileLabelCut {
+  color: var(--brand-accent, #b45309);
+}
+
+.summaryTileValue {
+  margin-top: 0.25rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.priorityNotice {
+  margin-top: 1rem;
+  border-radius: 1rem;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+}
+
+.priorityNoticeQualified {
+  border: 1px solid var(--brand-primary, #0284c7);
+  background-color: color-mix(in srgb, var(--brand-primary, #0284c7) 8%, white);
+  color: var(--brand-primary, #0369a1);
+}
+
+.priorityNoticeUnqualified {
+  border: 1px solid var(--brand-accent, #d97706);
+  background-color: color-mix(in srgb, var(--brand-accent, #d97706) 8%, white);
+  color: var(--brand-accent, #b45309);
+}

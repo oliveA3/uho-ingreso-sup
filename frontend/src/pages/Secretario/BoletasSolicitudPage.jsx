@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import FeedbackMessage from "../../components/FeedbackMessage";
+import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
 import SolicitudOverviewView from "../../features/escuela/components/SolicitudOverviewView";
 import { approveSchoolSolicitud, downloadSchoolSolicitudPdf, fetchSchoolSolicitudes } from "../../services/api";
 

@@ -1,15 +1,16 @@
 import { useEffect, useState } from "react";
-import HeroSection from "../components/HeroSection";
-import ProcessTimeline from "../components/ProcessTimeline";
-import NewsSection from "../components/NewsSection";
+import HeroSection from "../components/HeroSection/HeroSection";
+import ProcessTimeline from "../components/ProcessTimeline/ProcessTimeline";
+import NewsSection from "../components/NewsSection/NewsSection";
 import PlanPlazasModal from "../components/Modals/PlanPlazasModal";
 import ResultadosModal from "../components/Modals/ResultadosModal";
 import OtorgamientosModal from "../components/Modals/OtorgamientosModal";
-import CutoffSection from "../components/CutoffSection";
-import OfferingsSection from "../components/OfferingsSection";
+import CutoffSection from "../components/CutoffSection/CutoffSection";
+import OfferingsSection from "../components/OfferingsSection/OfferingsSection";
 import { newsItems, cutoffIndices } from "../data/landingData";
 import { fetchLandingData } from "../services/api";
 import { fetchLandingCortes } from "../services/api";
+import styles from "./LandingPage.module.css";
 
 const stageTitles = {
   1: "Escalafón",
@@ -86,14 +87,14 @@ export default function LandingPage({ user }) {
       };
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900">
+    <div className={styles.page}>
 
-      <main className="flex-1 space-y-5 py-5 px-4 sm:px-6 lg:px-8">
+      <main className={styles.main}>
         <HeroSection onViewPlan={() => setPlanModalOpen(true)} onViewResults={() => setResultadosModalOpen(true)} onViewAwards={() => setOtorgamientosModalOpen(true)} isAuthenticated={Boolean(user)} activeStageNumber={activeStage?.numero} />
-        {processData?.error && <p className="text-sm text-rose-700">No se pudo actualizar el estado del proceso.</p>}
+        {processData?.error && <p className={styles.errorNotice}>No se pudo actualizar el estado del proceso.</p>}
         {stages.length > 0 && <ProcessTimeline steps={stages.map(toTimelineStep)} />}
-        
-        <div className="space-y-5">
+
+        <div className={styles.sectionsGroup}>
           <NewsSection items={newsItems} />
           <CutoffSection items={cortesData.items.length ? cortesData.items.slice(0, 4) : cutoffIndices} year={cortesData.year} onViewMore={() => setCortesModalOpen(true)} />
           <OfferingsSection items={ces} />

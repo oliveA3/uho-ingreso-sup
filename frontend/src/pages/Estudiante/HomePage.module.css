@@ -1,0 +1,190 @@
+.greeting {
+  font-size: 1.875rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.subheading {
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  color: #475569;
+}
+
+.statsGrid {
+  margin-top: 1.5rem;
+  display: grid;
+  gap: 1rem;
+}
+
+@media (min-width: 640px) {
+  .statsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1280px) {
+  .statsGrid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.statTile {
+  border-radius: 1.5rem;
+  border: 1px solid var(--border-color, #e2e8f0);
+  background-color: #f8fafc;
+  padding: 1.5rem;
+}
+
+.statValue {
+  font-size: 1.875rem;
+  font-weight: 600;
+}
+
+.statValuePrimary {
+  color: var(--brand-primary, #075985);
+}
+
+.statValueSuccess {
+  color: var(--brand-success, #047857);
+}
+
+.statValueAccent {
+  color: var(--brand-accent, #ea580c);
+}
+
+.statLabel {
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  color: #475569;
+}
+
+.processSection {
+  margin-top: 1.5rem;
+  display: grid;
+  gap: 1.5rem;
+}
+
+.processCard {
+  min-width: 0;
+  border-radius: 1.5rem;
+  border: 1px solid var(--border-color, #e2e8f0);
+  background-color: #f8fafc;
+  padding: 1.5rem;
+}
+
+.processTitle {
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.stageGrid {
+  margin-top: 1.5rem;
+  display: grid;
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+@media (min-width: 480px) {
+  .stageGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 640px) {
+  .stageGrid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+
+.stageItem {
+  min-width: 0;
+  text-align: center;
+}
+
+.stageBadge {
+  margin-left: auto;
+  margin-right: auto;
+  display: flex;
+  height: 2.5rem;
+  width: 2.5rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  border-width: 2px;
+  border-style: solid;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.stageBadgeDone {
+  border-color: var(--brand-success, #059669);
+  background-color: var(--brand-success, #059669);
+  color: #ffffff;
+}
+
+.stageBadgeActive {
+  border-color: var(--brand-primary, #0284c7);
+  background-color: var(--brand-primary, #0284c7);
+  color: #ffffff;
+}
+
+.stageBadgePending {
+  border-color: #cbd5e1;
+  background-color: #ffffff;
+  color: #64748b;
+}
+
+.stageLabel {
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: #475569;
+}
+
+.stageLabelActive {
+  font-weight: 600;
+  color: var(--brand-primary, #0369a1);
+}
+
+.stageDates {
+  margin-top: 0.25rem;
+  font-size: 0.625rem;
+  line-height: 1.1;
+  color: #64748b;
+}
+
+.navLinks {
+  margin-top: 1.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.navLink {
+  border-radius: 1rem;
+  border-width: 1px;
+  border-style: solid;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  transition: background-color 0.15s ease;
+}
+
+.navLinkActive {
+  border-color: var(--brand-primary, #0284c7);
+  background-color: var(--brand-primary, #0284c7);
+  color: #ffffff;
+}
+
+.navLinkActive:hover {
+  background-color: color-mix(in srgb, var(--brand-primary, #0284c7) 85%, black);
+}
+
+.navLinkInactive {
+  border-color: #cbd5e1;
+  background-color: #ffffff;
+  color: #334155;
+}
+
+.navLinkInactive:hover {
+  background-color: #f8fafc;
+}

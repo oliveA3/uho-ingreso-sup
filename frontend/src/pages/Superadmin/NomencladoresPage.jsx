@@ -7,7 +7,11 @@ import {
 } from "../../services/api";
 import EntityActionButton from "../../components/Buttons/EntityActionButton";
 import StatusToggle from "../../components/Buttons/StatusToggle";
-import FeedbackMessage from "../../components/FeedbackMessage";
+import PrimaryButton from "../../components/Buttons/PrimaryButton";
+import SecondaryButton from "../../components/Buttons/SecondaryButton";
+import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
+import { Card, DataTable, FormField, Input, Modal, PageHeader, Select, useConfirm } from "../../components";
+import styles from "./NomencladoresPage.module.css";
 
 const catalogs = {
   provincias: {
@@ -72,6 +76,7 @@ function emptyForm(config) {
 }
 
 export default function NomencladoresPage() {
+  const confirm = useConfirm();
   const [resource, setResource] = useState("provincias");
   const [items, setItems] = useState([]);
   const [form, setForm] = useState({});
@@ -171,7 +176,13 @@ export default function NomencladoresPage() {
   }
 
   async function handleDelete(item) {
-    if (!window.confirm(`¿Eliminar ${item.nombre || item.codigo}?`)) return;
+    const ok = await confirm({
+      title: "Eliminar registro",
+      message: `¿Eliminar ${item.nombre || item.codigo}?`,
+      confirmLabel: "Eliminar",
+      tone: "danger",
+    });
+    if (!ok) return;
     try {
       setError("");
       setNotice("");
@@ -195,126 +206,134 @@ export default function NomencladoresPage() {
     }
   }
 
+  const columns = [
+    { key: "registro", header: "Registro", className: "font-medium text-slate-900", render: (item) => item.nombre || item.codigo },
+    {
+      key: "estado",
+      header: "Estado",
+      render: (item) => (
+        <StatusToggle
+          active={item[config.activeField]}
+          onClick={() => toggleActive(item)}
+          title={item[config.activeField] ? "Desactivar registro" : "Activar registro"}
+        />
+      ),
+    },
+    {
+      key: "acciones",
+      header: "Acciones",
+      render: (item) => (
+        <>
+          <EntityActionButton variant="edit" onClick={() => openEdit(item)}>Editar</EntityActionButton>
+          <EntityActionButton variant="delete" className="ml-2" onClick={() => handleDelete(item)}>Eliminar</EntityActionButton>
+        </>
+      ),
+    },
+  ];
+
   return (
     <div className="space-y-6">
-      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold text-slate-900">📚 Nomencladores</h1>
-            <p className="mt-2 text-sm text-slate-600">Administra los catálogos.</p>
-          </div>
-          <button type="button" onClick={openCreate} className="rounded-2xl bg-sky-600 px-5 py-3 text-sm font-semibold text-white hover:bg-sky-700">
-            + Nuevo registro
-          </button>
-        </div>
+      <Card>
+        <PageHeader
+          title="📚 Nomencladores"
+          subtitle="Administra los catálogos."
+          actions={<PrimaryButton onClick={openCreate}>+ Nuevo registro</PrimaryButton>}
+        />
 
-        <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <div className={styles.catalogGrid}>
           {Object.entries(catalogs).map(([key, item]) => (
-            <button key={key} type="button" onClick={() => setResource(key)} className={`rounded-3xl border p-5 text-left transition ${resource === key ? "border-sky-500 bg-sky-50" : "border-slate-200 bg-slate-50 hover:bg-white"}`}>
-              <span className="text-2xl">{item.icon}</span>
-              <span className="mt-3 block text-sm font-semibold text-slate-900">{item.title}</span>
+            <button key={key} type="button" onClick={() => setResource(key)} className={`${styles.catalogButton} ${resource === key ? styles.catalogButtonActive : ""}`}>
+              <span className={styles.catalogIcon}>{item.icon}</span>
+              <span className={styles.catalogTitle}>{item.title}</span>
             </button>
           ))}
         </div>
-      </section>
+      </Card>
 
-      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <h2 className="text-xl font-semibold text-slate-900">{config.title}</h2>
+      <Card>
+        <div className={styles.listHeader}>
+          <h2 className={styles.listTitle}>{config.title}</h2>
           <div className="flex items-center gap-3">
-            <span className="rounded-full bg-slate-100 px-3 py-1 text-sm text-slate-600">
+            <span className={styles.listCount}>
               {filteredItems.length} registrados / {activeItems} activados
             </span>
           </div>
         </div>
         {error && <FeedbackMessage type="error" className="mt-4 rounded-2xl">{error}</FeedbackMessage>}
         {notice && <FeedbackMessage type="success" className="mt-4 rounded-2xl">{notice}</FeedbackMessage>}
-        <div className="mt-5">
-          <label htmlFor="nomenclador-search" className="sr-only">Buscar nomenclador</label>
-          <input
+        <div className={styles.searchField}>
+          <label htmlFor="nomenclador-search" className={styles.searchLabel}>Buscar nomenclador</label>
+          <Input
             id="nomenclador-search"
             type="search"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder={`Buscar en ${config.title.toLowerCase()}...`}
-            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-sky-500 focus:bg-white"
+            className="!mt-0"
           />
         </div>
-        <div className="table-scroll mt-5 overflow-x-auto rounded-3xl border border-slate-200">
-          <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
-            <thead className="bg-slate-100 text-slate-500"><tr><th className="px-4 py-3">Registro</th><th className="px-4 py-3">Estado</th><th className="px-4 py-3">Acciones</th></tr></thead>
-            <tbody className="divide-y divide-slate-200 bg-white">
-              {filteredItems.map((item) => (
-                <tr key={item.id}>
-                  <td className="px-4 py-4 font-medium text-slate-900">{item.nombre || item.codigo}</td>
-                  <td className="px-4 py-4"><StatusToggle active={item[config.activeField]} onClick={() => toggleActive(item)} title={item[config.activeField] ? "Desactivar registro" : "Activar registro"} /></td>
-                  <td className="px-4 py-4"><EntityActionButton variant="edit" onClick={() => openEdit(item)}>Editar</EntityActionButton><EntityActionButton variant="delete" className="ml-2" onClick={() => handleDelete(item)}>Eliminar</EntityActionButton></td>
-                </tr>
-              ))}
-              {!filteredItems.length && <tr><td colSpan="3" className="px-4 py-8 text-center text-slate-500">{items.length ? "No se encontraron registros." : "No hay registros."}</td></tr>}
-            </tbody>
-          </table>
-        </div>
-      </section>
+        <DataTable
+          className="table-scroll mt-5"
+          columns={columns}
+          data={filteredItems}
+          emptyMessage={items.length ? "No se encontraron registros." : "No hay registros."}
+        />
+      </Card>
 
-      {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
-          <form onSubmit={handleSubmit} className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl">
-            <h2 className="text-xl font-semibold text-slate-900">
-              {editing ? "Editar" : "Nuevo"} {config.title}
-            </h2>
-            <div className="mt-5 space-y-4">
-              {config.fields.map((field) => (
-                <label key={field.name} className="block text-sm font-semibold text-slate-700">
-                  {field.label}
-                  {field.type === "select" ? (
-                    <select
-                      required
-                      value={form[field.name] ?? ""}
-                      onChange={(event) => {
-                        const value = event.target.value;
-                        setForm({
-                          ...form,
-                          [field.name]: value,
-                          ...(resource === "escuelas" && field.name === "provincia" ? { municipio: "" } : {}),
-                        });
-                      }}
-                      disabled={resource === "escuelas" && field.name === "municipio" && !form.provincia}
-                      className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 font-normal"
-                    >
-                      <option value="">Selecciona una opción</option>
-                      {referenceOptions[field.optionsKey].map((option) => (
-                        <option key={option.id} value={option.id}>{option.nombre}</option>
-                      ))}
-                    </select>
-                  ) : (
-                    <input
-                      required={field.name === "nombre" || field.name === "codigo"}
-                      type={field.type}
-                      value={form[field.name] ?? ""}
-                      onChange={(event) => setForm({ ...form, [field.name]: event.target.value })}
-                      className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 font-normal"
-                    />
-                  )}
-                </label>
-              ))}
-              <label className="flex items-center gap-3 text-sm font-semibold text-slate-700">
-                <input
-                  type="checkbox"
-                  checked={Boolean(form[config.activeField])}
-                  onChange={(event) => setForm({ ...form, [config.activeField]: event.target.checked })}
-                  className="h-5 w-5 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+      <Modal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        title={`${editing ? "Editar" : "Nuevo"} ${config.title}`}
+        footer={
+          <>
+            <SecondaryButton onClick={() => setModalOpen(false)}>Cancelar</SecondaryButton>
+            <PrimaryButton type="submit" form="nomenclador-form">Guardar</PrimaryButton>
+          </>
+        }
+      >
+        <form id="nomenclador-form" onSubmit={handleSubmit} className="space-y-4">
+          {config.fields.map((field) => (
+            <FormField key={field.name} label={field.label}>
+              {field.type === "select" ? (
+                <Select
+                  required
+                  value={form[field.name] ?? ""}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    setForm({
+                      ...form,
+                      [field.name]: value,
+                      ...(resource === "escuelas" && field.name === "provincia" ? { municipio: "" } : {}),
+                    });
+                  }}
+                  disabled={resource === "escuelas" && field.name === "municipio" && !form.provincia}
+                >
+                  <option value="">Selecciona una opción</option>
+                  {referenceOptions[field.optionsKey].map((option) => (
+                    <option key={option.id} value={option.id}>{option.nombre}</option>
+                  ))}
+                </Select>
+              ) : (
+                <Input
+                  required={field.name === "nombre" || field.name === "codigo"}
+                  type={field.type}
+                  value={form[field.name] ?? ""}
+                  onChange={(event) => setForm({ ...form, [field.name]: event.target.value })}
                 />
-                Registro activo
-              </label>
-            </div>
-            <div className="mt-6 flex justify-end gap-3">
-              <button type="button" onClick={() => setModalOpen(false)} className="rounded-2xl border border-slate-200 px-5 py-3 text-sm font-semibold">Cancelar</button>
-              <button type="submit" className="rounded-2xl bg-sky-600 px-5 py-3 text-sm font-semibold text-white">Guardar</button>
-            </div>
-          </form>
-        </div>
-      )}
+              )}
+            </FormField>
+          ))}
+          <label className={styles.activeCheckbox}>
+            <input
+              type="checkbox"
+              checked={Boolean(form[config.activeField])}
+              onChange={(event) => setForm({ ...form, [config.activeField]: event.target.checked })}
+              className={styles.checkbox}
+            />
+            Registro activo
+          </label>
+        </form>
+      </Modal>
     </div>
   );
 }

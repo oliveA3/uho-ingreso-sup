@@ -1,25 +1,28 @@
+import Input from "../Input/Input";
+import styles from "./EscalafonTable.module.css";
+
 export default function EscalafonTable({ entries, current, search, onSearchChange }) {
   const visibleEntries = entries.filter((entry) =>
     `${entry.nombre} ${entry.apellidos} ${entry.ci}`.toLowerCase().includes(search.toLowerCase())
   );
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="font-semibold text-slate-900">Escalafón completo</h2>
-        <input
+    <div className={styles.container}>
+      <div className={styles.toolbar}>
+        <h2 className={styles.heading}>Escalafón completo</h2>
+        <Input
           value={search}
           onChange={onSearchChange}
           placeholder="Buscar por nombre o CI"
-          className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm sm:w-64"
+          className={styles.searchInput}
         />
       </div>
-      <div className="overflow-x-auto rounded-2xl border border-slate-200">
-        <table className="min-w-full text-left text-sm">
-          <thead className="bg-slate-100">
+      <div className={styles.tableWrapper}>
+        <table className={styles.table}>
+          <thead className={styles.thead}>
             <tr>
               {["Posición", "CI", "Nombre", "10mo", "11mo", "12mo", "Índice general"].map((heading) => (
-                <th key={heading} className="px-4 py-3">{heading}</th>
+                <th key={heading} className={styles.th}>{heading}</th>
               ))}
             </tr>
           </thead>
@@ -31,25 +34,19 @@ export default function EscalafonTable({ entries, current, search, onSearchChang
               return (
                 <tr
                   key={entry.id}
-                  className={isCurrentStudent
-                    ? "border border-sky-200 bg-gradient-to-r from-sky-100 via-sky-50 to-white shadow-sm ring-1 ring-sky-200"
-                    : "border-t border-slate-200 hover:bg-slate-50"}
+                  className={isCurrentStudent ? styles.rowHighlight : styles.rowNormal}
                 >
-                  <td className="px-4 py-3">
-                    <span
-                      className={isCurrentStudent
-                        ? "inline-flex items-center rounded-full bg-sky-600 px-2.5 py-1 text-xs font-bold text-white shadow-sm"
-                        : "inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700"}
-                    >
+                  <td className={styles.td}>
+                    <span className={isCurrentStudent ? styles.positionBadgeActive : styles.positionBadge}>
                       {position}
                     </span>
                   </td>
-                  <td className="px-4 py-3">{entry.ci}</td>
-                  <td className="px-4 py-3">{entry.nombre} {entry.apellidos}</td>
-                  <td className="px-4 py-3">{entry.indice_10 ?? "--"}</td>
-                  <td className="px-4 py-3">{entry.indice_11 ?? "--"}</td>
-                  <td className="px-4 py-3">{entry.indice_12 ?? "--"}</td>
-                  <td className="px-4 py-3">{entry.indice_general ?? "--"}</td>
+                  <td className={styles.td}>{entry.ci}</td>
+                  <td className={styles.td}>{entry.nombre} {entry.apellidos}</td>
+                  <td className={styles.td}>{entry.indice_10 ?? "--"}</td>
+                  <td className={styles.td}>{entry.indice_11 ?? "--"}</td>
+                  <td className={styles.td}>{entry.indice_12 ?? "--"}</td>
+                  <td className={styles.td}>{entry.indice_general ?? "--"}</td>
                 </tr>
               );
             })}

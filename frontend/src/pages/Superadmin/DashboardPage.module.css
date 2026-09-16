@@ -1,0 +1,59 @@
+.userPanel {
+  border-radius: 1.5rem;
+  background-color: #f8fafc;
+  padding: 1rem 1.25rem;
+  font-size: 0.875rem;
+  color: #334155;
+}
+
+.userRole {
+  color: #64748b;
+}
+
+.statsGrid {
+  margin-top: 1.5rem;
+  display: grid;
+  gap: 1.25rem;
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+}
+
+@media (min-width: 640px) {
+  .statsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1280px) {
+  .statsGrid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.statCard {
+  border-radius: 1.5rem;
+  border: 1px solid #e2e8f0;
+  background-color: #f8fafc;
+  padding: 1.5rem;
+}
+
+.statValue {
+  font-size: 1.875rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.statLabel {
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  color: #475569;
+}
+
+.infoBanner {
+  margin-top: 1.5rem;
+  border-radius: 1.5rem;
+  border: 1px solid #e2e8f0;
+  background-color: #f8fafc;
+  padding: 1.5rem;
+  font-size: 0.875rem;
+  color: #334155;
+}

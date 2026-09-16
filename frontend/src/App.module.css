@@ -1,0 +1,160 @@
+.page {
+  display: flex;
+  min-height: 100vh;
+  flex-direction: column;
+  background-color: #f8fafc;
+  color: #0f172a;
+}
+
+.body {
+  position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+}
+
+@media (min-width: 1024px) {
+  .body {
+    flex-direction: row;
+  }
+}
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  top: 5rem;
+  z-index: 30;
+  background-color: rgba(15, 23, 42, 0.5);
+}
+
+@media (min-width: 1024px) {
+  .backdrop {
+    display: none;
+  }
+}
+
+.sidebarWrapper {
+  position: relative;
+  display: flex;
+  min-height: 0;
+  flex-shrink: 0;
+  align-items: flex-start;
+  align-self: stretch;
+}
+
+@media (min-width: 1024px) {
+  .sidebarWrapper {
+    align-items: stretch;
+  }
+}
+
+.sidebarWrapperCollapsed {
+  z-index: 20;
+}
+
+@media (min-width: 1024px) {
+  .sidebarWrapperCollapsed {
+    position: absolute;
+    left: 0;
+    top: 0;
+  }
+}
+
+.sidebarWrapperOpen {
+  position: fixed;
+  left: 0;
+  top: 5rem;
+  z-index: 40;
+  height: calc(100vh - 5rem);
+}
+
+@media (min-width: 1024px) {
+  .sidebarWrapperOpen {
+    position: static;
+    height: auto;
+  }
+}
+
+.sidebarPanel {
+  display: flex;
+  height: calc(100vh - 5rem);
+  min-height: 0;
+  width: 250px;
+  max-width: 85vw;
+  flex-direction: column;
+  align-self: stretch;
+  border-right: 1px solid #e2e8f0;
+  background-color: #ffffff;
+  box-shadow: 0 10px 15px -3px rgba(15, 23, 42, 0.1);
+}
+
+@media (min-width: 1024px) {
+  .sidebarPanel {
+    min-height: 100%;
+    max-width: none;
+  }
+}
+
+.sidebarScroll {
+  min-height: 0;
+  flex: 1 1 0%;
+}
+
+@media (min-width: 1024px) {
+  .sidebarScroll {
+    height: calc(100vh - 5rem);
+    max-height: calc(100vh - 5rem);
+  }
+}
+
+.toggleButton {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  height: 2.75rem;
+  width: 2.75rem;
+  flex-shrink: 0;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #e2e8f0;
+  border-left: none;
+  background-color: #0f172a;
+  padding: 0;
+  color: #ffffff;
+  box-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.1);
+  border-radius: 0 0.75rem 0.75rem 0;
+  transition: background-color 0.15s ease;
+}
+
+.toggleButton:hover {
+  background-color: #334155;
+}
+
+@media (min-width: 1024px) {
+  .toggleButtonOpen {
+    position: absolute;
+    left: 250px;
+    top: 0;
+  }
+}
+
+.icon {
+  pointer-events: none;
+}
+
+.content {
+  min-width: 0;
+  flex: 1 1 auto;
+  padding-left: 0.5rem;
+}
+
+@media (min-width: 1024px) {
+  .content {
+    padding-left: 0.75rem;
+  }
+
+  .contentShifted {
+    padding-left: 0;
+  }
+}

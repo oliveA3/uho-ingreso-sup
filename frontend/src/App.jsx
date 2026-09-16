@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
-import { fetchCurrentUser, fetchSuperAdminConfig, logout } from "./services/api";
+import { fetchCurrentUser, logout } from "./services/api";
+import styles from "./App.module.css";
+import { ThemeProvider, useTheme } from "./theme/ThemeContext";
+import { ConfirmDialogProvider } from "./components/ConfirmDialog/ConfirmDialogProvider";
 import { SidebarSelector } from "./components/Sidebar/SidebarSelector";
-import LandingNav from "./components/LandingNav";
-import Footer from "./components/Footer";
-import StageOneGuard from "./components/StageOneGuard";
+import LandingNav from "./components/LandingNav/LandingNav";
+import Footer from "./components/Footer/Footer";
+import StageOneGuard from "./components/StageOneGuard/StageOneGuard";
 import LandingPage from "./pages/LandingPage";
 import LoginPage from "./pages/Auth/LoginPage";
 import RegisterPage from "./pages/Auth/RegisterPage";
@@ -64,7 +67,7 @@ function AppContent() {
   const [user, setUser] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [visualConfig, setVisualConfig] = useState(null);
+  const { theme } = useTheme();
 
   useEffect(() => {
     async function loadCurrentUser() {
@@ -80,18 +83,6 @@ function AppContent() {
     loadCurrentUser();
   }, []);
 
-  useEffect(() => {
-    fetchSuperAdminConfig()
-      .then((data) => setVisualConfig(data.config))
-      .catch(() => setVisualConfig(null));
-  }, []);
-
-  useEffect(() => {
-    const handleVisualIdentityUpdate = (event) => setVisualConfig(event.detail);
-    window.addEventListener("visual-identity-updated", handleVisualIdentityUpdate);
-    return () => window.removeEventListener("visual-identity-updated", handleVisualIdentityUpdate);
-  }, []);
-
   const handleLogin = (userData) => setUser(userData);
   const handleLogout = async () => {
     try {
@@ -104,31 +95,24 @@ function AppContent() {
   };
 
   return (
-      <div
-        style={{
-          "--brand-primary": visualConfig?.color_primario || "#1F4E79",
-          "--brand-secondary": visualConfig?.color_secundario || "#2E75B6",
-          "--brand-accent": visualConfig?.color_acento || "#5BA3D9",
-          "--brand-background": visualConfig?.color_fondo || "#D6E4F0",
-          "--brand-success": visualConfig?.color_exito || "#1A7A4A",
-          "--brand-error": visualConfig?.color_error || "#C0392B",
-          "--brand-font": visualConfig?.tipografia || "Segoe UI",
-        }}
-      >
+      <>
         <LandingNav
           user={user}
-          visualConfig={visualConfig}
+          visualConfig={theme}
           onLogout={handleLogout}
           onViewPlan={() => window.dispatchEvent(new CustomEvent("open-plan-plazas"))}
         />
 
-      <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900">
-        <div className="relative flex flex-1 flex-col lg:flex-row">
+      <div className={styles.page}>
+        <div className={styles.body}>
+          {user && isMenuOpen && <div className={styles.backdrop} onClick={() => setIsMenuOpen(false)} />}
           {user && (
-            <div className={`relative flex min-h-0 shrink-0 items-start self-stretch lg:items-stretch ${!isMenuOpen ? "lg:absolute lg:left-0 lg:top-0 lg:z-20" : ""}`}>
+            <div
+              className={`${styles.sidebarWrapper} ${isMenuOpen ? styles.sidebarWrapperOpen : styles.sidebarWrapperCollapsed}`}
+            >
               {isMenuOpen && (
-                <div className="flex h-[calc(100vh-5rem)] w-[250px] min-h-0 flex-col self-start border-r border-slate-200 bg-white shadow-lg lg:min-h-full">
-                  <div className="min-h-0 flex-1 lg:h-[calc(100vh-5rem)] lg:max-h-[calc(100vh-5rem)]">
+                <div className={styles.sidebarPanel}>
+                  <div className={styles.sidebarScroll}>
                     <SidebarSelector user={user} onLogout={handleLogout} />
                   </div>
                 </div>
@@ -136,9 +120,7 @@ function AppContent() {
               <button
                 type="button"
                 onClick={() => setIsMenuOpen((isOpen) => !isOpen)}
-                className={`relative z-10 flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center border border-slate-200 bg-slate-900 p-0 text-xl font-semibold text-white shadow-md transition hover:bg-slate-700 ${
-                  isMenuOpen ? "rounded-r-xl border-l-0 lg:absolute lg:left-[250px] lg:top-0" : "rounded-r-xl"
-                }`}
+                className={`${styles.toggleButton} ${isMenuOpen ? styles.toggleButtonOpen : ""}`}
                 aria-label={isMenuOpen ? "Cerrar menú" : "Abrir menú"}
                 aria-expanded={isMenuOpen}
               >
@@ -152,14 +134,14 @@ function AppContent() {
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   aria-hidden="true"
-                  className="pointer-events-none"
+                  className={styles.icon}
                 >
                   {isMenuOpen ? <path d="m15 18-6-6 6-6" /> : <path d="m9 18 6-6-6-6" />}
                 </svg>
               </button>
             </div>
           )}
-          <div className={`min-w-0 flex-1 pl-2 ${isMenuOpen ? "lg:pl-0" : "lg:pl-3"}`}>
+          <div className={`${styles.content} ${isMenuOpen ? styles.contentShifted : ""}`}>
             <Routes>
             <Route path="/" element={<LandingPage user={user} />} />
             <Route path="/login" element={<LoginPage onLogin={handleLogin} />} />
@@ -238,14 +220,18 @@ function AppContent() {
 
         <Footer />
       </div>
-      </div>
+      </>
   );
 }
 
 function App() {
   return (
     <BrowserRouter>
-      <AppContent />
+      <ThemeProvider>
+        <ConfirmDialogProvider>
+          <AppContent />
+        </ConfirmDialogProvider>
+      </ThemeProvider>
     </BrowserRouter>
   );
 }

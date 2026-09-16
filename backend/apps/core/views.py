@@ -13,10 +13,11 @@ from .models import LogAuditoria, Notificacion
 from .permissions import CanViewAuditLogs
 from .serializers import AuditLogSerializer, NotificationSerializer
 from .permissions import IsSuperAdmin
+from .audit import record_audit
 
 
 class HealthCheckView(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request):
         return JsonResponse({"status": "ok", "service": "IngresoSUP backend"})
@@ -37,6 +38,7 @@ class NotificationReadView(APIView):
         notification = get_object_or_404(Notificacion, pk=pk, usuario=request.user)
         notification.leida = True
         notification.save(update_fields=["leida"])
+        record_audit(request.user, "Lectura de notificación", request.path, request=request, previous={"leida": False}, new={"leida": True, "notificacion_id": notification.id})
         return Response(NotificationSerializer(notification).data)
 
 
@@ -54,34 +56,39 @@ class RoleListView(APIView):
         return JsonResponse({"roles": []}, status=status.HTTP_200_OK)
 
 
+def filtered_audit_logs(request):
+    logs = LogAuditoria.objects.select_related("usuario").all()
+    if request.query_params.get("usuario"):
+        logs = logs.filter(usuario_nombre__icontains=request.query_params["usuario"])
+    if request.query_params.get("accion"):
+        logs = logs.filter(accion__icontains=request.query_params["accion"])
+    if request.query_params.get("modulo"):
+        logs = logs.filter(modulo__icontains=request.query_params["modulo"])
+    if request.query_params.get("fecha_desde"):
+        logs = logs.filter(created_at__date__gte=request.query_params["fecha_desde"])
+    if request.query_params.get("fecha_hasta"):
+        logs = logs.filter(created_at__date__lte=request.query_params["fecha_hasta"])
+    return logs.order_by("-created_at")
+
+
 class AuditLogListView(APIView):
     permission_classes = [CanViewAuditLogs]
 
     def get(self, request):
-        logs = LogAuditoria.objects.select_related("usuario").all()
-        if request.query_params.get("usuario"):
-            logs = logs.filter(usuario__username__icontains=request.query_params["usuario"])
-        if request.query_params.get("accion"):
-            logs = logs.filter(accion__icontains=request.query_params["accion"])
-        if request.query_params.get("modulo"):
-            logs = logs.filter(modulo__icontains=request.query_params["modulo"])
-        if request.query_params.get("fecha_desde"):
-            logs = logs.filter(created_at__date__gte=request.query_params["fecha_desde"])
-        if request.query_params.get("fecha_hasta"):
-            logs = logs.filter(created_at__date__lte=request.query_params["fecha_hasta"])
-        return JsonResponse({"logs": AuditLogSerializer(logs.order_by("-created_at")[:500], many=True).data})
+        logs = filtered_audit_logs(request)
+        return JsonResponse({"logs": AuditLogSerializer(logs[:500], many=True).data, "total": logs.count()})
 
 
 class AuditLogExportView(APIView):
     permission_classes = [CanViewAuditLogs]
 
     def get(self, request):
-        logs = LogAuditoria.objects.select_related("usuario").order_by("-created_at")[:500]
+        logs = filtered_audit_logs(request)
         workbook = Workbook()
         sheet = workbook.active
         sheet.append(["Fecha", "Usuario", "Rol", "IP", "Módulo", "Acción", "Datos anteriores", "Datos nuevos"])
-        for log in logs:
-            sheet.append([log.created_at.isoformat(), log.usuario.username, log.usuario.rol, log.ip, log.modulo, log.accion, log.datos_anteriores, log.datos_nuevos])
+        for log in logs[:500]:
+            sheet.append([log.created_at.isoformat(), log.usuario_nombre, log.rol, log.ip, log.modulo, log.accion, log.datos_anteriores, log.datos_nuevos])
         import io
         output = io.BytesIO()
         workbook.save(output)
@@ -94,10 +101,10 @@ class AuditLogPdfView(APIView):
     permission_classes = [CanViewAuditLogs]
 
     def get(self, request):
-        logs = LogAuditoria.objects.select_related("usuario").order_by("-created_at")[:500]
+        logs = filtered_audit_logs(request)
         lines = ["Logs de auditoria", ""] + [
-            f"{log.created_at:%Y-%m-%d %H:%M} | {log.usuario.username} | {log.usuario.rol} | {log.modulo} | {log.accion} | {log.ip}"
-            for log in logs
+            f"{log.created_at:%Y-%m-%d %H:%M %Z} | {log.usuario_nombre} | {log.rol} | {log.modulo} | {log.accion} | {log.ip}"
+            for log in logs[:500]
         ]
         content = "BT /F1 8 Tf 40 800 Td " + " ".join(
             f"({line.replace('(', '[').replace(')', ']')}) Tj 0 -12 Td" for line in lines

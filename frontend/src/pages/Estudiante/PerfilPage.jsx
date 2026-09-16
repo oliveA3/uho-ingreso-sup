@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
-import FeedbackMessage from "../../components/FeedbackMessage";
+import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
+import PrimaryButton from "../../components/Buttons/PrimaryButton";
+import { Card, FormField, Input } from "../../components";
 import { fetchStudentProfile, updateStudentProfile } from "../../services/api";
+import styles from "./PerfilPage.module.css";
 
 const editableFields = [
   { name: "direccion", label: "Dirección", type: "text" },
@@ -46,7 +49,7 @@ export default function EstudiantePerfilPage() {
     }
   };
 
-  if (!profile) return <div className="rounded-3xl border border-slate-200 bg-white p-8 text-sm text-slate-600 shadow-sm">Cargando perfil...</div>;
+  if (!profile) return <Card padding="p-8" className="text-sm text-slate-600">Cargando perfil...</Card>;
 
   const fixedFields = [
     ["Nombre", profile.nombre],
@@ -59,7 +62,7 @@ export default function EstudiantePerfilPage() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+      <Card padding="p-6 sm:p-8">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">Mi Perfil</h1>
           <p className="mt-2 text-sm text-slate-600">Datos personales y de contacto.</p>
@@ -69,28 +72,27 @@ export default function EstudiantePerfilPage() {
 
         <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {fixedFields.map(([label, value]) => (
-            <div key={label} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              <p className="text-xs uppercase tracking-[0.16em] text-slate-500">{label}</p>
-              <p className="mt-2 text-sm font-semibold text-slate-900">{value || "-"}</p>
+            <div key={label} className={styles.fixedFieldCard}>
+              <p className={styles.fixedFieldLabel}>{label}</p>
+              <p className={styles.fixedFieldValue}>{value || "-"}</p>
             </div>
           ))}
         </div>
 
-        <form onSubmit={handleSubmit} className="mt-6 border-t border-slate-200 pt-6">
+        <form onSubmit={handleSubmit} className={styles.editableForm}>
           <h2 className="text-base font-semibold text-slate-900">Datos editables</h2>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             {editableFields.map(({ name, label, type }) => (
-              <label key={name} className="text-sm font-medium text-slate-700">
-                <span className="mb-1 block">{label}</span>
-                <input name={name} type={type} value={form[name] || ""} onChange={handleChange} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-sky-500" />
-              </label>
+              <FormField key={name} htmlFor={name} label={<span className={styles.editableFieldLabel}>{label}</span>}>
+                <Input id={name} name={name} type={type} value={form[name] || ""} onChange={handleChange} />
+              </FormField>
             ))}
           </div>
-          <button type="submit" disabled={saving} className="mt-6 rounded-2xl bg-sky-700 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-800 disabled:opacity-50">
+          <PrimaryButton type="submit" disabled={saving} className="mt-6">
             {saving ? "Guardando..." : "Guardar cambios"}
-          </button>
+          </PrimaryButton>
         </form>
-      </section>
+      </Card>
     </div>
   );
 }

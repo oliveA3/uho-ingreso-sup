@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import FeedbackMessage from "../../components/FeedbackMessage";
+import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
 import { fetchNotifications, markNotificationAsRead } from "../../services/api";
+import styles from "./NotificacionesPage.module.css";
 
 export default function SecretarioNotificacionesPage() {
   const [notifications, setNotifications] = useState([]);
@@ -31,7 +32,7 @@ export default function SecretarioNotificacionesPage() {
       <div className="mt-6 space-y-3">
         {!notifications.length && !error && <p className="rounded-2xl bg-slate-50 p-5 text-sm text-slate-500">No tienes notificaciones.</p>}
         {notifications.map((notification) => (
-          <button key={notification.id} type="button" onClick={() => readNotification(notification)} className={`block w-full rounded-2xl border p-4 text-left transition hover:bg-slate-50 ${notification.leida ? "border-slate-200 bg-white" : "border-sky-200 bg-sky-50"}`}>
+          <button key={notification.id} type="button" onClick={() => readNotification(notification)} className={`${styles.notification} ${notification.leida ? styles.notificationRead : styles.notificationUnread}`}>
             <p className="font-semibold text-slate-800">{notification.titulo}</p>
             <p className="mt-1 text-sm text-slate-600">{notification.contenido}</p>
             <p className="mt-2 text-xs text-slate-500">{new Date(notification.fecha).toLocaleString("es-CU")}</p>

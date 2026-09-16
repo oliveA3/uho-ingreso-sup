@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { fetchRegistrationAvailability } from "../services/api";
-import PrimaryButton from "./Buttons/PrimaryButton";
+import { fetchRegistrationAvailability } from "../../services/api";
+import PrimaryButton from "../Buttons/PrimaryButton";
+import styles from "./AuthActions.module.css";
 
 export default function AuthActions({ user, onLogout }) {
   const [registrationOpen, setRegistrationOpen] = useState(false);
@@ -14,14 +15,14 @@ export default function AuthActions({ user, onLogout }) {
   }, [user]);
 
   return (
-    <div className="flex flex-wrap items-center gap-3">
+    <div className={styles.container}>
       {user ? (
         <>
-          <span className="text-sm text-slate-700">{user.first_name || user.nombre || user.username} {user.last_name || user.apellidos || ""}</span>
+          <span className={styles.userName}>{user.first_name || user.nombre || user.username} {user.last_name || user.apellidos || ""}</span>
           <button
             type="button"
             onClick={onLogout}
-            className="rounded-full bg-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-300"
+            className={styles.logoutButton}
           >
             Cerrar sesión
           </button>
@@ -36,7 +37,7 @@ export default function AuthActions({ user, onLogout }) {
           {registrationOpen && (
             <Link
               to="/registro"
-              className="rounded-full border border-sky-600 bg-white px-5 py-2.5 text-sm font-semibold text-sky-700 transition hover:bg-sky-50"
+              className={styles.registerLink}
             >
               Registro estudiantil
             </Link>

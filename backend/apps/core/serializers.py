@@ -11,8 +11,8 @@ class NotificationSerializer(serializers.ModelSerializer):
 
 
 class AuditLogSerializer(serializers.ModelSerializer):
-    usuario_nombre = serializers.CharField(source="usuario.username", read_only=True)
-    rol = serializers.CharField(source="usuario.rol", read_only=True)
+    usuario_nombre = serializers.CharField(read_only=True)
+    rol = serializers.CharField(read_only=True)
 
     class Meta:
         model = LogAuditoria

@@ -1,6 +1,6 @@
 from django.http import JsonResponse
 from rest_framework import filters, status, viewsets
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 
 from apps.authentication.models import ROLES, Usuario
@@ -26,7 +26,7 @@ class ProvinciaViewSet(viewsets.ModelViewSet):
     permission_classes = [IsSuperAdmin]
 
     def get_permissions(self):
-        return [AllowAny()] if self.request.method == "GET" else [IsSuperAdmin()]
+        return [IsSuperAdmin()]
 
 
 class MunicipioViewSet(viewsets.ModelViewSet):
@@ -36,7 +36,7 @@ class MunicipioViewSet(viewsets.ModelViewSet):
     search_fields = ["nombre"]
 
     def get_permissions(self):
-        return [AllowAny()] if self.request.method == "GET" else [IsSuperAdmin()]
+        return [IsSuperAdmin()]
 
     def get_queryset(self):
         queryset = Municipio.objects.all().order_by("nombre")
@@ -53,7 +53,7 @@ class EscuelaViewSet(viewsets.ModelViewSet):
     search_fields = ["nombre", "codigo"]
 
     def get_permissions(self):
-        return [AllowAny()] if self.request.method == "GET" else [IsSuperAdmin()]
+        return [IsSuperAdmin()]
 
     def get_queryset(self):
         queryset = Escuela.objects.all().order_by("nombre")
@@ -132,8 +132,6 @@ class IdentidadVisualConfig(APIView):
     permission_classes = [IsSuperAdmin]
 
     def get_permissions(self):
-        if self.request.method == "GET":
-            return [AllowAny()]
         return [IsSuperAdmin()]
 
     def get(self, request):

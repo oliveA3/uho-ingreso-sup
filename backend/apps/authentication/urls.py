@@ -1,9 +1,10 @@
 from django.urls import path
 
-from .views import ChangePendingEmailView, CsrfCookieView, CurrentUserView, LoginView, LogoutView, RegisterView, VerifyEmailView
+from .views import ChangePendingEmailView, CsrfCookieView, CurrentUserView, JwtTokenRefreshView, LoginView, LogoutView, RegisterView, VerifyEmailView
 
 urlpatterns = [
     path("login/", LoginView.as_view(), name="login"),
+    path("token/refresh/", JwtTokenRefreshView.as_view(), name="token-refresh"),
     path("register/", RegisterView.as_view(), name="register"),
     path("verify-email/", VerifyEmailView.as_view(), name="verify-email"),
     path("change-pending-email/", ChangePendingEmailView.as_view(), name="change-pending-email"),

@@ -6,6 +6,7 @@ from rest_framework.views import APIView
 
 from apps.authentication.models import Estudiante, Usuario
 from apps.core.notifications import notify_users
+from apps.core.audit import record_audit
 from apps.gestion_personal.models import BoletaInteres, BoletaInteresItem, BoletaSolicitud, ConfirmacionPrueba
 from apps.gestion_personal.serializers import BoletaSolicitudSerializer
 from apps.gestion_provincial.models import ETAPAS_NOMBRES, Etapa, PlanPlaza, Proceso
@@ -214,6 +215,7 @@ class SchoolSolicitudView(APIView):
 		ballot.aprobada_por = request.user.get_full_name() or request.user.username
 		ballot.fecha_aprobada = timezone.localdate()
 		ballot.save(update_fields=["estado", "aprobada_por", "fecha_aprobada"])
+		record_audit(request.user, "Aprobación de boleta de solicitud", request.path, request=request, previous={"estado": "pendiente"}, new={"estado": "aprobada", "boleta_id": ballot.id, "estudiante": ballot.estudiante.ci})
 		notify_users(
 			[Usuario.objects.filter(pk=ballot.estudiante.usuario_id).first()],
 			"Boleta aprobada: puedes solicitar una modificación",

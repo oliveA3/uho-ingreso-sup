@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { fetchStudentDashboard } from "../../services/api";
-import FeedbackMessage from "../../components/FeedbackMessage";
-import StageStatusNotice from "../../components/StageStatusNotice";
+import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
+import StageStatusNotice from "../../components/StageStatusNotice/StageStatusNotice";
+import { Card } from "../../components";
+import styles from "./HomePage.module.css";
 
 const stageLabels = {
   1: "Escalafón",
@@ -33,16 +35,21 @@ export default function EstudianteHomePage() {
   const activeEarlyStage = stages.find(
     (stage) => stage.estado === "en_curso" && stage.numero <= 3,
   )?.numero;
-  const stageButtonClass = (stageNumber) => activeEarlyStage === stageNumber
-    ? "border-sky-600 bg-sky-600 text-white transition hover:bg-sky-700"
-    : "border-slate-300 bg-white text-slate-700 transition hover:bg-slate-50";
+  const navLinkClass = (stageNumber) => `${styles.navLink} ${activeEarlyStage === stageNumber ? styles.navLinkActive : styles.navLinkInactive}`;
+
+  const stats = [
+    [academic?.indice_general ?? "--", "Índice General", styles.statValuePrimary],
+    [academic?.position ? `#${academic.position}` : "--", "Posición Escalafón", styles.statValueSuccess],
+    [`${dashboard?.interest_count ?? 0}/10`, "Carreras Seleccionadas", styles.statValueAccent],
+    [`${dashboard?.confirmations_count ?? 0}`, "Pruebas Confirmadas", styles.statValuePrimary],
+  ];
 
   return (
     <div className="space-y-6">
-      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+      <Card padding="p-6 sm:p-8">
         <header>
-          <p className="text-3xl font-semibold text-slate-900">¡Hola, {studentName}!</p>
-          <p className="mt-2 text-sm text-slate-600">
+          <p className={styles.greeting}>¡Hola, {studentName}!</p>
+          <p className={styles.subheading}>
             Proceso {new Date().getFullYear()} — {dashboard?.student?.escuela || "Escuela"} — {dashboard?.student?.municipio || "Municipio"}
           </p>
         </header>
@@ -50,47 +57,42 @@ export default function EstudianteHomePage() {
         {error && <FeedbackMessage type="error" className="mt-6 rounded-2xl">{error}</FeedbackMessage>}
         <StageStatusNotice />
 
-        <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {[
-            [academic?.indice_general ?? "--", "Índice General", "text-sky-800"],
-            [academic?.position ? `#${academic.position}` : "--", "Posición Escalafón", "text-emerald-700"],
-            [`${dashboard?.interest_count ?? 0}/10`, "Carreras Seleccionadas", "text-orange-600"],
-            [`${dashboard?.confirmations_count ?? 0}`, "Pruebas Confirmadas", "text-sky-800"],
-          ].map(([value, label, color]) => (
-            <div key={label} className="rounded-3xl border border-slate-200 bg-slate-50 p-6">
-              <p className={`text-3xl font-semibold ${color}`}>{value}</p>
-              <p className="mt-2 text-sm text-slate-600">{label}</p>
+        <div className={styles.statsGrid}>
+          {stats.map(([value, label, colorClass]) => (
+            <div key={label} className={styles.statTile}>
+              <p className={`${styles.statValue} ${colorClass}`}>{value}</p>
+              <p className={styles.statLabel}>{label}</p>
             </div>
           ))}
         </div>
 
-        <div className="mt-6 grid gap-6 lg:grid-cols-1">
-          <section className="min-w-0 rounded-3xl border border-slate-200 bg-slate-50 p-6">
-            <h2 className="font-semibold text-slate-900">📈 Estado del Proceso</h2>
-            <div className="mt-6 grid grid-cols-3 gap-3 sm:grid-cols-6">
-                {stages.map((stage) => {
-                  const completed = stage.estado === "completada";
-                  const active = stage.estado === "en_curso";
-                  return (
-                    <div key={stage.numero} className="min-w-0 text-center">
-                      <div className={`mx-auto flex h-10 w-10 items-center justify-center rounded-full border-2 text-sm font-semibold ${completed ? "border-emerald-600 bg-emerald-600 text-white" : active ? "border-sky-600 bg-sky-600 text-white" : "border-slate-300 bg-white text-slate-500"}`}>
-                        {completed ? "✓" : stage.numero}
-                      </div>
-                      <p className={`mt-2 text-xs ${active ? "font-semibold text-sky-700" : "text-slate-600"}`}>{stageLabels[stage.numero]}</p>
-                      <p className="mt-1 text-[10px] leading-tight text-slate-500">{stage.fecha_inicio ? formatDate(stage.fecha_inicio) : "Sin inicio"}<br />{stage.fecha_fin ? `al ${formatDate(stage.fecha_fin)}` : "Sin cierre"}</p>
+        <div className={styles.processSection}>
+          <section className={styles.processCard}>
+            <h2 className={styles.processTitle}>📈 Estado del Proceso</h2>
+            <div className={styles.stageGrid}>
+              {stages.map((stage) => {
+                const completed = stage.estado === "completada";
+                const active = stage.estado === "en_curso";
+                return (
+                  <div key={stage.numero} className={styles.stageItem}>
+                    <div className={`${styles.stageBadge} ${completed ? styles.stageBadgeDone : active ? styles.stageBadgeActive : styles.stageBadgePending}`}>
+                      {completed ? "✓" : stage.numero}
                     </div>
-                  );
-                })}
+                    <p className={`${styles.stageLabel} ${active ? styles.stageLabelActive : ""}`}>{stageLabels[stage.numero]}</p>
+                    <p className={styles.stageDates}>{stage.fecha_inicio ? formatDate(stage.fecha_inicio) : "Sin inicio"}<br />{stage.fecha_fin ? `al ${formatDate(stage.fecha_fin)}` : "Sin cierre"}</p>
+                  </div>
+                );
+              })}
             </div>
           </section>
         </div>
 
-        <div className="mt-6 flex flex-wrap gap-3">
-          <Link to="escalafon" className={`rounded-2xl border px-4 py-3 text-sm font-semibold ${stageButtonClass(1)}`}>📋 Ver Escalafón</Link>
-          <Link to="boleta-interes" className={`rounded-2xl border px-4 py-3 text-sm font-semibold ${stageButtonClass(2)}`}>🎯 Completar Boleta de Interés</Link>
-          <Link to="boleta" className={`rounded-2xl border px-4 py-3 text-sm font-semibold ${stageButtonClass(3)}`}>📝 Ver Boleta de Solicitud</Link>
+        <div className={styles.navLinks}>
+          <Link to="escalafon" className={navLinkClass(1)}>📋 Ver Escalafón</Link>
+          <Link to="boleta-interes" className={navLinkClass(2)}>🎯 Completar Boleta de Interés</Link>
+          <Link to="boleta" className={navLinkClass(3)}>📝 Ver Boleta de Solicitud</Link>
         </div>
-      </section>
+      </Card>
     </div>
   );
 }

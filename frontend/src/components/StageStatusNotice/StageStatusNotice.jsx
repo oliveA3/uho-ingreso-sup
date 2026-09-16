@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { fetchLandingData } from "../services/api";
+import { fetchLandingData } from "../../services/api";
+import styles from "./StageStatusNotice.module.css";
 
 const stageTitles = {
   1: "Escalafón",
@@ -58,7 +59,7 @@ export default function StageStatusNotice({ stageNumber = null, onStatusChange }
       <Notice tone="active">
         <span aria-hidden="true">✅</span>
         <span>Etapa activa: <strong>{activeTitle}</strong></span>
-        <span className="text-emerald-800">{activeStage.fecha_fin ? `— Plazo: ${formatDate(activeStage.fecha_fin)}` : "— Sin fecha de cierre"}</span>
+        <span className={styles.deadlineActive}>{activeStage.fecha_fin ? `— Plazo: ${formatDate(activeStage.fecha_fin)}` : "— Sin fecha de cierre"}</span>
       </Notice>
     );
   }
@@ -70,7 +71,7 @@ export default function StageStatusNotice({ stageNumber = null, onStatusChange }
     <Notice tone="active">
       <span aria-hidden="true">✅</span>
       <span><strong>{targetTitle} activa.</strong></span>
-      <span className="text-emerald-800">{activeStage.fecha_fin ? `— Plazo: ${formatDate(activeStage.fecha_fin)}` : "— Sin fecha de cierre"}</span>
+      <span className={styles.deadlineActive}>{activeStage.fecha_fin ? `— Plazo: ${formatDate(activeStage.fecha_fin)}` : "— Sin fecha de cierre"}</span>
     </Notice>
   ) : (
     <Notice tone="muted">
@@ -85,11 +86,13 @@ function formatDate(value) {
   return new Intl.DateTimeFormat("es-CU", { day: "numeric", month: "numeric", year: "numeric" }).format(new Date(`${value}T00:00:00`));
 }
 
+const toneClasses = {
+  active: "toneActive",
+  completed: "toneCompleted",
+  muted: "toneMuted",
+};
+
 function Notice({ children, tone }) {
-  const toneClass = tone === "active"
-    ? "bg-emerald-100 text-emerald-800"
-    : tone === "completed"
-      ? "bg-sky-100 text-sky-800"
-      : "bg-slate-100 text-slate-600";
-  return <div className={`mt-6 flex flex-wrap items-center gap-2 rounded-2xl px-5 py-3 text-sm ${toneClass}`}>{children}</div>;
+  const toneClass = styles[toneClasses[tone]] || styles.toneMuted;
+  return <div className={`${styles.notice} ${toneClass}`}>{children}</div>;
 }

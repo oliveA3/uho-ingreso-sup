@@ -2,6 +2,7 @@ import { Link, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 import NotificationModal from "../Modals/NotificationModal";
 import { fetchNotifications } from "../../services/api";
+import styles from "./BaseSidebar.module.css";
 
 export default function BaseSidebar({ title, roleLabel, scope, sections, onLogout }) {
   const location = useLocation();
@@ -21,28 +22,28 @@ export default function BaseSidebar({ title, roleLabel, scope, sections, onLogou
   }, []);
 
   return (
-    <aside className="flex h-full min-h-0 flex-col overflow-hidden rounded-3xl p-5 shadow-sm">
-      <div className="shrink-0 space-y-1">
-        <div className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-900">
+    <aside className={styles.sidebar}>
+      <div className={styles.header}>
+        <div className={styles.title}>
           {title}
         </div>
         {scope && (
-          <div className="text-xs text-slate-500">
-            Alcance: <span className="badge bg-slate-200">{scope}</span>
+          <div className={styles.scope}>
+            Alcance: <span className={styles.scopeBadge}>{scope}</span>
           </div>
         )}
       </div>
 
-      <div className="sidebar-sections-scroll -mr-5 min-h-0 flex-1 overflow-y-auto pr-5">
+      <div className={styles.sections}>
         {sections.map((section) => (
           <div key={section.title}>
-            <div className="pt-3 text-slate-500 uppercase tracking-[0.18em] text-xs">
+            <div className={styles.sectionTitle}>
               {section.title}
             </div>
-            <nav className="mt-3 space-y-2 text-sm text-slate-600">
+            <nav className={styles.nav}>
               {section.title === "Cuenta" && (
-                <button type="button" onClick={() => setNotificationsOpen(true)} className="relative block w-full rounded-2xl px-4 py-3 text-left transition hover:bg-slate-100 hover:text-slate-900">
-                  {unreadNotifications > 0 && <span className="mr-2 inline-block h-2.5 w-2.5 rounded-full bg-rose-500 align-middle" aria-label={`${unreadNotifications} notificaciones sin leer`} />}
+                <button type="button" onClick={() => setNotificationsOpen(true)} className={styles.navButton}>
+                  {unreadNotifications > 0 && <span className={styles.unreadDot} aria-label={`${unreadNotifications} notificaciones sin leer`} />}
                   🔔 Notificaciones
                 </button>
               )}
@@ -52,7 +53,7 @@ export default function BaseSidebar({ title, roleLabel, scope, sections, onLogou
                   key={item.label}
                   type="button"
                   onClick={onLogout}
-                  className="block w-full rounded-2xl px-4 py-3 text-left transition hover:bg-slate-100 hover:text-slate-900"
+                  className={styles.navButton}
                 >
                   {item.icon} {item.label}
                 </button>
@@ -61,7 +62,7 @@ export default function BaseSidebar({ title, roleLabel, scope, sections, onLogou
                   key={item.label}
                   title={item.disabledMessage}
                   aria-disabled="true"
-                  className="block cursor-not-allowed rounded-2xl px-4 py-3 text-slate-400 opacity-70"
+                  className={styles.navDisabled}
                 >
                   {item.icon} {item.label}
                 </div>
@@ -69,11 +70,7 @@ export default function BaseSidebar({ title, roleLabel, scope, sections, onLogou
                 <Link
                   key={item.label}
                   to={item.to}
-                  className={`block rounded-2xl px-4 py-3 transition hover:bg-slate-100 hover:text-slate-900 ${
-                    isItemActive(item)
-                      ? "bg-sky-100 font-semibold text-sky-800"
-                      : ""
-                  }`}
+                  className={`${styles.navLink} ${isItemActive(item) ? styles.navLinkActive : ""}`}
                 >
                   {item.icon} {item.label}
                 </Link>
@@ -81,7 +78,7 @@ export default function BaseSidebar({ title, roleLabel, scope, sections, onLogou
                 <a
                   key={item.label}
                   href={item.href}
-                  className="block rounded-2xl px-4 py-3 transition hover:bg-slate-100 hover:text-slate-900"
+                  className={styles.navLink}
                 >
                   {item.icon} {item.label}
                 </a>

@@ -2,7 +2,7 @@ from django.test import TestCase
 from django.utils import timezone
 from datetime import timedelta
 
-from apps.authentication.models import EmailVerificationCode, Usuario
+from apps.authentication.models import EmailVerificationCode, LoginAttempt, Usuario
 from apps.authentication.serializers import SuperAdminUserSerializer, UserSerializer
 from apps.superadmin.models import Escuela, Municipio, Provincia
 
@@ -74,6 +74,37 @@ class AutheticationSmokeTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["user"]["rol"], "superadmin")
         self.assertEqual(response.json()["user"]["rol_label"], "Super Administrador")
+
+    def test_login_blocks_after_five_failed_attempts(self):
+        user = Usuario.objects.create_user(
+            username="locked.test",
+            email="locked@example.com",
+            password="secret1234",
+        )
+
+        for _ in range(4):
+            response = self.client.post(
+                "/api/authentication/login/",
+                data={"username": user.username, "password": "wrong-password"},
+            )
+            self.assertEqual(response.status_code, 401)
+
+        response = self.client.post(
+            "/api/authentication/login/",
+            data={"username": user.username, "password": "wrong-password"},
+        )
+        attempt = LoginAttempt.objects.get(identifier=user.username, ip="127.0.0.1")
+
+        self.assertEqual(response.status_code, 401)
+        self.assertIsNotNone(attempt.locked_until)
+        self.assertGreater(attempt.locked_until, timezone.now())
+        self.assertEqual(
+            self.client.post(
+                "/api/authentication/login/",
+                data={"username": user.username, "password": "secret1234"},
+            ).status_code,
+            429,
+        )
 
     def test_user_serializer_allows_users_without_student_profile(self):
         user = Usuario.objects.create_user(

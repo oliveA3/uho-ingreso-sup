@@ -1,0 +1,68 @@
+.eyebrow {
+  display: block;
+  font-size: 0.625rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: var(--brand-primary, #1f4e79);
+}
+
+.name {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #0c4a6e;
+}
+
+.filters {
+  display: grid;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+@media (min-width: 640px) {
+  .filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .filters {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.tableWrapper {
+  max-height: 270px;
+  overflow-y: auto;
+  border-radius: 0.75rem;
+}
+
+.badge {
+  border-radius: 9999px;
+  padding: 0.125rem 0.5rem;
+  font-size: 0.625rem;
+  font-weight: 600;
+}
+
+.badgeMunicipal {
+  background-color: color-mix(in srgb, var(--brand-primary, #1f4e79) 12%, white);
+  color: var(--brand-primary, #1f4e79);
+}
+
+.badgeOther {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.footer {
+  margin-top: 0.75rem;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.downloadButton {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.75rem;
+}

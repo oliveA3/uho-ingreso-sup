@@ -1,12 +1,13 @@
 import { Outlet } from "react-router-dom";
+import { Card } from "../../components";
 
 export default function EstudianteLayout({ user, onLogout }) {
   if (!user) {
     return (
-      <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm m-4">
+      <Card className="m-4" padding="p-8">
         <h1 className="text-2xl font-semibold text-slate-900">Panel Estudiante</h1>
         <p className="mt-4 text-sm text-slate-600">Inicia sesión para acceder a esta área.</p>
-      </div>
+      </Card>
     );
   }
 

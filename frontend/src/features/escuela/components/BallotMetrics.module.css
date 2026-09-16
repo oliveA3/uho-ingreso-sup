@@ -1,0 +1,60 @@
+.grid {
+  display: grid;
+  gap: 0.75rem;
+}
+
+@media (min-width: 640px) {
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.card {
+  border-radius: 1rem;
+  border: 1px solid #e2e8f0;
+  background-color: #f8fafc;
+  padding: 1rem;
+}
+
+.label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: #64748b;
+}
+
+.value {
+  margin-top: 0.5rem;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.toneDefault {
+  color: #0f172a;
+}
+
+.toneInfo {
+  color: var(--brand-accent, #5ba3d9);
+}
+
+.toneWarning {
+  color: #b45309;
+}
+
+.toneSuccess {
+  color: var(--brand-success, #1a7a4a);
+}
+
+.toneDanger {
+  color: var(--brand-error, #c0392b);
+}
+
+.toneOrange {
+  color: #c2410c;
+}

@@ -61,6 +61,19 @@ class Usuario(AbstractUser):
         ]
 
 
+class LoginAttempt(models.Model):
+    identifier = models.CharField(max_length=150)
+    ip = models.GenericIPAddressField()
+    failed_attempts = models.PositiveSmallIntegerField(default=0)
+    locked_until = models.DateTimeField(null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["identifier", "ip"], name="unique_login_attempt_identifier_ip"),
+        ]
+
+
 class EmailVerificationCode(models.Model):
     user = models.ForeignKey(
         Usuario, on_delete=models.CASCADE, related_name="verification_codes"

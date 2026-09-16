@@ -12,6 +12,8 @@ from .services.mappers import PLAN_PLAZA_MAP, PLAN_PLAZA_FK, OTORGAMIENTO_MAP, O
 from .services.validators import validate_plan_plaza
 from apps.gestion_provincial.models import PlanPlaza, Otorgamiento, CorteCarrera, Proceso, Etapa
 from apps.authentication.models import Estudiante, Usuario
+from apps.core.audit import record_audit
+from apps.core.throttling import BulkOperationRateThrottle
 from apps.gestion_provincial.permissions import IsCareerManager
 from apps.superadmin.models import Carrera, Ces, Escuela, Provincia
 from .services.carreras_service import CareerExcelService
@@ -30,6 +32,7 @@ from openpyxl import Workbook, load_workbook
 from apps.gestion_personal.models import BoletaInteres, BoletaSolicitud, BoletaSolicitudItem, Reclamacion
 from apps.gestion_personal.models import ResultadoExamen
 from .services.resultados_service import ResultadosExcelService
+from .services.upload_validation import validate_excel_upload
 
 
 def _ballot_pdf(title, student, items, career_getter):
@@ -105,6 +108,7 @@ class SolicitudPdfExportView(APIView):
 
 class ImportPlanPlazaView(APIView):
     permission_classes = [IsCareerManager]
+    throttle_classes = [BulkOperationRateThrottle]
 
     def _normalize_header(self, value):
         text = str(value or "").strip().lower()
@@ -126,8 +130,9 @@ class ImportPlanPlazaView(APIView):
 
     def post(self, request):
         file = request.FILES.get("file")
-        if not file:
-            return Response({"detail": "Debe adjuntar un archivo Excel."}, status=400)
+        upload_error = validate_excel_upload(file)
+        if upload_error:
+            return Response({"detail": upload_error}, status=400)
         required = ["Codigo_Carrera", "Nombre_Carrera", "Cantidad_Plazas", "Tipo_Otorgamiento", "CES", "Provincia", "Sexo"]
         try:
             workbook = load_workbook(file, data_only=True)
@@ -218,6 +223,8 @@ class ImportPlanPlazaView(APIView):
                         "data": {key: value for key, value in (data or {}).items() if key is not None},
                     })
 
+            if not result["errors"]:
+                record_audit(request.user, "Importación de plan de plazas", request.path, request=request, new={"inserted": result["inserted"], "updated": result["updated"], "proceso": process.id})
             return Response(result, status=400 if result["errors"] else 201)
         except Exception as error:
             return Response({"detail": f"No se pudo leer el Excel: {error}"}, status=400)
@@ -253,7 +260,7 @@ class PlanPlazaTemplateView(APIView):
 
 
 class ImportPlanPlazaExportView(APIView):
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
         anio = request.query_params.get("anio") or request.query_params.get("year") or timezone.now().year
@@ -412,14 +419,18 @@ def _import_stage_six_file(file_obj, kind):
 
 class ImportOtorgamientoView(APIView):
     permission_classes = [IsCareerManager]
+    throttle_classes = [BulkOperationRateThrottle]
 
     def post(self, request):
         if request.user.rol != "jefe_comision" and not request.user.is_superuser:
             return Response({"detail": "Solo el Jefe de Comisión puede importar otorgamientos."}, status=403)
         file = request.FILES.get("file")
-        if not file:
-            return Response({"detail": "Debe adjuntar un archivo Excel."}, status=400)
+        upload_error = validate_excel_upload(file)
+        if upload_error:
+            return Response({"detail": upload_error}, status=400)
         result = _import_stage_six_file(file, "otorgamiento")
+        if not result["errors"]:
+            record_audit(request.user, "Importación de otorgamientos", request.path, request=request, new={"inserted": result["inserted"], "updated": result["updated"]})
         if not result["errors"]:
             from apps.core.notifications import notify_users
             students = Usuario.objects.filter(
@@ -437,14 +448,18 @@ class ImportOtorgamientoView(APIView):
 
 class ImportCorteCarreraView(APIView):
     permission_classes = [IsCareerManager]
+    throttle_classes = [BulkOperationRateThrottle]
 
     def post(self, request):
         if request.user.rol != "jefe_comision" and not request.user.is_superuser:
             return Response({"detail": "Solo el Jefe de Comisión puede importar índices de corte."}, status=403)
         file = request.FILES.get("file")
-        if not file:
-            return Response({"detail": "Debe adjuntar un archivo Excel."}, status=400)
+        upload_error = validate_excel_upload(file)
+        if upload_error:
+            return Response({"detail": upload_error}, status=400)
         result = _import_stage_six_file(file, "corte")
+        if not result["errors"]:
+            record_audit(request.user, "Importación de índices de corte", request.path, request=request, new={"inserted": result["inserted"], "updated": result["updated"]})
         return Response(result, status=400 if result["errors"] else 201)
 
 
@@ -582,11 +597,13 @@ class SchoolOtorgamientoListView(APIView):
 
 class ImportCarrerasView(APIView):
     permission_classes = [IsCareerManager]
+    throttle_classes = [BulkOperationRateThrottle]
 
     def post(self, request):
         file = request.FILES.get("file")
-        if not file:
-            return Response({"detail": "Debe adjuntar un archivo Excel."}, status=status.HTTP_400_BAD_REQUEST)
+        upload_error = validate_excel_upload(file)
+        if upload_error:
+            return Response({"detail": upload_error}, status=status.HTTP_400_BAD_REQUEST)
         result = CareerExcelService().import_file(file)
         if result.errors:
             return Response({"inserted": 0, "errors": result.errors}, status=status.HTTP_400_BAD_REQUEST)
@@ -608,6 +625,7 @@ class ExportCarrerasView(APIView):
 
 class ImportEscalafonView(APIView):
     permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [BulkOperationRateThrottle]
 
     def post(self, request):
         if request.user.rol not in {"secretario_escuela", "jefe_comision", "superadmin"}:
@@ -615,8 +633,9 @@ class ImportEscalafonView(APIView):
         if request.user.rol == "secretario_escuela" and request.data.get("escuela") not in {None, "", str(request.user.escuela_id), request.user.escuela_id}:
             return Response({"detail": "Solo puedes importar el escalafón de tu escuela."}, status=status.HTTP_403_FORBIDDEN)
         file = request.FILES.get("file")
-        if not file:
-            return Response({"detail": "Debe adjuntar un archivo Excel."}, status=status.HTTP_400_BAD_REQUEST)
+        upload_error = validate_excel_upload(file)
+        if upload_error:
+            return Response({"detail": upload_error}, status=status.HTTP_400_BAD_REQUEST)
         try:
             escuela = resolve_school(request.data.get("escuela") or request.user.escuela_id)
             anio = int(request.data.get("anio", request.data.get("año", timezone.now().year)))
@@ -644,6 +663,7 @@ class ImportEscalafonView(APIView):
 
 class ImportResultadosView(APIView):
     permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [BulkOperationRateThrottle]
 
     def post(self, request):
         if request.user.rol not in {"jefe_comision", "superadmin"}:
@@ -651,8 +671,9 @@ class ImportResultadosView(APIView):
         if not request.user.provincia_id and request.user.rol != "superadmin":
             return Response({"detail": "El usuario no tiene una provincia asignada."}, status=400)
         file = request.FILES.get("file")
-        if not file:
-            return Response({"detail": "Debe adjuntar un archivo Excel."}, status=400)
+        upload_error = validate_excel_upload(file)
+        if upload_error:
+            return Response({"detail": upload_error}, status=400)
         try:
             anio = int(request.data.get("anio", timezone.now().year))
             proceso = Proceso.get_for_stage_and_year(anio, ETAPAS_NOMBRES[5])
@@ -691,6 +712,7 @@ class ImportResultadosView(APIView):
             f"Ya puedes consultar tus resultados de {selected_subject} del proceso {proceso.anio.year}.",
             filter_students=False,
         )
+        record_audit(request.user, "Importación de resultados de exámenes", request.path, request=request, new={"inserted": result.inserted, "updated": result.updated, "anio": proceso.anio.year, "asignatura": selected_subject})
         return Response({"inserted": result.inserted, "updated": result.updated, "errors": []}, status=201)
 
 
@@ -817,7 +839,7 @@ class ResultadosListView(APIView):
 
 
 class LandingResultadosView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
 
     def get(self, request):
         try:
@@ -866,7 +888,7 @@ class LandingResultadosView(APIView):
 
 
 class LandingOtorgamientosView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
 
     def get(self, request):
         try:
@@ -906,7 +928,7 @@ class LandingOtorgamientosView(APIView):
 
 
 class LandingCortesView(APIView):
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
         available_years = list(CorteCarrera.objects.filter(
@@ -955,6 +977,81 @@ class LandingCortesView(APIView):
         })
 
 
+class LandingExcelExportView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, kind):
+        if kind not in {"resultados", "otorgamientos", "cortes"}:
+            return Response({"detail": "Tipo de exportación no válido."}, status=404)
+        try:
+            anio = int(request.query_params.get("anio", timezone.now().year))
+        except (TypeError, ValueError):
+            return Response({"detail": "El año indicado no es válido."}, status=400)
+        provincia = request.query_params.get("provincia", "").strip()
+        workbook = Workbook()
+        sheet = workbook.active
+
+        if kind == "resultados":
+            sheet.title = "Notas de ingreso"
+            sheet.append(["CI", "Estudiante", "Asignatura", "Nota", "Escuela", "Municipio", "Provincia", "Año"])
+            queryset = ResultadoExamen.objects.filter(
+                proceso__anio__year=anio,
+                proceso__etapa__nombre=ETAPAS_NOMBRES[5],
+            ).select_related("estudiante__escuela__municipio__provincia", "asignatura")
+            if provincia:
+                queryset = queryset.filter(estudiante__escuela__municipio__provincia__nombre__iexact=provincia)
+            for item in queryset.order_by("estudiante__apellidos", "estudiante__nombre", "asignatura__nombre"):
+                sheet.append([
+                    item.estudiante.ci,
+                    f"{item.estudiante.nombre} {item.estudiante.apellidos}",
+                    item.asignatura.nombre,
+                    item.nota,
+                    item.estudiante.escuela.nombre,
+                    item.estudiante.escuela.municipio.nombre,
+                    item.estudiante.escuela.municipio.provincia.nombre,
+                    anio,
+                ])
+        elif kind == "otorgamientos":
+            sheet.title = "Otorgamientos"
+            sheet.append(["CI", "Estudiante", "Carrera", "CES", "Índice", "Escuela", "Provincia", "Año"])
+            queryset = Otorgamiento.objects.filter(
+                proceso__anio__year=anio,
+                proceso__etapa__nombre=ETAPAS_NOMBRES[6],
+            ).select_related("estudiante__escuela__municipio__provincia", "carrera__ces")
+            if provincia:
+                queryset = queryset.filter(estudiante__escuela__municipio__provincia__nombre__iexact=provincia)
+            for item in queryset.order_by("estudiante__apellidos", "estudiante__nombre"):
+                sheet.append([
+                    item.estudiante.ci,
+                    f"{item.estudiante.nombre} {item.estudiante.apellidos}",
+                    item.carrera.nombre,
+                    item.carrera.ces.nombre,
+                    item.indice_otorgamiento,
+                    item.estudiante.escuela.nombre,
+                    item.estudiante.escuela.municipio.provincia.nombre,
+                    anio,
+                ])
+        else:
+            sheet.title = "Índices de corte"
+            sheet.append(["Código", "Carrera", "Índice de corte", "Provincia", "Año"])
+            queryset = CorteCarrera.objects.filter(
+                proceso__anio__year=anio,
+                proceso__etapa__nombre=ETAPAS_NOMBRES[6],
+            ).select_related("carrera", "proceso")
+            province_names = dict(
+                PlanPlaza.objects.filter(proceso__anio__year=anio)
+                .values_list("carrera_id", "provincia__nombre")
+            )
+            for item in queryset.order_by("carrera__codigo"):
+                sheet.append([item.carrera.codigo, item.carrera.nombre, item.indice_corte, province_names.get(item.carrera_id, ""), anio])
+
+        output = io.BytesIO()
+        workbook.save(output)
+        response = HttpResponse(output.getvalue(), content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        response["Content-Disposition"] = f'attachment; filename="{kind}_{provincia or "todas"}_{anio}.xlsx"'
+        return response
+
+
 class StudentResultClaimView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -982,6 +1079,13 @@ class StudentResultClaimView(APIView):
             estudiante=request.user.estudiante,
             resultado=result,
             descripcion=description,
+        )
+        record_audit(
+            request.user,
+            "Presentación de reclamo de nota",
+            request.path,
+            request=request,
+            new={"reclamacion_id": claim.id, "resultado_id": result.id, "asignatura": result.asignatura.nombre},
         )
         return Response({"id": claim.id, "status": claim.estado}, status=201)
 
@@ -1054,7 +1158,16 @@ class ResultClaimDecisionView(APIView):
         update_fields = ["estado", "fecha_respuesta"]
         if decision == "aprobada":
             update_fields.extend(["fecha_presentacion", "lugar_presentacion"])
+        previous_state = claim.estado
         claim.save(update_fields=update_fields)
+        record_audit(
+            request.user,
+            "Aprobación de reclamo de nota" if decision == "aprobada" else "Rechazo de reclamo de nota",
+            request.path,
+            request=request,
+            previous={"estado": previous_state, "reclamacion_id": claim.id},
+            new={"estado": decision, "reclamacion_id": claim.id},
+        )
         if decision == "aprobada":
             from apps.core.notifications import notify_users
             presentation_text = parsed_date.strftime("%d/%m/%Y %H:%M")
@@ -1301,7 +1414,11 @@ class EscalafonEntryView(APIView):
         active, _ = escalafon_stage_active()
         serializer = EscalafonItemSerializer(entry, data=request.data, partial=True, context={"request": request, "stage_active": active})
         serializer.is_valid(raise_exception=True)
-        return Response(serializer.data)
+        previous = {field: getattr(entry, field) for field in ("indice_10", "indice_11", "indice_12", "indice_general")}
+        updated = serializer.save()
+        new = {field: getattr(updated, field) for field in previous}
+        record_audit(request.user, "Edición de entrada del escalafón", request.path, request=request, previous=previous, new=new)
+        return Response(EscalafonItemSerializer(updated, context={"request": request}).data)
 
 
 class EscalafonSendView(APIView):
@@ -1320,6 +1437,13 @@ class EscalafonSendView(APIView):
         with transaction.atomic():
             escalafones.update(estado="enviado")
             entries.update(indices_bloqueados=True)
+        record_audit(
+            request.user,
+            "Envío de escalafón a Comisión",
+            request.path,
+            request=request,
+            new={"escuela": request.user.escuela.nombre, "entradas": entries.count()},
+        )
         from apps.core.notifications import notify_users
         notify_users(
             Usuario.objects.filter(rol="jefe_comision", provincia_id=request.user.provincia_id),
@@ -1345,10 +1469,19 @@ class StudentEscalafonActionView(APIView):
             return Response({"detail": "Acción no válida."}, status=400)
         if entry.escalafon.estado == "enviado":
             return Response({"detail": "El escalafón ya fue enviado y solo puede consultarse."}, status=403)
+        previous_state = entry.estado
         entry.estado = "aceptado" if action == "aceptar" else "por_revisar"
         entry.causa_revision = serializer.validated_data.get("causa", "") if action == "revision" else ""
         entry.fecha_revision = timezone.now() if action == "revision" else None
         entry.save(update_fields=["estado", "causa_revision", "fecha_revision"])
+        record_audit(
+            request.user,
+            "Aceptación de escalafón" if action == "aceptar" else "Reclamo de escalafón",
+            request.path,
+            request=request,
+            previous={"estado": previous_state},
+            new={"estado": entry.estado, "causa": entry.causa_revision},
+        )
         from apps.core.notifications import notify_users
         secretaries = Usuario.objects.filter(rol="secretario_escuela", escuela=entry.escalafon.escuela)
         message = f"El estudiante {entry.estudiante.nombre} {entry.estudiante.apellidos} {'solicitó revisión' if action == 'revision' else 'aceptó sus índices'}."
@@ -1368,8 +1501,17 @@ class EscalafonReviewView(APIView):
             return Response({"detail": "Registro no encontrado."}, status=404)
         if entry.estado != "por_revisar":
             return Response({"detail": "Esta reclamación no está pendiente."}, status=400)
+        previous_state = entry.estado
         entry.estado = "sin_respuesta"
         entry.save(update_fields=["estado"])
+        record_audit(
+            request.user,
+            "Atención de reclamo de escalafón",
+            request.path,
+            request=request,
+            previous={"estado": previous_state},
+            new={"estado": entry.estado, "entrada_id": entry.id},
+        )
         from apps.core.notifications import notify_users
         notify_users(
             [entry.estudiante.usuario],

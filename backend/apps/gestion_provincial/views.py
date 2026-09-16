@@ -6,9 +6,10 @@ from datetime import datetime, time
 from rest_framework import serializers, viewsets
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 
 from apps.authentication.models import Estudiante, Usuario
+from apps.core.audit import record_audit
 from apps.gestion_personal.models import BoletaInteres, BoletaInteresItem, BoletaSolicitud, BoletaSolicitudItem, BoletaSolicitudItemAnterior, ConfirmacionPrueba
 from apps.gestion_personal.models import BoletaSolicitud
 from apps.superadmin.models import Asignatura, Carrera, Ces, Escuela, Municipio, Provincia
@@ -289,7 +290,7 @@ class ProvincialEtapaViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class PublicEtapasDisponibilidadView(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request):
         Etapa.objects.filter(
@@ -318,7 +319,7 @@ class PublicEtapasDisponibilidadView(APIView):
 
 
 class PublicPlanPlazaLandingView(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request):
         return Response(build_plan_plaza_landing_payload(request))
@@ -411,6 +412,7 @@ class CommissionSolicitudAuthorizationView(APIView):
             ballot.aprobada_por = request.user.get_full_name() or request.user.username
             ballot.fecha_aprobada = timezone.localdate()
             ballot.save(update_fields=["estado", "aprobada_por", "fecha_aprobada"])
+            record_audit(request.user, "Aprobación de modificación de boleta", request.path, request=request, previous={"estado": "modificada"}, new={"estado": "aprobada", "boleta_id": ballot.id})
             BoletaSolicitudItemAnterior.objects.filter(boleta_solicitud=ballot).delete()
             from apps.core.notifications import notify_users
             notify_users(
@@ -434,6 +436,7 @@ class CommissionSolicitudAuthorizationView(APIView):
         BoletaSolicitudItemAnterior.objects.filter(boleta_solicitud=ballot).delete()
         ballot.estado = "aprobada"
         ballot.save(update_fields=["estado"])
+        record_audit(request.user, "Rechazo de modificación de boleta", request.path, request=request, previous={"estado": "modificada"}, new={"estado": "aprobada", "boleta_id": ballot.id})
         from apps.core.notifications import notify_users
         notify_users(
             [Usuario.objects.filter(pk=ballot.estudiante.usuario_id).first()],
@@ -491,6 +494,7 @@ class ProvincialActivarEtapaView(APIView):
         if stage_index == 3:
             update_fields.extend(["fecha_matematica", "fecha_espanol", "fecha_historia"])
         etapa.save(update_fields=update_fields)
+        record_audit(request.user, "Activación de etapa", request.path, request=request, previous={"estado": "no_iniciada"}, new={"estado": "en_curso", "etapa": etapa.nombre, "fecha_inicio": etapa.fecha_inicio, "fecha_fin": etapa.fecha_fin})
         process, _ = Proceso.objects.get_or_create(
             anio=timezone.localdate().replace(month=1, day=1),
             etapa=etapa,
@@ -540,6 +544,7 @@ class ProvincialCerrarEtapaView(APIView):
             )
         etapa.estado = 'completada'
         etapa.save(update_fields=["estado"])
+        record_audit(request.user, "Cierre de etapa", request.path, request=request, previous={"estado": "en_curso"}, new={"estado": "completada", "etapa": etapa.nombre})
         if etapa.nombre == ETAPAS_NOMBRES[1]:
             from apps.gestion_escuela.models import Escalafon
             Escalafon.objects.filter(estado="pendiente").update(estado="enviado")

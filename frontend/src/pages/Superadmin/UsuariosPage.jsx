@@ -8,7 +8,11 @@ import {
 } from "../../services/api";
 import EntityActionButton from "../../components/Buttons/EntityActionButton";
 import StatusToggle from "../../components/Buttons/StatusToggle";
-import FeedbackMessage from "../../components/FeedbackMessage";
+import PrimaryButton from "../../components/Buttons/PrimaryButton";
+import SecondaryButton from "../../components/Buttons/SecondaryButton";
+import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
+import { Card, DataTable, FormField, Input, Modal, PageHeader, Select, useConfirm } from "../../components";
+import styles from "./UsuariosPage.module.css";
 
 const roles = [
   ["superadmin", "Super Administrador"],
@@ -18,6 +22,13 @@ const roles = [
   ["director_escuela", "Director de Escuela"],
   ["secretario_escuela", "Secretario de Escuela"],
 ];
+
+const fieldLabels = {
+  username: "Usuario",
+  email: "Correo",
+  first_name: "Nombre",
+  last_name: "Apellidos",
+};
 
 const emptyForm = {
   username: "",
@@ -33,6 +44,7 @@ const emptyForm = {
 };
 
 export default function UsuariosPage() {
+  const confirm = useConfirm();
   const [users, setUsers] = useState([]);
   const [provinces, setProvinces] = useState([]);
   const [municipalities, setMunicipalities] = useState([]);
@@ -156,7 +168,13 @@ export default function UsuariosPage() {
   }
 
   async function handleDelete(user) {
-    if (!window.confirm(`¿Eliminar el usuario ${user.username}?`)) return;
+    const ok = await confirm({
+      title: "Eliminar usuario",
+      message: `¿Eliminar el usuario ${user.username}?`,
+      confirmLabel: "Eliminar",
+      tone: "danger",
+    });
+    if (!ok) return;
     try {
       setError("");
       await deleteSuperAdminUser(user.id);
@@ -166,88 +184,168 @@ export default function UsuariosPage() {
     }
   }
 
+  const columns = [
+    { key: "username", header: "Usuario", render: (user) => user.username },
+    { key: "nombre", header: "Nombre", render: (user) => [user.first_name, user.last_name].filter(Boolean).join(" ") || "Sin nombre" },
+    {
+      key: "rol",
+      header: "Rol",
+      render: (user) => <span className={styles.roleBadge}>{user.rol_label}</span>,
+    },
+    { key: "alcance", header: "Alcance", render: (user) => user.provincia_nombre || user.municipio_nombre || user.escuela_nombre || "Global" },
+    { key: "estado", header: "Estado", render: (user) => <StatusToggle active={user.is_active} onClick={() => toggleActive(user)} /> },
+    {
+      key: "acciones",
+      header: "Acciones",
+      render: (user) => (
+        <>
+          <EntityActionButton variant="edit" onClick={() => openEdit(user)}>Editar</EntityActionButton>
+          <EntityActionButton variant="delete" className="ml-2" onClick={() => handleDelete(user)}>Eliminar</EntityActionButton>
+        </>
+      ),
+    },
+  ];
+
   return (
     <div className="space-y-6">
-      <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold text-slate-900">👥 Usuarios</h1>
-            <p className="mt-2 text-sm text-slate-600">Gestión global de usuarios en todo el sistema.</p>
-          </div>
-          <button type="button" onClick={openCreate} className="rounded-2xl bg-sky-600 px-5 py-3 text-sm font-semibold text-white hover:bg-sky-700">+ Nuevo usuario</button>
-        </div>
+      <Card padding="p-8">
+        <PageHeader
+          title="👥 Usuarios"
+          subtitle="Gestión global de usuarios en todo el sistema."
+          actions={<PrimaryButton onClick={openCreate}>+ Nuevo usuario</PrimaryButton>}
+        />
 
-        <div className="mt-6 grid gap-4 sm:grid-cols-3">
-          <label className="space-y-2 text-sm text-slate-700">Rol
-            <select value={filters.rol} onChange={(event) => setFilters({ ...filters, rol: event.target.value })} className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+        <div className={styles.filtersGrid}>
+          <FormField label="Rol">
+            <Select value={filters.rol} onChange={(event) => setFilters({ ...filters, rol: event.target.value })}>
               <option value="">Todos</option>
               {roles.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-            </select>
-          </label>
-          <label className="space-y-2 text-sm text-slate-700">Provincia
-            <select value={filters.provincia} onChange={(event) => setFilters({ ...filters, provincia: event.target.value })} className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+            </Select>
+          </FormField>
+          <FormField label="Provincia">
+            <Select value={filters.provincia} onChange={(event) => setFilters({ ...filters, provincia: event.target.value })}>
               <option value="">Todas</option>
               {provinces.map((province) => <option key={province.id} value={province.id}>{province.nombre}</option>)}
-            </select>
-          </label>
-          <label className="space-y-2 text-sm text-slate-700">Estado
-            <select value={filters.estado} onChange={(event) => setFilters({ ...filters, estado: event.target.value })} className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+            </Select>
+          </FormField>
+          <FormField label="Estado">
+            <Select value={filters.estado} onChange={(event) => setFilters({ ...filters, estado: event.target.value })}>
               <option value="">Todos</option>
               <option value="activo">Activo</option>
               <option value="inactivo">Inactivo</option>
-            </select>
-          </label>
+            </Select>
+          </FormField>
         </div>
 
         {error && <FeedbackMessage type="error" className="mt-5 rounded-2xl">{error}</FeedbackMessage>}
-        <div className="table-scroll mt-6 overflow-x-auto">
-          <table className="min-w-full border-collapse text-sm">
-            <thead><tr className="bg-slate-100 text-left text-slate-700"><th className="px-4 py-3">Usuario</th><th className="px-4 py-3">Nombre</th><th className="px-4 py-3">Rol</th><th className="px-4 py-3">Alcance</th><th className="px-4 py-3">Estado</th><th className="px-4 py-3">Acciones</th></tr></thead>
-            <tbody>
-              {users.map((user) => (
-                <tr key={user.id} className="border-b border-slate-200 hover:bg-slate-50">
-                  <td className="px-4 py-3 text-slate-700">{user.username}</td>
-                  <td className="px-4 py-3 text-slate-700">{[user.first_name, user.last_name].filter(Boolean).join(" ") || "Sin nombre"}</td>
-                  <td className="px-4 py-3"><span className="rounded-full bg-sky-100 px-3 py-1 text-xs font-semibold text-sky-700">{user.rol_label}</span></td>
-                  <td className="px-4 py-3 text-slate-700">{user.provincia_nombre || user.municipio_nombre || user.escuela_nombre || "Global"}</td>
-                  <td className="px-4 py-3"><StatusToggle active={user.is_active} onClick={() => toggleActive(user)} /></td>
-                  <td className="px-4 py-3"><EntityActionButton variant="edit" onClick={() => openEdit(user)}>Editar</EntityActionButton><EntityActionButton variant="delete" className="ml-2" onClick={() => handleDelete(user)}>Eliminar</EntityActionButton></td>
-                </tr>
-              ))}
-              {!loading && !users.length && <tr><td colSpan="6" className="px-4 py-8 text-center text-slate-500">No hay usuarios para estos filtros.</td></tr>}
-              {loading && <tr><td colSpan="6" className="px-4 py-8 text-center text-slate-500">Cargando usuarios...</td></tr>}
-            </tbody>
-          </table>
-        </div>
-      </section>
+        <DataTable
+          className="table-scroll mt-6"
+          columns={columns}
+          data={users}
+          loading={loading}
+          emptyMessage="No hay usuarios para estos filtros."
+        />
+      </Card>
 
-      {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
-          <form onSubmit={handleSubmit} className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl">
-            <h2 className="text-xl font-semibold text-slate-900">{editing ? "Editar usuario" : "Nuevo usuario"}</h2>
-            <div className="mt-5 grid gap-4 sm:grid-cols-2">
-              {["username", "email", "first_name", "last_name"].map((field) => <label key={field} className="text-sm font-semibold text-slate-700">{field === "first_name" ? "Nombre" : field === "last_name" ? "Apellidos" : field === "email" ? "Correo" : "Usuario"}<input required={!editing || field !== "username"} disabled={editing && field === "username"} type={field === "email" ? "email" : "text"} value={form[field]} onChange={(event) => setForm({ ...form, [field]: event.target.value })} className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 font-normal" /></label>)}
-              <label className="text-sm font-semibold text-slate-700">Rol<select required value={form.rol} onChange={(event) => { const role = event.target.value; setForm({ ...form, rol: role, provincia: "", municipio: "", escuela: "" }); }} className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 font-normal">{roles.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-              {form.rol !== "superadmin" && <label className="text-sm font-semibold text-slate-700">Provincia{(needsMunicipality || needsSchool) && <span className="text-rose-600"> *</span>}<select required={needsMunicipality || needsSchool} value={form.provincia} onChange={(event) => setForm({ ...form, provincia: event.target.value, municipio: "", escuela: "" })} className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 font-normal"><option value="">Sin asignar</option>{provinces.map((province) => <option key={province.id} value={province.id}>{province.nombre}</option>)}</select></label>}
-              {needsMunicipality && <label className="text-sm font-semibold text-slate-700">Municipio <span className="text-rose-600">*</span><select required value={form.municipio} onChange={(event) => setForm({ ...form, municipio: event.target.value, escuela: "" })} disabled={!form.provincia} className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 font-normal disabled:bg-slate-100"><option value="">Selecciona un municipio</option>{municipalities.map((municipality) => <option key={municipality.id} value={municipality.id}>{municipality.nombre}</option>)}</select></label>}
-              {needsSchool && <label className="text-sm font-semibold text-slate-700 sm:col-span-2">Escuela <span className="text-rose-600">*</span><select required value={form.escuela} onChange={(event) => setForm({ ...form, escuela: event.target.value })} disabled={!form.municipio} className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 font-normal disabled:bg-slate-100"><option value="">Selecciona una escuela</option>{schools.map((school) => <option key={school.id} value={school.id}>{school.nombre}</option>)}</select></label>}
-              <label className="flex items-center gap-3 text-sm font-semibold text-slate-700 sm:col-span-2">
-                <input type="checkbox" checked={form.is_active} onChange={(event) => setForm({ ...form, is_active: event.target.checked })} className="h-5 w-5 rounded border-slate-300 text-sky-600 focus:ring-sky-500" />
-                Usuario activo
-              </label>
-              <label className="text-sm font-semibold text-slate-700 sm:col-span-2">Contraseña{editing && <span className="font-normal text-slate-500"> (dejar vacía para conservarla)</span>}
-                <div className="relative mt-2">
-                  <input required={!editing} minLength="8" type={showPassword ? "text" : "password"} value={form.password} onChange={(event) => setForm({ ...form, password: event.target.value })} className="w-full rounded-2xl border border-slate-200 px-4 py-3 pr-24 font-normal" />
-                  <button type="button" onClick={() => setShowPassword((visible) => !visible)} className="absolute right-2 top-1/2 -translate-y-1/2 rounded-xl px-3 py-2 text-lg text-slate-600 hover:bg-slate-100" aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"} title={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}>
-                    <span className={showPassword ? "" : "line-through decoration-2 opacity-60"} aria-hidden="true">👁</span>
-                  </button>
-                </div>
-              </label>
+      <Modal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        title={editing ? "Editar usuario" : "Nuevo usuario"}
+        size="lg"
+        footer={
+          <>
+            <SecondaryButton onClick={() => setModalOpen(false)}>Cancelar</SecondaryButton>
+            <PrimaryButton type="submit" form="usuario-form">Guardar</PrimaryButton>
+          </>
+        }
+      >
+        <form id="usuario-form" onSubmit={handleSubmit} className="grid gap-4 sm:grid-cols-2">
+          {["username", "email", "first_name", "last_name"].map((field) => (
+            <FormField key={field} label={fieldLabels[field]}>
+              <Input
+                required={!editing || field !== "username"}
+                disabled={editing && field === "username"}
+                type={field === "email" ? "email" : "text"}
+                value={form[field]}
+                onChange={(event) => setForm({ ...form, [field]: event.target.value })}
+              />
+            </FormField>
+          ))}
+          <FormField label="Rol">
+            <Select
+              required
+              value={form.rol}
+              onChange={(event) => {
+                const role = event.target.value;
+                setForm({ ...form, rol: role, provincia: "", municipio: "", escuela: "" });
+              }}
+            >
+              {roles.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+            </Select>
+          </FormField>
+          {form.rol !== "superadmin" && (
+            <FormField label={<>Provincia{(needsMunicipality || needsSchool) && <span className={styles.requiredMark}> *</span>}</>}>
+              <Select
+                required={needsMunicipality || needsSchool}
+                value={form.provincia}
+                onChange={(event) => setForm({ ...form, provincia: event.target.value, municipio: "", escuela: "" })}
+              >
+                <option value="">Sin asignar</option>
+                {provinces.map((province) => <option key={province.id} value={province.id}>{province.nombre}</option>)}
+              </Select>
+            </FormField>
+          )}
+          {needsMunicipality && (
+            <FormField label={<>Municipio <span className={styles.requiredMark}>*</span></>}>
+              <Select
+                required
+                value={form.municipio}
+                onChange={(event) => setForm({ ...form, municipio: event.target.value, escuela: "" })}
+                disabled={!form.provincia}
+              >
+                <option value="">Selecciona un municipio</option>
+                {municipalities.map((municipality) => <option key={municipality.id} value={municipality.id}>{municipality.nombre}</option>)}
+              </Select>
+            </FormField>
+          )}
+          {needsSchool && (
+            <FormField label={<>Escuela <span className={styles.requiredMark}>*</span></>} className="sm:col-span-2">
+              <Select required value={form.escuela} onChange={(event) => setForm({ ...form, escuela: event.target.value })} disabled={!form.municipio}>
+                <option value="">Selecciona una escuela</option>
+                {schools.map((school) => <option key={school.id} value={school.id}>{school.nombre}</option>)}
+              </Select>
+            </FormField>
+          )}
+          <label className={`${styles.activeCheckboxRow} sm:col-span-2`}>
+            <input type="checkbox" checked={form.is_active} onChange={(event) => setForm({ ...form, is_active: event.target.checked })} className={styles.checkbox} />
+            Usuario activo
+          </label>
+          <FormField
+            label={<>Contraseña{editing && <span className="font-normal text-slate-500"> (dejar vacía para conservarla)</span>}</>}
+            className="sm:col-span-2"
+          >
+            <div className={styles.passwordFieldWrapper}>
+              <Input
+                required={!editing}
+                minLength="8"
+                type={showPassword ? "text" : "password"}
+                value={form.password}
+                onChange={(event) => setForm({ ...form, password: event.target.value })}
+                className={styles.passwordInput}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((visible) => !visible)}
+                className={styles.passwordToggle}
+                aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                title={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+              >
+                <span className={showPassword ? "" : styles.passwordToggleIconHidden} aria-hidden="true">👁</span>
+              </button>
             </div>
-            <div className="mt-6 flex justify-end gap-3"><button type="button" onClick={() => setModalOpen(false)} className="rounded-2xl border border-slate-200 px-5 py-3 text-sm font-semibold">Cancelar</button><button type="submit" className="rounded-2xl bg-sky-600 px-5 py-3 text-sm font-semibold text-white">Guardar</button></div>
-          </form>
-        </div>
-      )}
+          </FormField>
+        </form>
+      </Modal>
     </div>
   );
 }

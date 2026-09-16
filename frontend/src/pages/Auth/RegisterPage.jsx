@@ -1,8 +1,17 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { changePendingEmail, fetchRegistrationAvailability, register, verifyEmail } from "../../services/api";
-import axios from "axios";
-import FeedbackMessage from "../../components/FeedbackMessage";
+import {
+    changePendingEmail,
+    fetchRegistrationAvailability,
+    fetchSuperAdminCatalog,
+    register,
+    verifyEmail,
+} from "../../services/api";
+import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
+import PrimaryButton from "../../components/Buttons/PrimaryButton";
+import SecondaryButton from "../../components/Buttons/SecondaryButton";
+import { Card, FormField, Input, Select } from "../../components";
+import styles from "./RegisterPage.module.css";
 
 export default function RegisterPage() {
     const [form, setForm] = useState({
@@ -33,10 +42,10 @@ export default function RegisterPage() {
     const navigate = useNavigate();
 
     useEffect(() => {
-        axios.get("/api/superadmin/provincias/")
-            .then((res) => setProvincias(res.data))
+        fetchSuperAdminCatalog("provincias")
+            .then(setProvincias)
             .catch(() => setError("No se pudieron cargar las provincias."));
-            fetchRegistrationAvailability()
+        fetchRegistrationAvailability()
             .then((data) => setRegistrationOpen(data.registro_estudiantil))
             .catch(() => setRegistrationOpen(false));
     }, []);
@@ -50,10 +59,9 @@ export default function RegisterPage() {
             return;
         }
 
-        axios
-            .get(`/api/superadmin/municipios/?provincia=${provinciaId}`)
-            .then((res) => {
-                setMunicipios(res.data);
+        fetchSuperAdminCatalog("municipios", { provincia: provinciaId })
+            .then((data) => {
+                setMunicipios(data);
                 setMunicipioId("");
                 setEscuelas([]);
                 setEscuelaId("");
@@ -68,10 +76,9 @@ export default function RegisterPage() {
             return;
         }
 
-        axios
-            .get(`/api/superadmin/escuelas/?municipio=${municipioId}`)
-            .then((res) => {
-                setEscuelas(res.data);
+        fetchSuperAdminCatalog("escuelas", { municipio: municipioId })
+            .then((data) => {
+                setEscuelas(data);
                 setEscuelaId("");
             })
             .catch(() => setError("No se pudieron cargar las escuelas."));
@@ -145,98 +152,80 @@ export default function RegisterPage() {
         : registrationOpen !== true;
 
     return (
-        <div className="mx-auto max-w-2xl rounded-3xl border border-slate-200 bg-white p-8 my-10 shadow-sm">
-            {/* Botón Volver al Landing Page */}
+        <Card as="div" className={styles.wrapper} padding="p-8">
             <div className="mb-6">
-                <button
-                    onClick={() => navigate("/")} // Asumiendo que "/" es tu landing page
-                    className="flex items-center gap-2 text-sm font-medium text-slate-500 transition hover:text-slate-800"
-                >
+                <button type="button" onClick={() => navigate("/")} className={styles.backLink}>
                     ← Volver al inicio
                 </button>
             </div>
 
-            <h1 className="text-2xl font-semibold text-slate-900">
+            <h1 className={styles.title}>
                 Registro estudiantil
             </h1>
-            <p className="mt-2 text-sm text-slate-600">
+            <p className={styles.subtitle}>
                 Solo estudiantes de 12grado pueden registrarse.
             </p>
             {registrationDisabled && <FeedbackMessage type="warning" className="mt-6 rounded-2xl">El registro estudiantil solo está disponible durante la Etapa 1 del proceso de ingreso.</FeedbackMessage>}
             {error && <FeedbackMessage type="error" className="mt-6 rounded-2xl">{error}</FeedbackMessage>}
             {success && <FeedbackMessage type="success" className="mt-6 rounded-2xl">{success}</FeedbackMessage>}
             {pendingVerification ? (
-                <form onSubmit={handleVerification} className="mt-6 space-y-5">
-                    <p className="text-sm text-slate-600">
+                <form onSubmit={handleVerification} className={styles.verificationForm}>
+                    <p className={styles.verificationHint}>
                         Revisa tu correo e introduce el código de 6 dígitos. La cuenta permanecerá inactiva hasta verificarla.
                     </p>
-                    <div className="rounded-2xl bg-slate-50 p-4">
-                        <div className="flex items-center justify-between gap-3">
-                            <span className="text-sm font-semibold text-slate-700">Código enviado a</span>
-                            {!editingPendingEmail && <button type="button" onClick={() => setEditingPendingEmail(true)} className="text-sm font-semibold text-sky-700 hover:text-sky-800">Cambiar correo</button>}
+                    <div className={styles.pendingEmailBox}>
+                        <div className={styles.pendingEmailHeader}>
+                            <span className={styles.pendingEmailLabel}>Código enviado a</span>
+                            {!editingPendingEmail && <button type="button" onClick={() => setEditingPendingEmail(true)} className={styles.changeEmailLink}>Cambiar correo</button>}
                         </div>
                         {editingPendingEmail ? (
-                            <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-                                <input type="email" value={form.email} onChange={updateField("email")} className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-sky-500 focus:outline-none" required />
-                                <button type="button" onClick={handlePendingEmailChange} disabled={changingPendingEmail} className="rounded-xl bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-700 disabled:opacity-50">{changingPendingEmail ? "Actualizando..." : "Guardar correo"}</button>
-                                <button type="button" onClick={() => setEditingPendingEmail(false)} className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700">Cancelar</button>
+                            <div className={styles.pendingEmailEditRow}>
+                                <Input type="email" value={form.email} onChange={updateField("email")} className={styles.pendingEmailInput} required />
+                                <PrimaryButton type="button" onClick={handlePendingEmailChange} disabled={changingPendingEmail}>{changingPendingEmail ? "Actualizando..." : "Guardar correo"}</PrimaryButton>
+                                <SecondaryButton onClick={() => setEditingPendingEmail(false)}>Cancelar</SecondaryButton>
                             </div>
-                        ) : <p className="mt-1 break-all text-sm text-slate-900">{form.email}</p>}
+                        ) : <p className={styles.pendingEmailValue}>{form.email}</p>}
                     </div>
-                    <label className="block">
-                        <span className="text-sm font-semibold text-slate-700">Código de verificación</span>
-                        <input
+                    <FormField label="Código de verificación">
+                        <Input
                             value={verificationCode}
                             onChange={(event) => setVerificationCode(event.target.value)}
-                            className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 focus:border-sky-500 focus:outline-none"
                             inputMode="numeric"
                             pattern="[0-9]{6}"
                             maxLength={6}
                             required
                         />
-                    </label>
-                    <button type="submit" className="w-full rounded-2xl bg-sky-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-sky-700">
+                    </FormField>
+                    <PrimaryButton type="submit">
                         Verificar correo
-                    </button>
+                    </PrimaryButton>
                 </form>
             ) : <form
                 onSubmit={handleSubmit}
                 inert={registrationDisabled ? "" : undefined}
-                className={`mt-6 grid gap-5 md:grid-cols-2 ${registrationDisabled ? "pointer-events-none opacity-50 grayscale" : ""}`}
+                className={`${styles.registerForm} ${registrationDisabled ? styles.registerFormDisabled : ""}`}
             >
-                <label className="block">
-                    <span className="text-sm font-semibold text-slate-700">
-                        Usuario
-                    </span>
-                    <input
+                <FormField label="Usuario">
+                    <Input
                         value={form.username}
                         onChange={updateField("username")}
-                        className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 focus:border-sky-500 focus:outline-none"
                         placeholder="maria.gonzalez25"
                         required
                     />
-                </label>
-                <label className="block">
-                    <span className="text-sm font-semibold text-slate-700">
-                        CI
-                    </span>
-                    <input
+                </FormField>
+                <FormField label="CI">
+                    <Input
                         value={form.ci}
                         onChange={updateField("ci")}
-                        className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 focus:border-sky-500 focus:outline-none"
                         placeholder="06120000184"
                         maxLength={11}
                         required
                     />
-                </label>
-                <label className="block">
-                    <span className="text-sm font-semibold text-slate-700">
-                        Provincia
-                    </span>
-                    <select
+                </FormField>
+                <FormField label="Provincia">
+                    <Select
                         value={provinciaId}
                         onChange={(event) => setProvinciaId(event.target.value)}
-                        className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 focus:border-sky-500 focus:outline-none"
                         required
                     >
                         <option value="">Selecciona una provincia</option>
@@ -245,16 +234,12 @@ export default function RegisterPage() {
                                 {provincia.nombre}
                             </option>
                         ))}
-                    </select>
-                </label>
-                <label className="block">
-                    <span className="text-sm font-semibold text-slate-700">
-                        Municipio
-                    </span>
-                    <select
+                    </Select>
+                </FormField>
+                <FormField label="Municipio">
+                    <Select
                         value={municipioId}
                         onChange={(event) => setMunicipioId(event.target.value)}
-                        className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 focus:border-sky-500 focus:outline-none"
                         required
                         disabled={!municipios.length}
                     >
@@ -264,16 +249,12 @@ export default function RegisterPage() {
                                 {municipio.nombre}
                             </option>
                         ))}
-                    </select>
-                </label>
-                <label className="block md:col-span-2">
-                    <span className="text-sm font-semibold text-slate-700">
-                        Escuela
-                    </span>
-                    <select
+                    </Select>
+                </FormField>
+                <FormField label="Escuela" className={styles.fieldSpan2}>
+                    <Select
                         value={escuelaId}
                         onChange={(event) => setEscuelaId(event.target.value)}
-                        className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 focus:border-sky-500 focus:outline-none"
                         required
                         disabled={!escuelas.length}
                     >
@@ -283,80 +264,66 @@ export default function RegisterPage() {
                                 {escuela.nombre}
                             </option>
                         ))}
-                    </select>
-                </label>
-                <label className="block">
-                    <span className="text-sm font-semibold text-slate-700">
-                        Correo electrónico
-                    </span>
-                    <input
+                    </Select>
+                </FormField>
+                <FormField label="Correo electrónico">
+                    <Input
                         type="email"
                         value={form.email}
                         onChange={updateField("email")}
-                        className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 focus:border-sky-500 focus:outline-none"
                         placeholder="maria.gonzalez@correo.com"
                         required
                     />
-                </label>
-                <label className="block">
-                    <span className="text-sm font-semibold text-slate-700">
-                        WhatsApp <span className="font-normal text-slate-500">(opcional)</span>
-                    </span>
-                    <input
+                </FormField>
+                <FormField label={<>WhatsApp <span className={styles.optionalHint}>(opcional)</span></>}>
+                    <Input
                         type="tel"
                         value={form.whatsapp}
                         onChange={updateField("whatsapp")}
-                        className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 focus:border-sky-500 focus:outline-none"
                         placeholder="+53 5 5555 5555"
                     />
-                </label>
-                <label className="block">
-                    <span className="text-sm font-semibold text-slate-700">
-                        Contraseña
-                    </span>
-                    <div className="relative mt-2">
-                        <input
+                </FormField>
+                <FormField label="Contraseña">
+                    <div className={styles.passwordField}>
+                        <Input
                             type={showPassword ? "text" : "password"}
                             value={form.password}
                             onChange={updateField("password")}
-                            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 pr-16 text-sm text-slate-900 focus:border-sky-500 focus:outline-none"
+                            className={styles.passwordInput}
                             placeholder="Crea una contraseña"
                             required
                         />
-                        <button type="button" onClick={() => setShowPassword((visible) => !visible)} className="absolute inset-y-0 right-3 flex items-center text-slate-500 hover:text-slate-800" aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"} title={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}>
-                            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                        <button type="button" onClick={() => setShowPassword((visible) => !visible)} className={styles.toggleButton} aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"} title={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}>
+                            <svg viewBox="0 0 24 24" className={styles.toggleIcon} fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                                 {showPassword ? <><path d="M2.5 12S6 5 12 5s9.5 7 9.5 7-3.5 7-9.5 7-9.5-7-9.5-7Z" /><circle cx="12" cy="12" r="2.5" /></> : <path d="m3 3 18 18M10.6 10.6a2 2 0 0 0 2.8 2.8M9.9 4.2A10.7 10.7 0 0 1 12 4c5 0 8.5 4 9.5 6a11.8 11.8 0 0 1-4.1 4.5M6.2 6.2C3.9 6.2 2.5 9.5 2.5 10c1 2 4.5 6 9.5 6 1 0 1.9-.2 2.7-.5" />}
                             </svg>
                         </button>
                     </div>
-                </label>
-                <label className="block">
-                    <span className="text-sm font-semibold text-slate-700">
-                        Repetir contraseña
-                    </span>
-                    <div className="relative mt-2">
-                        <input
+                </FormField>
+                <FormField label="Repetir contraseña">
+                    <div className={styles.passwordField}>
+                        <Input
                             type={showConfirmPassword ? "text" : "password"}
                             value={form.confirmPassword}
                             onChange={updateField("confirmPassword")}
-                            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 pr-16 text-sm text-slate-900 focus:border-sky-500 focus:outline-none"
+                            className={styles.passwordInput}
                             placeholder="Repite la contraseña"
                             required
                         />
-                        <button type="button" onClick={() => setShowConfirmPassword((visible) => !visible)} className="absolute inset-y-0 right-3 flex items-center text-slate-500 hover:text-slate-800" aria-label={showConfirmPassword ? "Ocultar confirmación de contraseña" : "Mostrar confirmación de contraseña"} title={showConfirmPassword ? "Ocultar confirmación de contraseña" : "Mostrar confirmación de contraseña"}>
-                            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                        <button type="button" onClick={() => setShowConfirmPassword((visible) => !visible)} className={styles.toggleButton} aria-label={showConfirmPassword ? "Ocultar confirmación de contraseña" : "Mostrar confirmación de contraseña"} title={showConfirmPassword ? "Ocultar confirmación de contraseña" : "Mostrar confirmación de contraseña"}>
+                            <svg viewBox="0 0 24 24" className={styles.toggleIcon} fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                                 {showConfirmPassword ? <><path d="M2.5 12S6 5 12 5s9.5 7 9.5 7-3.5 7-9.5 7-9.5-7-9.5-7Z" /><circle cx="12" cy="12" r="2.5" /></> : <path d="m3 3 18 18M10.6 10.6a2 2 0 0 0 2.8 2.8M9.9 4.2A10.7 10.7 0 0 1 12 4c5 0 8.5 4 9.5 6a11.8 11.8 0 0 1-4.1 4.5M6.2 6.2C3.9 6.2 2.5 9.5 2.5 10c1 2 4.5 6 9.5 6 1 0 1.9-.2 2.7-.5" />}
                             </svg>
                         </button>
                     </div>
-                </label>
-                <button
+                </FormField>
+                <PrimaryButton
                     type="submit"
-                    className="md:col-span-2 rounded-2xl bg-sky-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-sky-700"
+                    className={styles.submitButton}
                 >
                     Crear cuenta
-                </button>
+                </PrimaryButton>
             </form>}
-        </div>
+        </Card>
     );
 }

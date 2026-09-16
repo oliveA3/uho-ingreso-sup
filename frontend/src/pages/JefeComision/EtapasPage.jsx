@@ -5,7 +5,11 @@ import {
   fetchProvincialEtapas,
   resetProvincialEtapas,
 } from "../../services/api";
-import FeedbackMessage from "../../components/FeedbackMessage";
+import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
+import PrimaryButton from "../../components/Buttons/PrimaryButton";
+import SecondaryButton from "../../components/Buttons/SecondaryButton";
+import { Card, FormField, Input, Modal, useConfirm } from "../../components";
+import styles from "./EtapasPage.module.css";
 
 const statusLabels = {
   completada: "Completada",
@@ -15,10 +19,10 @@ const statusLabels = {
 };
 
 const statusStyles = {
-  completada: "bg-emerald-100 text-emerald-700",
-  en_curso: "bg-sky-100 text-sky-700",
-  no_iniciada: "bg-slate-100 text-slate-700",
-  bloqueada: "bg-slate-100 text-slate-500",
+  completada: "statusCompletada",
+  en_curso: "statusEnCurso",
+  no_iniciada: "statusNoIniciada",
+  bloqueada: "statusBloqueada",
 };
 
 function formatDates(stage) {
@@ -27,6 +31,7 @@ function formatDates(stage) {
 }
 
 export default function EtapasPage() {
+  const confirm = useConfirm();
   const [etapas, setEtapas] = useState([]);
   const [dates, setDates] = useState({ fecha_inicio: "", fecha_fin: "" });
   const [examDates, setExamDates] = useState({ fecha_matematica: "", fecha_espanol: "", fecha_historia: "" });
@@ -94,7 +99,13 @@ export default function EtapasPage() {
   }
 
   async function handleReset() {
-    if (!window.confirm("¿Deseas reiniciar el ciclo de etapas? Se borrarán todas las fechas.")) return;
+    const ok = await confirm({
+      title: "Reiniciar ciclo de etapas",
+      message: "¿Deseas reiniciar el ciclo de etapas? Se borrarán todas las fechas.",
+      confirmLabel: "Reiniciar",
+      tone: "danger",
+    });
+    if (!ok) return;
     setSaving(true);
     try {
       await resetProvincialEtapas();
@@ -110,34 +121,34 @@ export default function EtapasPage() {
   const allCompleted = etapas.length > 0 && etapas.every((stage) => stage.estado === "completada");
 
   return (
-    <div className="space-y-6">
-      <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
+    <div className={styles.page}>
+      <Card padding="p-8">
         <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-700">Control de Etapas</p>
-          <h1 className="mt-2 text-3xl font-semibold text-slate-900">Activación secuencial del proceso</h1>
-          <p className="mt-3 text-sm text-slate-600">Solo se puede activar la etapa inmediata después de la última en curso o completada.</p>
+          <p className={styles.eyebrow}>Control de Etapas</p>
+          <h1 className={styles.title}>Activación secuencial del proceso</h1>
+          <p className={styles.description}>Solo se puede activar la etapa inmediata después de la última en curso o completada.</p>
         </div>
 
-        {notice && <FeedbackMessage type="success" className="mt-6 rounded-3xl">{notice}</FeedbackMessage>}
-        {error && <FeedbackMessage type="error" className="mt-6 rounded-3xl">{error}</FeedbackMessage>}
+        {notice && <FeedbackMessage type="success" className={styles.notice}>{notice}</FeedbackMessage>}
+        {error && <FeedbackMessage type="error" className={styles.notice}>{error}</FeedbackMessage>}
 
-        <div className="mt-6 space-y-4">
-          {loading && <p className="text-sm text-slate-600">Cargando etapas...</p>}
+        <div className={styles.stageList}>
+          {loading && <p className={styles.stageDates}>Cargando etapas...</p>}
           {!loading && etapas.map((stage) => {
             const status = stage.estado;
             return (
-            <div key={stage.id} className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div key={stage.id} className={styles.stageCard}>
+              <div className={styles.stageRow}>
                 <div>
-                  <p className="font-semibold text-slate-900">Etapa {stage.numero} — {stage.nombre}</p>
-                  {formatDates(stage) && <p className="text-sm text-slate-600">{formatDates(stage)}</p>}
+                  <p className={styles.stageName}>Etapa {stage.numero} — {stage.nombre}</p>
+                  {formatDates(stage) && <p className={styles.stageDates}>{formatDates(stage)}</p>}
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusStyles[status]}`}>{statusLabels[status]}</span>
+                <div className={styles.stageActions}>
+                  <span className={styles[statusStyles[status]]}>{statusLabels[status]}</span>
                   {status === "en_curso" ? (
-                    <button type="button" onClick={() => handleClose(stage)} disabled={saving} className="rounded-2xl bg-slate-900 px-4 py-2 text-xs font-semibold text-white disabled:opacity-50">Cerrar</button>
+                    <PrimaryButton className={styles.closeButton} onClick={() => handleClose(stage)} disabled={saving}>Cerrar</PrimaryButton>
                   ) : status === "no_iniciada" ? (
-                    <button type="button" onClick={() => openActivation(stage)} className="rounded-2xl bg-sky-600 px-4 py-2 text-xs font-semibold text-white">Activar</button>
+                    <PrimaryButton className={styles.stageButton} onClick={() => openActivation(stage)}>Activar</PrimaryButton>
                   ) : null}
                 </div>
               </div>
@@ -146,28 +157,49 @@ export default function EtapasPage() {
           })}
         </div>
         {!loading && allCompleted && (
-          <button type="button" onClick={handleReset} disabled={saving} className="mt-6 rounded-2xl bg-amber-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
+          <PrimaryButton className={styles.resetButton} onClick={handleReset} disabled={saving}>
             Reiniciar ciclo
-          </button>
+          </PrimaryButton>
         )}
-      </section>
-      {selectedStage && (
-        <div className="fixed inset-0 z-10 flex items-center justify-center bg-slate-900/40 p-4">
-          <form onSubmit={handleActivation} className="w-full max-w-md rounded-3xl bg-white p-6 shadow-xl">
-            <h2 className="text-xl font-semibold text-slate-900">Activar etapa {selectedStage.numero}</h2>
-            {error && <FeedbackMessage type="error" className="mt-4 rounded-xl">{error}</FeedbackMessage>}
-            <div className="mt-5 grid gap-4 sm:grid-cols-2">
-              <label className="text-sm font-medium text-slate-700">Fecha de inicio<input required type="date" value={dates.fecha_inicio} onChange={(event) => { setDates({ ...dates, fecha_inicio: event.target.value }); setError(""); }} className="mt-2 w-full rounded-xl border border-slate-300 px-3 py-2" /></label>
-              <label className="text-sm font-medium text-slate-700">Fecha de fin<input required type="date" min={dates.fecha_inicio || undefined} value={dates.fecha_fin} onChange={(event) => { setDates({ ...dates, fecha_fin: event.target.value }); setError(""); }} className="mt-2 w-full rounded-xl border border-slate-300 px-3 py-2" /></label>
+      </Card>
+      <Modal
+        open={Boolean(selectedStage)}
+        onClose={() => setSelectedStage(null)}
+        title={selectedStage ? `Activar etapa ${selectedStage.numero}` : ""}
+        footer={
+          <>
+            <SecondaryButton onClick={() => setSelectedStage(null)}>Cancelar</SecondaryButton>
+            <PrimaryButton disabled={saving} type="submit" form="etapa-activacion-form">{saving ? "Guardando..." : "Confirmar"}</PrimaryButton>
+          </>
+        }
+      >
+        {selectedStage && (
+          <form id="etapa-activacion-form" onSubmit={handleActivation}>
+            {error && <FeedbackMessage type="error" className={styles.formError}>{error}</FeedbackMessage>}
+            <div className={styles.activationGrid}>
+              <FormField label="Fecha de inicio">
+                <Input required type="date" value={dates.fecha_inicio} onChange={(event) => { setDates({ ...dates, fecha_inicio: event.target.value }); setError(""); }} />
+              </FormField>
+              <FormField label="Fecha de fin">
+                <Input required type="date" min={dates.fecha_inicio || undefined} value={dates.fecha_fin} onChange={(event) => { setDates({ ...dates, fecha_fin: event.target.value }); setError(""); }} />
+              </FormField>
             </div>
-            {selectedStage.numero === 4 && <div className="mt-5 grid gap-4 sm:grid-cols-3"><label className="text-sm font-medium text-slate-700">Matemática<input required type="date" min={dates.fecha_inicio || undefined} max={dates.fecha_fin || undefined} value={examDates.fecha_matematica} onChange={(event) => { setExamDates({ ...examDates, fecha_matematica: event.target.value }); setError(""); }} className="mt-2 w-full rounded-xl border border-slate-300 px-3 py-2" /></label><label className="text-sm font-medium text-slate-700">Español<input required type="date" min={dates.fecha_inicio || undefined} max={dates.fecha_fin || undefined} value={examDates.fecha_espanol} onChange={(event) => { setExamDates({ ...examDates, fecha_espanol: event.target.value }); setError(""); }} className="mt-2 w-full rounded-xl border border-slate-300 px-3 py-2" /></label><label className="text-sm font-medium text-slate-700">Historia<input required type="date" min={dates.fecha_inicio || undefined} max={dates.fecha_fin || undefined} value={examDates.fecha_historia} onChange={(event) => { setExamDates({ ...examDates, fecha_historia: event.target.value }); setError(""); }} className="mt-2 w-full rounded-xl border border-slate-300 px-3 py-2" /></label></div>}
-            <div className="mt-6 flex justify-end gap-3">
-              <button type="button" onClick={() => setSelectedStage(null)} className="rounded-2xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700">Cancelar</button>
-              <button type="submit" disabled={saving} className="rounded-2xl bg-sky-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{saving ? "Guardando..." : "Confirmar"}</button>
-            </div>
+            {selectedStage.numero === 4 && (
+              <div className={styles.examGrid}>
+                <FormField label="Matemática">
+                  <Input required type="date" min={dates.fecha_inicio || undefined} max={dates.fecha_fin || undefined} value={examDates.fecha_matematica} onChange={(event) => { setExamDates({ ...examDates, fecha_matematica: event.target.value }); setError(""); }} />
+                </FormField>
+                <FormField label="Español">
+                  <Input required type="date" min={dates.fecha_inicio || undefined} max={dates.fecha_fin || undefined} value={examDates.fecha_espanol} onChange={(event) => { setExamDates({ ...examDates, fecha_espanol: event.target.value }); setError(""); }} />
+                </FormField>
+                <FormField label="Historia">
+                  <Input required type="date" min={dates.fecha_inicio || undefined} max={dates.fecha_fin || undefined} value={examDates.fecha_historia} onChange={(event) => { setExamDates({ ...examDates, fecha_historia: event.target.value }); setError(""); }} />
+                </FormField>
+              </div>
+            )}
           </form>
-        </div>
-      )}
+        )}
+      </Modal>
     </div>
   );
 }

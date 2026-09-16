@@ -7,6 +7,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.core.models import Notificacion
+from apps.core.audit import record_audit
 from apps.authentication.models import Usuario
 from apps.gestion_escuela.models import EscalafonItem
 from apps.gestion_provincial.models import CorteCarrera, ETAPAS_NOMBRES, Etapa, PlanPlaza, Proceso
@@ -50,9 +51,15 @@ class StudentProfileView(APIView):
 			student = request.user.estudiante
 		except Exception:
 			return Response({"detail": "El usuario no tiene un perfil de estudiante."}, status=400)
+		previous = {field: getattr(student, field) for field in ("direccion", "whatsapp", "tutor_nombre", "tutor_email", "tutor_telefono")}
+		previous["email"] = request.user.email
 		serializer = StudentProfileSerializer(student, data=request.data, partial=True)
 		serializer.is_valid(raise_exception=True)
-		return Response(StudentProfileSerializer(serializer.save()).data)
+		updated = serializer.save()
+		new = {field: getattr(updated, field) for field in previous if field != "email"}
+		new["email"] = updated.usuario.email
+		record_audit(request.user, "Edición de perfil estudiantil", request.path, request=request, previous=previous, new=new)
+		return Response(StudentProfileSerializer(updated).data)
 
 
 class StudentInterestView(APIView):
@@ -107,6 +114,7 @@ class StudentInterestItemView(APIView):
 		if ballot.boleta_interes.filter(carrera=career).exists():
 			return Response({"detail": "Ya seleccionaste esta carrera."}, status=400)
 		item = BoletaInteresItem.objects.create(boleta_interes=ballot, carrera=career, prioridad=ballot.boleta_interes.count() + 1)
+		record_audit(request.user, "Adición de carrera a boleta de interés", request.path, request=request, new={"carrera": career.codigo, "prioridad": item.prioridad})
 		return Response(BoletaInteresItemSerializer(item).data, status=201)
 
 	def delete(self, request, item_id):
@@ -121,6 +129,7 @@ class StudentInterestItemView(APIView):
 		if not item:
 			return Response({"detail": "La carrera no está en tu boleta."}, status=404)
 		item.delete()
+		record_audit(request.user, "Eliminación de carrera de boleta de interés", request.path, request=request, previous={"carrera": item.carrera.codigo, "prioridad": item.prioridad})
 		for priority, remaining in enumerate(ballot.boleta_interes.order_by("prioridad"), start=1):
 			if remaining.prioridad != priority:
 				remaining.prioridad = priority
@@ -176,6 +185,7 @@ class StudentInterestSendView(APIView):
 		ballot.enviada = True
 		ballot.fecha_enviada = timezone.localdate()
 		ballot.save(update_fields=["enviada", "fecha_enviada"])
+		record_audit(request.user, "Envío de boleta de interés", request.path, request=request, new={"boleta_id": ballot.id, "proceso": process.anio.year})
 		from apps.core.notifications import notify_users
 		notify_users(
 			Usuario.objects.filter(rol="secretario_escuela", escuela=student.escuela),
@@ -201,6 +211,7 @@ class StudentInterestEditView(APIView):
 		ballot.enviada = False
 		ballot.fecha_enviada = None
 		ballot.save(update_fields=["enviada", "fecha_enviada"])
+		record_audit(request.user, "Edición de boleta de interés enviada", request.path, request=request, previous={"enviada": True}, new={"enviada": False})
 		return Response({"detail": "La boleta volvió a estar pendiente y puede editarse."})
 
 
@@ -298,6 +309,7 @@ class StudentSolicitudView(APIView):
 			ballot.estado = "modificada" if is_modification else "pendiente"
 			ballot.fecha_enviada = timezone.localdate()
 			ballot.save(update_fields=["estado", "fecha_enviada"])
+		record_audit(request.user, "Envío de boleta de solicitud", request.path, request=request, new={"boleta_id": ballot.id, "estado": ballot.estado, "plan_plazas": plan_ids})
 		from apps.core.notifications import notify_users
 		if is_modification:
 			notify_users(
@@ -336,6 +348,7 @@ class StudentSolicitudEditView(APIView):
 			ballot.aprobada_por = None
 			ballot.fecha_aprobada = None
 			ballot.save(update_fields=["aprobada_por", "fecha_aprobada"])
+			record_audit(request.user, "Solicitud de edición de boleta", request.path, request=request, previous={"estado": "pendiente"}, new={"estado": ballot.estado})
 			return Response(BoletaSolicitudSerializer(ballot).data)
 		if ballot.estado not in {"por_enviar", "aprobada"}:
 			return Response({"detail": "La boleta no está en un estado editable."}, status=400)
@@ -351,6 +364,7 @@ class StudentSolicitudEditView(APIView):
 			])
 			ballot.estado = "modificada"
 			ballot.save(update_fields=["estado"])
+			record_audit(request.user, "Solicitud de modificación de boleta", request.path, request=request, previous={"estado": "aprobada"}, new={"estado": "modificada"})
 			return Response(BoletaSolicitudSerializer(ballot).data)
 		ballot.estado = "por_enviar"
 		ballot.save(update_fields=["estado"])
@@ -432,6 +446,7 @@ class StudentExamConfirmationView(APIView):
 		was_confirmed = confirmation.confirmada
 		confirmation.confirmada = request.data["confirmada"]
 		confirmation.save(update_fields=["confirmada"])
+		record_audit(request.user, "Confirmación de asistencia a prueba", request.path, request=request, previous={"confirmada": was_confirmed}, new={"confirmada": confirmation.confirmada})
 		if confirmation.confirmada is False and was_confirmed is not False:
 			from apps.core.notifications import notify_users
 			notify_users(

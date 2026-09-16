@@ -8,7 +8,10 @@ import {
 } from "../../services/api";
 import EntityActionButton from "../../components/Buttons/EntityActionButton";
 import StatusToggle from "../../components/Buttons/StatusToggle";
-import FeedbackMessage from "../../components/FeedbackMessage";
+import PrimaryButton from "../../components/Buttons/PrimaryButton";
+import SecondaryButton from "../../components/Buttons/SecondaryButton";
+import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
+import { Card, DataTable, FormField, Input, Modal, Select, useConfirm } from "../../components";
 
 const emptyForm = {
   username: "",
@@ -27,10 +30,11 @@ function normalize(value) {
   return String(value || "")
     .toLowerCase()
     .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "");
+    .replace(/[̀-ͯ]/g, "");
 }
 
 export default function UsuariosPage() {
+  const confirm = useConfirm();
   const [users, setUsers] = useState([]);
   const [municipios, setMunicipios] = useState([]);
   const [search, setSearch] = useState("");
@@ -105,7 +109,13 @@ export default function UsuariosPage() {
   }
 
   async function handleDelete(user) {
-    if (!window.confirm(`¿Eliminar el usuario ${displayName(user)}?`)) return;
+    const ok = await confirm({
+      title: "Eliminar usuario",
+      message: `¿Eliminar el usuario ${displayName(user)}?`,
+      confirmLabel: "Eliminar",
+      tone: "danger",
+    });
+    if (!ok) return;
     try {
       setError("");
       await deleteProvincialUser(user.id);
@@ -123,48 +133,83 @@ export default function UsuariosPage() {
     return matchesSearch && matchesStatus;
   });
 
+  const columns = [
+    { key: "nombre", header: "Nombre", className: "font-medium text-slate-900", render: displayName },
+    { key: "municipio", header: "Municipio", render: (user) => user.municipio_nombre || "-" },
+    { key: "correo", header: "Correo", render: (user) => user.email },
+    { key: "estado", header: "Estado", render: (user) => <StatusToggle active={user.is_active} onClick={() => toggleUser(user)} /> },
+    {
+      key: "acciones",
+      header: "Acciones",
+      render: (user) => (
+        <>
+          <EntityActionButton variant="edit" onClick={() => openEdit(user)}>Editar</EntityActionButton>
+          <EntityActionButton variant="delete" className="ml-2" onClick={() => handleDelete(user)}>Eliminar</EntityActionButton>
+        </>
+      ),
+    },
+  ];
+
   return (
     <div className="space-y-6">
-      <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
+      <Card padding="p-8">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-700">Usuarios</p>
             <h1 className="mt-2 text-3xl font-semibold text-slate-900">Representantes municipales</h1>
             <p className="mt-2 text-sm text-slate-600">Gestiona los usuarios de los municipios de tu provincia.</p>
           </div>
-          <button type="button" onClick={openCreate} className="rounded-2xl bg-sky-600 px-5 py-3 text-sm font-semibold text-white hover:bg-sky-700">+ Nuevo</button>
+          <PrimaryButton onClick={openCreate}>+ Nuevo</PrimaryButton>
         </div>
         {error && <FeedbackMessage type="error" className="mt-5 rounded-2xl">{error}</FeedbackMessage>}
-      </section>
+      </Card>
 
-      <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
+      <Card padding="p-8">
         <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_220px]">
-          <input value={search} onChange={(event) => setSearch(event.target.value)} className="rounded-3xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm" placeholder="Buscar por nombre, usuario, correo o municipio" />
-          <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} className="rounded-3xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm">
+          <Input className="!mt-0" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por nombre, usuario, correo o municipio" />
+          <Select className="!mt-0" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
             <option value="">Todos los estados</option>
             <option value="activo">Activos</option>
             <option value="inactivo">Inactivos</option>
-          </select>
+          </Select>
         </div>
-        <div className="mt-6 overflow-x-auto rounded-3xl border border-slate-200">
-          <table className="min-w-full border-collapse text-left text-sm">
-            <thead className="bg-slate-100 text-slate-500"><tr><th className="px-4 py-3">Nombre</th><th className="px-4 py-3">Municipio</th><th className="px-4 py-3">Correo</th><th className="px-4 py-3">Estado</th><th className="px-4 py-3">Acciones</th></tr></thead>
-            <tbody className="divide-y divide-slate-200 bg-white">
-              {loading ? <tr><td colSpan="5" className="px-4 py-8 text-center text-slate-500">Cargando usuarios...</td></tr> : filteredUsers.length === 0 ? <tr><td colSpan="5" className="px-4 py-8 text-center text-slate-500">No hay usuarios para mostrar.</td></tr> : filteredUsers.map((user) => (
-                <tr key={user.id} className="hover:bg-slate-50">
-                  <td className="px-4 py-4 font-medium text-slate-900">{displayName(user)}</td>
-                  <td className="px-4 py-4 text-slate-600">{user.municipio_nombre || "-"}</td>
-                  <td className="px-4 py-4 text-slate-600">{user.email}</td>
-                  <td className="px-4 py-4"><StatusToggle active={user.is_active} onClick={() => toggleUser(user)} /></td>
-                  <td className="px-4 py-4"><EntityActionButton variant="edit" onClick={() => openEdit(user)}>Editar</EntityActionButton><EntityActionButton variant="delete" className="ml-2" onClick={() => handleDelete(user)}>Eliminar</EntityActionButton></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
+        <DataTable
+          className="mt-6"
+          columns={columns}
+          data={filteredUsers}
+          loading={loading}
+          emptyMessage="No hay usuarios para mostrar."
+        />
+      </Card>
 
-      {modalOpen && <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4"><form onSubmit={handleSubmit} className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl"><h2 className="text-xl font-semibold text-slate-900">{editing ? "Editar representante" : "Nuevo representante"}</h2><div className="mt-5 space-y-4">{[["Nombre", "first_name"], ["Apellidos", "last_name"], ["Usuario", "username"], ["Correo", "email"]].map(([label, field]) => <label key={field} className="block text-sm font-semibold text-slate-700">{label}<input required value={form[field]} type={field === "email" ? "email" : "text"} onChange={(event) => setForm({ ...form, [field]: event.target.value })} className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 font-normal" /></label>)}<label className="block text-sm font-semibold text-slate-700">Municipio<select required value={form.municipio} onChange={(event) => setForm({ ...form, municipio: event.target.value })} className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 font-normal"><option value="">Selecciona un municipio</option>{municipios.map((municipio) => <option key={municipio.id} value={municipio.id}>{municipio.nombre}</option>)}</select></label><label className="block text-sm font-semibold text-slate-700">Contraseña{editing && <span className="font-normal text-slate-500"> (dejar vacía para conservarla)</span>}<input required={!editing} minLength="8" type="password" value={form.password} onChange={(event) => setForm({ ...form, password: event.target.value })} className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 font-normal" /></label></div><div className="mt-6 flex justify-end gap-3"><button type="button" onClick={() => setModalOpen(false)} className="rounded-2xl border border-slate-200 px-5 py-3 text-sm font-semibold">Cancelar</button><button type="submit" className="rounded-2xl bg-sky-600 px-5 py-3 text-sm font-semibold text-white">Guardar</button></div></form></div>}
+      <Modal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        title={editing ? "Editar representante" : "Nuevo representante"}
+        footer={
+          <>
+            <SecondaryButton onClick={() => setModalOpen(false)}>Cancelar</SecondaryButton>
+            <PrimaryButton type="submit" form="repr-provincial-usuario-form">Guardar</PrimaryButton>
+          </>
+        }
+      >
+        <form id="repr-provincial-usuario-form" onSubmit={handleSubmit} className="space-y-4">
+          {[["Nombre", "first_name"], ["Apellidos", "last_name"], ["Usuario", "username"], ["Correo", "email"]].map(([label, field]) => (
+            <FormField key={field} label={label}>
+              <Input required value={form[field]} type={field === "email" ? "email" : "text"} onChange={(event) => setForm({ ...form, [field]: event.target.value })} />
+            </FormField>
+          ))}
+          <FormField label="Municipio">
+            <Select required value={form.municipio} onChange={(event) => setForm({ ...form, municipio: event.target.value })}>
+              <option value="">Selecciona un municipio</option>
+              {municipios.map((municipio) => <option key={municipio.id} value={municipio.id}>{municipio.nombre}</option>)}
+            </Select>
+          </FormField>
+          <FormField label={<>Contraseña{editing && <span className="font-normal text-slate-500"> (dejar vacía para conservarla)</span>}</>}>
+            <Input required={!editing} minLength="8" type="password" value={form.password} onChange={(event) => setForm({ ...form, password: event.target.value })} />
+          </FormField>
+        </form>
+      </Modal>
     </div>
   );
 }

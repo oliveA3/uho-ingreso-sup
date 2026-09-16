@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import FeedbackMessage from "../../components/FeedbackMessage";
+import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
 import SolicitudOverviewView from "../../features/escuela/components/SolicitudOverviewView";
 import { downloadSchoolSolicitudPdf, fetchSchoolSolicitudes } from "../../services/api";
+import { Card } from "../../components";
 
 export default function DirectorBoletasSolicitudPage() {
   const [data, setData] = useState(null);
@@ -22,6 +23,6 @@ export default function DirectorBoletasSolicitudPage() {
   };
 
   if (error) return <FeedbackMessage type="error" className="rounded-2xl">{error}</FeedbackMessage>;
-  if (!data) return <div className="rounded-3xl border border-slate-200 bg-white p-8 text-sm text-slate-600 shadow-sm">Cargando boletas de solicitud...</div>;
+  if (!data) return <Card padding="p-8" className="text-sm text-slate-600">Cargando boletas de solicitud...</Card>;
   return <SolicitudOverviewView data={data} title="Estado de las boletas de solicitud" canDownload onDownload={download} readOnly />;
 }

@@ -1,0 +1,92 @@
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.title {
+  font-size: 1.875rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.subtitle {
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  color: #475569;
+}
+
+.grid {
+  margin-top: 1.5rem;
+  display: grid;
+  gap: 1rem;
+}
+
+@media (min-width: 640px) {
+  .grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.subjectCard {
+  border-radius: 1.5rem;
+  border: 1px solid #e2e8f0;
+  background-color: #f8fafc;
+  padding: 1.25rem;
+}
+
+.subjectName {
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.24em;
+  color: #64748b;
+}
+
+.statsGrid {
+  margin-top: 0.75rem;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+  text-align: center;
+  font-size: 0.75rem;
+}
+
+.statPending {
+  border-radius: 0.75rem;
+  background-color: #fef3c7;
+  padding: 0.5rem;
+  color: #b45309;
+}
+
+.statConfirmed {
+  border-radius: 0.75rem;
+  background-color: color-mix(in srgb, var(--brand-success, #1a7a4a) 15%, white);
+  padding: 0.5rem;
+  color: var(--brand-success, #1a7a4a);
+}
+
+.statRejected {
+  border-radius: 0.75rem;
+  background-color: color-mix(in srgb, var(--brand-error, #c0392b) 15%, white);
+  padding: 0.5rem;
+  color: var(--brand-error, #c0392b);
+}
+
+.statValue {
+  display: block;
+  font-size: 1.25rem;
+}
+
+.viewButton {
+  margin-top: 1rem;
+  width: 100%;
+}
+
+.emptyMessage {
+  margin-top: 1.5rem;
+  border-radius: 1rem;
+  background-color: #f8fafc;
+  padding: 1.25rem;
+  font-size: 0.875rem;
+  color: #64748b;
+}

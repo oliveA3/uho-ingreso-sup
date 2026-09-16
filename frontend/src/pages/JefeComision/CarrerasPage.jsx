@@ -11,16 +11,21 @@ import {
 } from "../../services/api";
 import EntityActionButton from "../../components/Buttons/EntityActionButton";
 import StatusToggle from "../../components/Buttons/StatusToggle";
-import FeedbackMessage from "../../components/FeedbackMessage";
+import PrimaryButton from "../../components/Buttons/PrimaryButton";
+import SecondaryButton from "../../components/Buttons/SecondaryButton";
+import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
+import { Card, DataTable, FormField, Input, Modal, Select, useConfirm } from "../../components";
+import styles from "./CarrerasPage.module.css";
 
 const emptyForm = { codigo: "", nombre: "", ces: "", provincia: "" };
 const normalize = (value) =>
     String(value || "")
         .toLowerCase()
         .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "");
+        .replace(/[̀-ͯ]/g, "");
 
 export default function CarrerasPage() {
+    const confirm = useConfirm();
     const [careers, setCareers] = useState([]);
     const [ces, setCes] = useState([]);
     const [provinces, setProvinces] = useState([]);
@@ -32,6 +37,7 @@ export default function CarrerasPage() {
     const [loading, setLoading] = useState(true);
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState("");
+    const [notice, setNotice] = useState("");
 
     async function loadCareers(showLoading = true) {
         try {
@@ -98,7 +104,13 @@ export default function CarrerasPage() {
         }
     }
     async function handleDelete(career) {
-        if (!window.confirm(`¿Eliminar la carrera ${career.nombre}?`)) return;
+        const ok = await confirm({
+            title: "Eliminar carrera",
+            message: `¿Eliminar la carrera ${career.nombre}?`,
+            confirmLabel: "Eliminar",
+            tone: "danger",
+        });
+        if (!ok) return;
         try {
             await deleteProvincialCareer(career.id);
             await loadCareers(false);
@@ -112,11 +124,10 @@ export default function CarrerasPage() {
         try {
             setBusy(true);
             setError("");
+            setNotice("");
             const result = await importProvincialCareers(file);
             setImportOpen(false);
-            window.alert(
-                `Catálogo reemplazado. ${result.inserted} carreras importadas.`,
-            );
+            setNotice(`Catálogo reemplazado. ${result.inserted} carreras importadas.`);
             await loadCareers(false);
         } catch (requestError) {
             setError(requestError.message);
@@ -142,256 +153,90 @@ export default function CarrerasPage() {
     const filteredCareers = careers.filter((career) =>
         normalize(career.nombre).includes(normalize(search)),
     );
+
+    const columns = [
+        { key: "codigo", header: "Código", render: (c) => c.codigo },
+        { key: "nombre", header: "Nombre", className: styles.strongCell, render: (c) => c.nombre },
+        { key: "ces", header: "CES", render: (c) => c.ces_nombre },
+        { key: "provincia", header: "Provincia", render: (c) => c.provincia_nombre },
+        { key: "estado", header: "Estado", render: (c) => <StatusToggle active={c.activa} activeLabel="Activa" inactiveLabel="Inactiva" onClick={() => toggleCareer(c)} /> },
+        {
+            key: "acciones",
+            header: "Acciones",
+            render: (c) => (
+                <>
+                    <EntityActionButton variant="edit" onClick={() => openEdit(c)}>Editar</EntityActionButton>
+                    <EntityActionButton variant="delete" className="ml-2" onClick={() => handleDelete(c)}>Eliminar</EntityActionButton>
+                </>
+            ),
+        },
+    ];
+
     return (
-        <div className="space-y-6">
-            <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className={styles.page}>
+            <Card padding="p-8">
+                <div className={styles.headerRow}>
                     <div>
-                        <p className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-700">
+                        <p className={styles.eyebrow}>
                             Catálogo de Carreras
                         </p>
-                        <h1 className="mt-2 text-3xl font-semibold text-slate-900">
+                        <h1 className={styles.title}>
                             Lista de carreras
                         </h1>
-                        <p className="mt-2 text-sm text-slate-600">
+                        <p className={styles.description}>
                             Gestiona el catálogo oficial.
                         </p>
                     </div>
-                    <div className="flex flex-wrap gap-2">
-                        <button
-                            type="button"
-                            onClick={openCreate}
-                            className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white"
-                        >
-                            + Añadir Carrera
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => setImportOpen(true)}
-                            className="rounded-2xl bg-sky-600 px-5 py-3 text-sm font-semibold text-white"
-                        >
-                            Importar Excel
-                        </button>
-                        <button
-                            type="button"
-                            onClick={handleExport}
-                            className="rounded-2xl border border-slate-200 px-5 py-3 text-sm font-semibold"
-                        >
-                            Exportar Excel
-                        </button>
+                    <div className={styles.actions}>
+                        <PrimaryButton className={styles.darkButton} onClick={openCreate}>+ Añadir Carrera</PrimaryButton>
+                        <PrimaryButton onClick={() => setImportOpen(true)}>Importar Excel</PrimaryButton>
+                        <SecondaryButton onClick={handleExport}>Exportar Excel</SecondaryButton>
                     </div>
                 </div>
-                {error && (
-                    <FeedbackMessage type="error" className="mt-5 rounded-2xl">{error}</FeedbackMessage>
-                )}
-            </section>
-            <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
-                <input
-                    value={search}
-                    onChange={(event) => setSearch(event.target.value)}
-                    placeholder="Buscar por nombre"
-                    className="w-full max-w-md rounded-3xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm"
-                />
-                <div className="mt-4 overflow-x-auto rounded-3xl border border-slate-200">
-                    <table className="min-w-full border-collapse text-sm">
-                        <thead className="bg-slate-100 text-left text-slate-500">
-                            <tr>
-                                <th className="px-4 py-3">Código</th>
-                                <th className="px-4 py-3">Nombre</th>
-                                <th className="px-4 py-3">CES</th>
-                                <th className="px-4 py-3">Provincia</th>
-                                <th className="px-4 py-3">Estado</th>
-                                <th className="px-4 py-3">Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {loading ? (
-                                <tr>
-                                    <td
-                                        colSpan="6"
-                                        className="px-4 py-2 text-center"
-                                    >
-                                        Cargando carreras...
-                                    </td>
-                                </tr>
-                            ) : filteredCareers.length === 0 ? (
-                                <tr>
-                                    <td
-                                        colSpan="6"
-                                        className="p-2 text-center"
-                                    >
-                                        No hay carreras para mostrar.
-                                    </td>
-                                </tr>
-                            ) : (
-                                filteredCareers.map((career) => (
-                                    <tr
-                                        key={career.id}
-                                        className="border-b border-slate-200 last:border-b-0"
-                                    >
-                                        <td className="px-4 py-2">
-                                            {career.codigo}
-                                        </td>
-                                        <td className="px-4 py-2 font-medium">
-                                            {career.nombre}
-                                        </td>
-                                        <td className="px-4 py-2">
-                                            {career.ces_nombre}
-                                        </td>
-                                        <td className="px-4 py-2">
-                                            {career.provincia_nombre}
-                                        </td>
-                                        <td className="px-4 py-2">
-                                            <StatusToggle
-                                                active={career.activa}
-                                                activeLabel="Activa"
-                                                inactiveLabel="Inactiva"
-                                                onClick={() =>
-                                                    toggleCareer(career)
-                                                }
-                                            />
-                                        </td>
-                                        <td className="px-4 py-2">
-                                            <EntityActionButton
-                                                variant="edit"
-                                                onClick={() => openEdit(career)}
-                                            >
-                                                Editar
-                                            </EntityActionButton>
-                                            <EntityActionButton
-                                                variant="delete"
-                                                className="ml-2"
-                                                onClick={() =>
-                                                    handleDelete(career)
-                                                }
-                                            >
-                                                Eliminar
-                                            </EntityActionButton>
-                                        </td>
-                                    </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-            </section>
-            {modalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
-                    <form
-                        onSubmit={handleSubmit}
-                        className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl"
-                    >
-                        <h2 className="text-xl font-semibold">
-                            {editing ? "Editar carrera" : "Nueva carrera"}
-                        </h2>
-                        <div className="mt-5 space-y-4">
-                            {[
-                                ["Código", "codigo"],
-                                ["Nombre", "nombre"],
-                            ].map(([label, field]) => (
-                                <label
-                                    key={field}
-                                    className="block text-sm font-semibold"
-                                >
-                                    {label}
-                                    <input
-                                        required
-                                        value={form[field]}
-                                        onChange={(event) =>
-                                            setForm({
-                                                ...form,
-                                                [field]: event.target.value,
-                                            })
-                                        }
-                                        className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 font-normal"
-                                    />
-                                </label>
-                            ))}
-                            {[
-                                ["CES", "ces", ces],
-                                ["Provincia", "provincia", provinces],
-                            ].map(([label, field, options]) => (
-                                <label
-                                    key={field}
-                                    className="block text-sm font-semibold"
-                                >
-                                    {label}
-                                    <select
-                                        required
-                                        value={form[field]}
-                                        onChange={(event) =>
-                                            setForm({
-                                                ...form,
-                                                [field]: event.target.value,
-                                            })
-                                        }
-                                        className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 font-normal"
-                                    >
-                                        <option value="">
-                                            Selecciona {label.toLowerCase()}
-                                        </option>
-                                        {options.map((option) => (
-                                            <option
-                                                key={option.id}
-                                                value={option.id}
-                                            >
-                                                {option.nombre}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </label>
-                            ))}
-                        </div>
-                        <div className="mt-6 flex justify-end gap-3">
-                            <button
-                                type="button"
-                                onClick={() => setModalOpen(false)}
-                                className="rounded-2xl border border-slate-200 px-5 py-3"
-                            >
-                                Cancelar
-                            </button>
-                            <button
-                                disabled={busy}
-                                type="submit"
-                                className="rounded-2xl bg-sky-600 px-5 py-3 font-semibold text-white"
-                            >
-                                {busy ? "Guardando..." : "Guardar"}
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            )}
-            {importOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
-                    <div className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl">
-                        <h2 className="text-xl font-semibold">
-                            Importar carreras
-                        </h2>
-                        <p className="mt-3 text-sm text-slate-600">
-                            El catálogo actual será reemplazado por las filas
-                            del Excel.
-                        </p>
-                        <p className="mt-2 text-xs text-slate-500">
-                            Columnas: Código, Nombre, CES, Provincia.
-                        </p>
-                        <input
-                            type="file"
-                            accept=".xlsx,.xls"
-                            onChange={handleImport}
-                            className="mt-5 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm"
-                        />
-                        <div className="mt-6 flex justify-end">
-                            <button
-                                type="button"
-                                onClick={() => setImportOpen(false)}
-                                className="rounded-2xl border border-slate-200 px-5 py-3"
-                            >
-                                Cancelar
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+                {error && <FeedbackMessage type="error" className="mt-5 rounded-2xl">{error}</FeedbackMessage>}
+                {notice && <FeedbackMessage type="success" className="mt-5 rounded-2xl">{notice}</FeedbackMessage>}
+            </Card>
+            <Card padding="p-8">
+                <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por nombre" className={styles.searchInput} />
+                <DataTable className={styles.table} columns={columns} data={filteredCareers} loading={loading} emptyMessage="No hay carreras para mostrar." />
+            </Card>
+            <Modal
+                open={modalOpen}
+                onClose={() => setModalOpen(false)}
+                title={editing ? "Editar carrera" : "Nueva carrera"}
+                footer={
+                    <>
+                        <SecondaryButton onClick={() => setModalOpen(false)}>Cancelar</SecondaryButton>
+                        <PrimaryButton disabled={busy} type="submit" form="carrera-form">{busy ? "Guardando..." : "Guardar"}</PrimaryButton>
+                    </>
+                }
+            >
+                <form id="carrera-form" onSubmit={handleSubmit} className={styles.formGrid}>
+                    {[["Código", "codigo"], ["Nombre", "nombre"]].map(([label, field]) => (
+                        <FormField key={field} label={label}>
+                            <Input required value={form[field]} onChange={(event) => setForm({ ...form, [field]: event.target.value })} />
+                        </FormField>
+                    ))}
+                    {[["CES", "ces", ces], ["Provincia", "provincia", provinces]].map(([label, field, options]) => (
+                        <FormField key={field} label={label}>
+                            <Select required value={form[field]} onChange={(event) => setForm({ ...form, [field]: event.target.value })}>
+                                <option value="">Selecciona {label.toLowerCase()}</option>
+                                {options.map((option) => <option key={option.id} value={option.id}>{option.nombre}</option>)}
+                            </Select>
+                        </FormField>
+                    ))}
+                </form>
+            </Modal>
+            <Modal
+                open={importOpen}
+                onClose={() => setImportOpen(false)}
+                title="Importar carreras"
+                footer={<SecondaryButton onClick={() => setImportOpen(false)}>Cancelar</SecondaryButton>}
+            >
+                <p className={styles.importText}>El catálogo actual será reemplazado por las filas del Excel.</p>
+                <p className={styles.importHint}>Columnas: Código, Nombre, CES, Provincia.</p>
+                <Input type="file" accept=".xlsx,.xls" onChange={handleImport} className={styles.importInput} />
+            </Modal>
         </div>
     );
 }

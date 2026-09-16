@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import FeedbackMessage from "../../components/FeedbackMessage";
-import SchoolConfirmationMetrics from "../../components/SchoolConfirmationMetrics";
+import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
+import SchoolConfirmationMetrics from "../../components/SchoolConfirmationMetrics/SchoolConfirmationMetrics";
 import { fetchSchoolExamConfirmationMetrics } from "../../services/api";
+import { Card } from "../../components";
 
 export default function DirectorConfirmacionPruebasPage() {
   const [data, setData] = useState(null);
@@ -12,7 +13,7 @@ export default function DirectorConfirmacionPruebasPage() {
   }, []);
 
   if (error) return <FeedbackMessage type="error" className="rounded-2xl">{error}</FeedbackMessage>;
-  if (!data) return <div className="rounded-3xl border border-slate-200 bg-white p-6 text-sm text-slate-600 shadow-sm">Cargando confirmaciones...</div>;
+  if (!data) return <Card padding="p-6" className="text-sm text-slate-600">Cargando confirmaciones...</Card>;
   return (
     <SchoolConfirmationMetrics data={data} title="Estadísticas de confirmación" />
   );

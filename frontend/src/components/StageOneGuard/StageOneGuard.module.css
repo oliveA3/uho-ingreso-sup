@@ -1,0 +1,52 @@
+.checking {
+  padding: 1.5rem;
+  font-size: 0.875rem;
+  color: #475569;
+}
+
+.container {
+  position: relative;
+}
+
+.content {
+  pointer-events: none;
+  user-select: none;
+  opacity: 0.5;
+  filter: grayscale(1);
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  border-radius: 1.5rem;
+  background-color: rgba(255, 255, 255, 0.55);
+  padding: 1.5rem;
+  padding-top: 4rem;
+  backdrop-filter: blur(1px);
+}
+
+.panel {
+  max-width: 32rem;
+  border-radius: 1.5rem;
+  border: 1px solid #fde68a;
+  background-color: #fffbeb;
+  padding: 1.5rem;
+  text-align: center;
+  box-shadow: 0 10px 15px -3px rgba(15, 23, 42, 0.1);
+}
+
+.panelTitle {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #78350f;
+}
+
+.panelText {
+  margin-top: 0.75rem;
+  font-size: 0.875rem;
+  color: #92400e;
+}

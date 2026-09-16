@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  downloadEscalafonTemplate,
   fetchEscalafon,
   fetchProvincialEscalafonSummary,
   getEscalafonExportUrl,
@@ -12,8 +11,10 @@ import {
 import EntityActionButton from "../../components/Buttons/EntityActionButton";
 import PrimaryButton from "../../components/Buttons/PrimaryButton";
 import SecondaryButton from "../../components/Buttons/SecondaryButton";
-import FeedbackMessage from "../../components/FeedbackMessage";
-import StageStatusNotice from "../../components/StageStatusNotice";
+import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
+import StageStatusNotice from "../../components/StageStatusNotice/StageStatusNotice";
+import { Modal } from "../../components";
+import styles from "./EscalafonPage.module.css";
 
 const indexFields = ["indice_10", "indice_11", "indice_12", "indice_general"];
 
@@ -193,20 +194,6 @@ export default function SecretarioEscalafonPage() {
     }
   }
 
-  async function downloadTemplate() {
-    try {
-      const blob = await downloadEscalafonTemplate();
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = "plantilla-escalafon.xlsx";
-      link.click();
-      URL.revokeObjectURL(url);
-    } catch (requestError) {
-      setError(requestError.message);
-    }
-  }
-
   function exportExcel() {
     window.location.assign(getEscalafonExportUrl("", new Date().getFullYear()));
   }
@@ -252,9 +239,9 @@ export default function SecretarioEscalafonPage() {
       <StageStatusNotice stageNumber={1} onStatusChange={handleStageStatus} />
 
       <div className="my-5 grid gap-4 sm:grid-cols-3">
-        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5"><p className="text-sm text-slate-600">Aceptado</p><p className="mt-2 text-3xl font-semibold text-slate-900">{summary?.estudiantes_aceptaron ?? "-"}</p></div>
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5"><p className="text-sm text-slate-600">Pendientes</p><p className="mt-2 text-3xl font-semibold text-slate-900">{summary?.estudiantes_pendientes ?? "-"}</p></div>
-        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5"><p className="text-sm text-slate-600">Total estudiantes</p><p className="mt-2 text-3xl font-semibold text-slate-900">{summary?.total_estudiantes ?? "-"}</p></div>
+        <div className={`${styles.statCard} ${styles.statCardSuccess}`}><p className="text-sm text-slate-600">Aceptado</p><p className="mt-2 text-3xl font-semibold text-slate-900">{summary?.estudiantes_aceptaron ?? "-"}</p></div>
+        <div className={`${styles.statCard} ${styles.statCardWarning}`}><p className="text-sm text-slate-600">Pendientes</p><p className="mt-2 text-3xl font-semibold text-slate-900">{summary?.estudiantes_pendientes ?? "-"}</p></div>
+        <div className={`${styles.statCard} ${styles.statCardNeutral}`}><p className="text-sm text-slate-600">Total estudiantes</p><p className="mt-2 text-3xl font-semibold text-slate-900">{summary?.total_estudiantes ?? "-"}</p></div>
       </div>
 
       <div className="mb-4 flex flex-wrap gap-2">
@@ -283,7 +270,7 @@ export default function SecretarioEscalafonPage() {
             <col className="w-[110px]" />
             {showActions && <col className="w-[170px]" />}
           </colgroup>
-          <thead className="bg-[#24577f] text-left text-white">
+          <thead className={`${styles.tableHead} text-left text-white`}>
             <tr>
               {["#", "CI", "Estudiante", "Sexo", "Dirección", "10mo", "11mo", "12mo", "Índice general", "Estado"].map((heading) => <th key={heading} className={`whitespace-nowrap px-2 py-2 ${heading === "#" || heading === "Estado" ? "text-center" : ""}`}>{heading}</th>)}
               {showActions && <th className="w-[185px] whitespace-nowrap px-1 py-2">Acción</th>}
@@ -314,29 +301,25 @@ export default function SecretarioEscalafonPage() {
         </table>
       </div>
 
-      {complaintEntry && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
-          <div className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-2xl">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <h2 className="text-lg font-semibold text-slate-900">Reclamación del estudiante</h2>
-                <p className="mt-1 text-sm text-slate-600">{complaintEntry.nombre} {complaintEntry.apellidos} · CI {complaintEntry.ci}</p>
-              </div>
-              <button type="button" onClick={() => setComplaintEntry(null)} className="text-xl text-slate-500" aria-label="Cerrar reclamación">&times;</button>
-            </div>
-            <FeedbackMessage type="warning" className="mt-5 rounded-xl">
-              <p>{complaintEntry.causa_revision || "El estudiante no indicó una causa."}</p>
-              {complaintEntry.fecha_revision && <p className="mt-1 text-xs opacity-75">Solicitada el {new Date(complaintEntry.fecha_revision).toLocaleString("es-CU")}</p>}
-            </FeedbackMessage>
-            <div className="mt-5 flex justify-end">
-              <div className="flex gap-2">
-                <SecondaryButton onClick={() => setComplaintEntry(null)} disabled={reviewing}>Cerrar</SecondaryButton>
-                <PrimaryButton onClick={markReviewAsReviewed} disabled={reviewing}>{reviewing ? "Guardando" : "Marcar como revisada"}</PrimaryButton>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <Modal
+        open={Boolean(complaintEntry)}
+        onClose={() => setComplaintEntry(null)}
+        title="Reclamación del estudiante"
+        description={complaintEntry ? `${complaintEntry.nombre} ${complaintEntry.apellidos} · CI ${complaintEntry.ci}` : ""}
+        footer={
+          <>
+            <SecondaryButton onClick={() => setComplaintEntry(null)} disabled={reviewing}>Cerrar</SecondaryButton>
+            <PrimaryButton onClick={markReviewAsReviewed} disabled={reviewing}>{reviewing ? "Guardando" : "Marcar como revisada"}</PrimaryButton>
+          </>
+        }
+      >
+        {complaintEntry && (
+          <FeedbackMessage type="warning" className="rounded-xl">
+            <p>{complaintEntry.causa_revision || "El estudiante no indicó una causa."}</p>
+            {complaintEntry.fecha_revision && <p className="mt-1 text-xs opacity-75">Solicitada el {new Date(complaintEntry.fecha_revision).toLocaleString("es-CU")}</p>}
+          </FeedbackMessage>
+        )}
+      </Modal>
     </section>
   );
 }

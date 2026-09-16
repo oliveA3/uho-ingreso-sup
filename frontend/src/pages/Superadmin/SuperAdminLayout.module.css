@@ -1,0 +1,34 @@
+.stateCard {
+  margin: 1rem;
+}
+
+.stateTitle {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.stateMessage {
+  margin-top: 1rem;
+  font-size: 0.875rem;
+  color: #475569;
+}
+
+.layout {
+  flex: 1 1 0%;
+  padding: 1.5rem 1rem;
+}
+
+@media (min-width: 640px) {
+  .layout {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .layout {
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
+}

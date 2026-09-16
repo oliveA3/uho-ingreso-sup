@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import FeedbackMessage from "../../components/FeedbackMessage";
-import SchoolConfirmationMetrics from "../../components/SchoolConfirmationMetrics";
+import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
+import SchoolConfirmationMetrics from "../../components/SchoolConfirmationMetrics/SchoolConfirmationMetrics";
 import { fetchSchoolExamConfirmationMetrics } from "../../services/api";
 
 export default function SecretarioConfirmacionPruebasPage() {

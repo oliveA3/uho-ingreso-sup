@@ -1,3 +1,5 @@
+import styles from "./Buttons.module.css";
+
 const variantStyles = {
   edit: {
     backgroundColor: "color-mix(in srgb, var(--brand-primary, #1f4e79) 10%, white)",
@@ -15,7 +17,7 @@ export default function EntityActionButton({ variant, children, className = "", 
   return (
     <button
       type="button"
-      className={`inline-flex items-center justify-center rounded-2xl border px-3 py-2 text-xs font-semibold transition hover:brightness-95 ${className}`}
+      className={`${styles.base} ${styles.small} ${className}`}
       style={variantStyles[variant]}
       {...props}
     >

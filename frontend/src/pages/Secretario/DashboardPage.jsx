@@ -1,7 +1,8 @@
-import StageStatusNotice from "../../components/StageStatusNotice";
+import StageStatusNotice from "../../components/StageStatusNotice/StageStatusNotice";
 import { useEffect, useState } from "react";
 import { fetchSchoolDashboard } from "../../services/api";
 import BallotMetrics from "../../features/escuela/components/BallotMetrics";
+import styles from "./DashboardPage.module.css";
 
 export default function SecretarioDashboardPage({ user, title = "Dashboard Secretario" }) {
   const [dashboard, setDashboard] = useState(null);
@@ -54,22 +55,22 @@ export default function SecretarioDashboardPage({ user, title = "Dashboard Secre
                 <span>Aceptaron</span>
                 <span className="font-semibold text-slate-900">{dashboard.escalafon.accepted}</span>
               </div>
-              <div className="h-2 rounded-full bg-slate-200">
-                <div className="h-2 rounded-full bg-emerald-500" style={{ width: `${dashboard.escalafon.accepted / total * 100}%` }} />
+              <div className={styles.progressTrack}>
+                <div className={styles.progressFillSuccess} style={{ width: `${dashboard.escalafon.accepted / total * 100}%` }} />
               </div>
               <div className="flex items-center justify-between text-sm text-slate-600">
                 <span>Revisión</span>
                 <span className="font-semibold text-slate-900">{dashboard.escalafon.review}</span>
               </div>
-              <div className="h-2 rounded-full bg-slate-200">
-                <div className="h-2 rounded-full bg-amber-500" style={{ width: `${dashboard.escalafon.review / total * 100}%` }} />
+              <div className={styles.progressTrack}>
+                <div className={styles.progressFillWarning} style={{ width: `${dashboard.escalafon.review / total * 100}%` }} />
               </div>
               <div className="flex items-center justify-between text-sm text-slate-600">
                 <span>Sin respuesta</span>
                 <span className="font-semibold text-slate-900">{dashboard.escalafon.no_response}</span>
               </div>
-              <div className="h-2 rounded-full bg-slate-200">
-                <div className="h-2 rounded-full bg-slate-900" style={{ width: `${dashboard.escalafon.no_response / total * 100}%` }} />
+              <div className={styles.progressTrack}>
+                <div className={styles.progressFillNeutral} style={{ width: `${dashboard.escalafon.no_response / total * 100}%` }} />
               </div>
             </div>
           </div>

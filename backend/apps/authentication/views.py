@@ -6,28 +6,40 @@ from django.utils import timezone
 from django.http import JsonResponse
 from django.core.exceptions import ValidationError
 from django.utils.decorators import method_decorator
-from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
+from django.views.decorators.csrf import ensure_csrf_cookie
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.views import APIView
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.views import TokenRefreshView
 
-from .models import EmailVerificationCode, Usuario
+from .models import EmailVerificationCode, LoginAttempt, Usuario
 from .serializers import LoginSerializer, RegisterSerializer, UserSerializer
 from apps.core.audit import record_audit
+from apps.core.throttling import AuthenticationRateThrottle
 
 
-@method_decorator(csrf_exempt, name="dispatch")
 class LoginView(APIView):
     authentication_classes = []
     permission_classes = [AllowAny]
+    throttle_classes = [AuthenticationRateThrottle]
 
     def post(self, request):
         serializer = LoginSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         username = serializer.validated_data["username"]
         password = serializer.validated_data["password"]
+        ip = request.META.get("REMOTE_ADDR", "0.0.0.0")
+        attempt, _ = LoginAttempt.objects.get_or_create(identifier=username, ip=ip)
+        if attempt.locked_until and attempt.locked_until > timezone.now():
+            return JsonResponse({"detail": "Cuenta temporalmente bloqueada. Intenta nuevamente en 15 minutos."}, status=status.HTTP_429_TOO_MANY_REQUESTS)
         user = authenticate(request, username=username, password=password)
         if user is None:
+            attempt.failed_attempts += 1
+            if attempt.failed_attempts >= 5:
+                attempt.failed_attempts = 0
+                attempt.locked_until = timezone.now() + timedelta(minutes=15)
+            attempt.save(update_fields=["failed_attempts", "locked_until", "updated_at"])
             pending_user = Usuario.objects.filter(username=username).first()
             if pending_user and pending_user.check_password(password) and not pending_user.is_active:
                 return JsonResponse(
@@ -38,15 +50,19 @@ class LoginView(APIView):
                 {"detail": "Credenciales inválidas."},
                 status=status.HTTP_401_UNAUTHORIZED,
             )
+        attempt.failed_attempts = 0
+        attempt.locked_until = None
+        attempt.save(update_fields=["failed_attempts", "locked_until", "updated_at"])
         login(request, user)
         record_audit(user, "Inicio de sesión", "authentication/login", request=request)
-        return JsonResponse({"user": UserSerializer(user).data}, status=status.HTTP_200_OK)
+        refresh = RefreshToken.for_user(user)
+        return JsonResponse({"access": str(refresh.access_token), "refresh": str(refresh), "user": UserSerializer(user).data}, status=status.HTTP_200_OK)
 
 
-@method_decorator(csrf_exempt, name="dispatch")
 class VerifyEmailView(APIView):
     authentication_classes = []
     permission_classes = [AllowAny]
+    throttle_classes = [AuthenticationRateThrottle]
 
     def post(self, request):
         username = request.data.get("username")
@@ -74,13 +90,14 @@ class VerifyEmailView(APIView):
         user.email_verificado = True
         user.is_active = True
         user.save(update_fields=["email_verificado", "is_active", "pending_student"])
+        record_audit(user, "Verificación de correo electrónico", request.path, request=request, new={"email_verificado": True, "is_active": True})
         return JsonResponse({"detail": "Correo verificado correctamente."}, status=status.HTTP_200_OK)
 
 
-@method_decorator(csrf_exempt, name="dispatch")
 class ChangePendingEmailView(APIView):
     authentication_classes = []
     permission_classes = [AllowAny]
+    throttle_classes = [AuthenticationRateThrottle]
 
     def post(self, request):
         username = str(request.data.get("username", "")).strip()
@@ -98,6 +115,7 @@ class ChangePendingEmailView(APIView):
         if Usuario.objects.filter(email__iexact=email).exclude(pk=user.pk).exists():
             return JsonResponse({"detail": "Este correo ya está registrado."}, status=status.HTTP_400_BAD_REQUEST)
 
+        previous_email = user.email
         code = f"{__import__('secrets').randbelow(1000000):06d}"
         user.email = email
         user.save(update_fields=["email"])
@@ -110,13 +128,18 @@ class ChangePendingEmailView(APIView):
             recipient_list=[email],
             fail_silently=False,
         )
+        record_audit(user, "Cambio de correo pendiente", request.path, request=request, previous={"email": previous_email}, new={"email": email})
         return JsonResponse({"detail": "Correo actualizado. Enviamos un nuevo código de verificación."}, status=status.HTTP_200_OK)
 
 
-@method_decorator(csrf_exempt, name="dispatch")
+class JwtTokenRefreshView(TokenRefreshView):
+    throttle_classes = [AuthenticationRateThrottle]
+
+
 class RegisterView(APIView):
     authentication_classes = []
     permission_classes = [AllowAny]
+    throttle_classes = [AuthenticationRateThrottle]
 
     def post(self, request):
         serializer = RegisterSerializer(data=request.data)
@@ -138,7 +161,6 @@ class RegisterView(APIView):
         return JsonResponse({"user": UserSerializer(user).data}, status=status.HTTP_201_CREATED)
 
 
-@method_decorator(csrf_exempt, name="dispatch")
 class CurrentUserView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -151,6 +173,12 @@ class LogoutView(APIView):
 
     def post(self, request):
         record_audit(request.user, "Cierre de sesión", "authentication/logout", request=request)
+        refresh_token = request.data.get("refresh")
+        if refresh_token:
+            try:
+                RefreshToken(refresh_token).blacklist()
+            except Exception:
+                pass
         logout(request)
         return JsonResponse({"detail": "Sesión cerrada."}, status=status.HTTP_200_OK)
 

@@ -17,7 +17,7 @@ export default function JefeComisionSidebar({ scope, onLogout, activeStageLabel 
         { label: "Solicitudes", icon: "📝", to: "/jefe_comision/solicitudes" },
         { label: "Resultados", icon: "🏆", to: "/jefe_comision/resultados" },
         { label: "Otorgamiento", icon: "🎓", to: "/jefe_comision/otorgamiento" },
-        { label: "Documentación API REST", icon: "🔌", to: "/jefe_comision/api" },
+        { label: "API REST", icon: "🔌", to: "/jefe_comision/api" },
         { label: "Registros", icon: "📜", to: "/jefe_comision/logs" },
       ],
     },

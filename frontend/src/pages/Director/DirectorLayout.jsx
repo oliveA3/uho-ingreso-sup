@@ -1,8 +1,9 @@
 import { Outlet } from "react-router-dom";
+import { Card } from "../../components";
 
 export default function DirectorLayout({ user }) {
   if (!user) {
-    return <div className="m-4 rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">Inicia sesión para acceder a esta área.</div>;
+    return <Card className="m-4" padding="p-8">Inicia sesión para acceder a esta área.</Card>;
   }
 
   return (

@@ -1,0 +1,45 @@
+.referenceBox {
+  border-radius: 1.5rem;
+  background-color: #f8fafc;
+  padding: 1rem 1.25rem;
+  font-size: 0.875rem;
+  color: #334155;
+}
+
+.referenceLabel {
+  font-weight: 600;
+}
+
+.terminal {
+  margin-top: 1.5rem;
+  border-radius: 1.5rem;
+  background-color: #020617;
+  padding: 1.5rem;
+  font-size: 0.875rem;
+  color: #e2e8f0;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+}
+
+.step {
+  margin-top: 1rem;
+}
+
+.step:first-child {
+  margin-top: 0;
+}
+
+.comment {
+  color: #94a3b8;
+}
+
+.command {
+  color: #f1f5f9;
+}
+
+.successGroup {
+  margin-top: 1.25rem;
+}
+
+.success {
+  color: #34d399;
+}

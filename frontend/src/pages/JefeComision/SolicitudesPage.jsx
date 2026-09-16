@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import FeedbackMessage from "../../components/FeedbackMessage";
+import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
 import BallotDetailModal from "../../components/Modals/BallotDetailModal";
 import EntityActionButton from "../../components/Buttons/EntityActionButton";
 import SecondaryButton from "../../components/Buttons/SecondaryButton";
-import StageStatusNotice from "../../components/StageStatusNotice";
+import StageStatusNotice from "../../components/StageStatusNotice/StageStatusNotice";
 import { fetchCommissionPendingModifications, resolveCommissionModification } from "../../services/api";
+import { Card, DataTable } from "../../components";
+import styles from "./SolicitudesPage.module.css";
 
 export default function SolicitudesPage() {
   const [data, setData] = useState({ items: [], metrics: { total: 0, pendientes: 0 } });
@@ -44,86 +46,68 @@ export default function SolicitudesPage() {
     }
   };
 
+  const columns = [
+    { key: "estudiante", header: "Estudiante", render: (mod) => mod.student },
+    { key: "escuela", header: "Escuela", render: (mod) => mod.school },
+    { key: "municipio", header: "Municipio", render: (mod) => mod.municipio },
+    { key: "solicitado", header: "Solicitado", render: (mod) => mod.date },
+    ...(stageFinished
+      ? []
+      : [
+          {
+            key: "accion",
+            header: "Acción",
+            render: (mod) => (
+              <div className={styles.actionsCell}>
+                <SecondaryButton onClick={() => setSelectedBallot(mod)}>Ver boleta</SecondaryButton>
+                <EntityActionButton variant="edit" disabled={processingId === mod.id} onClick={() => respond(mod.id, "approve")}>Aprobar</EntityActionButton>
+                <EntityActionButton variant="delete" disabled={processingId === mod.id} onClick={() => respond(mod.id, "reject")}>Rechazar</EntityActionButton>
+              </div>
+            ),
+          },
+        ]),
+  ];
+
   return (
-    <div className="space-y-6">
-      <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
+    <div className={styles.page}>
+      <Card padding="p-8">
         <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-700">Solicitudes — Vista Provincial</p>
-          <h1 className="mt-2 text-3xl font-semibold text-slate-900">Estado de boletas y modificaciones</h1>
+          <p className={styles.eyebrow}>Solicitudes — Vista Provincial</p>
+          <h1 className={styles.title}>Estado de boletas y modificaciones</h1>
         </div>
 
         <StageStatusNotice stageNumber={3} onStatusChange={setStageStatus} />
-        <div className="mt-6 grid gap-4 sm:grid-cols-3">
-          <div className="rounded-3xl border border-slate-200 bg-emerald-50 p-6 text-center">
-            <p className="text-sm text-slate-600">Aprobadas</p>
-            <p className="mt-2 text-3xl font-semibold text-slate-900">{total}</p>
+        <div className={styles.statsGrid}>
+          <div className={styles.statCardSuccess}>
+            <p className={styles.statLabel}>Aprobadas</p>
+            <p className={styles.statValue}>{total}</p>
           </div>
-          <div className="rounded-3xl border border-slate-200 bg-amber-50 p-6 text-center">
-            <p className="text-sm text-slate-600">Pend. Comisión</p>
-            <p className="mt-2 text-3xl font-semibold text-slate-900">{data.metrics?.pendientes ?? 0}</p>
+          <div className={styles.statCardWarning}>
+            <p className={styles.statLabel}>Pend. Comisión</p>
+            <p className={styles.statValue}>{data.metrics?.pendientes ?? 0}</p>
           </div>
-          <div className="rounded-3xl border border-slate-200 bg-rose-50 p-6 text-center">
-            <p className="text-sm text-slate-600">Mod. por aprobar</p>
-            <p className="mt-2 text-3xl font-semibold text-slate-900">{data.metrics?.pendientes ?? 0}</p>
+          <div className={styles.statCardError}>
+            <p className={styles.statLabel}>Mod. por aprobar</p>
+            <p className={styles.statValue}>{data.metrics?.pendientes ?? 0}</p>
           </div>
         </div>
-      </section>
+      </Card>
 
       {error && <FeedbackMessage type="error" className="rounded-2xl">{error}</FeedbackMessage>}
       {message && <FeedbackMessage type="success" className="rounded-2xl">{message}</FeedbackMessage>}
 
-      <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
-        <div className="flex items-center justify-between">
-          <p className="text-sm font-semibold text-slate-900">Modificaciones pendientes</p>
+      <Card padding="p-8">
+        <div className={styles.modificationsHeader}>
+          <p className={styles.modificationsTitle}>Modificaciones pendientes</p>
         </div>
 
-        <div className="table-scroll mt-6 overflow-x-auto">
-          <table className="min-w-full border-collapse text-sm">
-            <thead>
-              <tr className="bg-slate-100 text-left text-slate-700">
-                <th className="border-b border-slate-200 px-4 py-3">Estudiante</th>
-                <th className="border-b border-slate-200 px-4 py-3">Escuela</th>
-                <th className="border-b border-slate-200 px-4 py-3">Municipio</th>
-                <th className="border-b border-slate-200 px-4 py-3">Solicitado</th>
-                {!stageFinished && <th className="border-b border-slate-200 px-4 py-3">Acción</th>}
-              </tr>
-            </thead>
-            <tbody>
-              {data.items.length ? data.items.map((mod) => (
-                <tr key={mod.id} className="border-b border-slate-200 align-top hover:bg-slate-50">
-                  <td className="px-4 py-3 text-slate-700">{mod.student}</td>
-                  <td className="px-4 py-3 text-slate-700">{mod.school}</td>
-                  <td className="px-4 py-3 text-slate-700">{mod.municipio}</td>
-                  <td className="px-4 py-3 text-slate-700">{mod.date}</td>
-                  {!stageFinished && <td className="px-4 py-3 text-slate-700">
-                    <div className="flex flex-wrap gap-2">
-                      <SecondaryButton onClick={() => setSelectedBallot(mod)}>Ver boleta</SecondaryButton>
-                      <EntityActionButton
-                        variant="edit"
-                        disabled={processingId === mod.id}
-                        onClick={() => respond(mod.id, "approve")}
-                      >
-                        Aprobar
-                      </EntityActionButton>
-                      <EntityActionButton
-                        variant="delete"
-                        disabled={processingId === mod.id}
-                        onClick={() => respond(mod.id, "reject")}
-                      >
-                        Rechazar
-                      </EntityActionButton>
-                    </div>
-                  </td>}
-                </tr>
-              )) : (
-                <tr>
-                  <td colSpan={stageFinished ? 4 : 5} className="px-4 py-10 text-center text-sm text-slate-500">No hay modificaciones pendientes.</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </section>
+        <DataTable
+          className="table-scroll mt-6"
+          columns={columns}
+          data={data.items}
+          emptyMessage="No hay modificaciones pendientes."
+        />
+      </Card>
       {selectedBallot && <BallotDetailModal ballot={selectedBallot} onClose={() => setSelectedBallot(null)} />}
     </div>
   );

@@ -1,0 +1,53 @@
+.eyebrow {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: #64748b;
+}
+
+.name {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.list {
+  margin-top: 1.25rem;
+  border-radius: 1.5rem;
+  border: 1px solid #e2e8f0;
+}
+
+.list li + li {
+  border-top: 1px solid #e2e8f0;
+}
+
+.listItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+}
+
+.studentName {
+  font-weight: 500;
+  color: #1e293b;
+}
+
+.studentCi {
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.empty {
+  margin-top: 1.25rem;
+  border-radius: 1.5rem;
+  background-color: #f8fafc;
+  padding: 1.25rem;
+  font-size: 0.875rem;
+  color: #64748b;
+}

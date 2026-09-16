@@ -1,0 +1,95 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.heading {
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.searchInput {
+  margin-top: 0;
+  width: 100%;
+}
+
+@media (min-width: 640px) {
+  .searchInput {
+    width: 16rem;
+  }
+}
+
+.tableWrapper {
+  overflow-x: auto;
+  border-radius: 1rem;
+  border: 1px solid #e2e8f0;
+}
+
+.table {
+  min-width: 100%;
+  text-align: left;
+  font-size: 0.875rem;
+}
+
+.thead {
+  background-color: #f1f5f9;
+}
+
+.th {
+  padding: 0.75rem 1rem;
+}
+
+.td {
+  padding: 0.75rem 1rem;
+}
+
+.rowNormal {
+  border-top: 1px solid #e2e8f0;
+}
+
+.rowNormal:hover {
+  background-color: #f8fafc;
+}
+
+.rowHighlight {
+  border: 1px solid color-mix(in srgb, var(--brand-primary, #1f4e79) 30%, white);
+  background: linear-gradient(
+    to right,
+    color-mix(in srgb, var(--brand-primary, #1f4e79) 12%, white),
+    color-mix(in srgb, var(--brand-primary, #1f4e79) 5%, white),
+    white
+  );
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+}
+
+.positionBadge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 9999px;
+  background-color: #f1f5f9;
+  padding: 0.25rem 0.625rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #334155;
+}
+
+.positionBadgeActive {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 9999px;
+  background-color: var(--brand-primary, #1f4e79);
+  padding: 0.25rem 0.625rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #ffffff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+}

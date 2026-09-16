@@ -5,7 +5,7 @@ from .views import (
     ExportCarrerasView, ExportEscalafonView, ImportCarrerasView, ImportEscalafonView,
     ImportPlanPlazaView, ImportPlanPlazaExportView, PlanPlazaTemplateView,
     ImportOtorgamientoView, ImportCorteCarreraView, OtorgamientoSummaryView, ExportStageSixView, SchoolOtorgamientoListView, StudentEscalafonActionView, StudentInterestPdfExportView, SolicitudPdfExportView,
-    ImportResultadosView, ResultadosListView, LandingResultadosView, LandingOtorgamientosView, LandingCortesView, ExportResultadosView, StudentResultClaimView, ResultClaimsListView, ResultClaimDecisionView,
+    ImportResultadosView, ResultadosListView, LandingResultadosView, LandingOtorgamientosView, LandingCortesView, LandingExcelExportView, ExportResultadosView, StudentResultClaimView, ResultClaimsListView, ResultClaimDecisionView,
 )
 
 urlpatterns = [
@@ -28,6 +28,7 @@ urlpatterns = [
     path("resultados/landing/", LandingResultadosView.as_view(), name="resultados-landing"),
     path("otorgamiento/landing/", LandingOtorgamientosView.as_view(), name="otorgamientos-landing"),
     path("cortes/landing/", LandingCortesView.as_view(), name="cortes-landing"),
+    path("landing/export/<str:kind>/", LandingExcelExportView.as_view(), name="landing-excel-export"),
     path("resultados/<int:result_id>/reclamar/", StudentResultClaimView.as_view(), name="student-result-claim"),
     path("resultados/reclamaciones/", ResultClaimsListView.as_view(), name="result-claims-list"),
     path("resultados/reclamaciones/<int:claim_id>/", ResultClaimDecisionView.as_view(), name="result-claim-decision"),

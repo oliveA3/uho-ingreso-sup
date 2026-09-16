@@ -1,0 +1,84 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.eyebrow {
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.24em;
+  color: #334155;
+}
+
+.title {
+  margin-top: 0.5rem;
+  font-size: 1.875rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.statsGrid {
+  margin-top: 1.5rem;
+  display: grid;
+  gap: 1rem;
+}
+
+@media (min-width: 640px) {
+  .statsGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.statCard {
+  border-radius: 1.5rem;
+  border: 1px solid #e2e8f0;
+  padding: 1.5rem;
+  text-align: center;
+}
+
+.statCardSuccess {
+  composes: statCard;
+  background-color: color-mix(in srgb, var(--brand-success, #1a7a4a) 10%, white);
+}
+
+.statCardWarning {
+  composes: statCard;
+  background-color: color-mix(in srgb, var(--brand-accent, #5ba3d9) 14%, white);
+}
+
+.statCardError {
+  composes: statCard;
+  background-color: color-mix(in srgb, var(--brand-error, #c0392b) 10%, white);
+}
+
+.statLabel {
+  font-size: 0.875rem;
+  color: #475569;
+}
+
+.statValue {
+  margin-top: 0.5rem;
+  font-size: 1.875rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.actionsCell {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.modificationsHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.modificationsTitle {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #0f172a;
+}
