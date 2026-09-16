@@ -8,17 +8,7 @@
   position: relative;
 }
 
-.content {
-  pointer-events: none;
-  user-select: none;
-  opacity: 0.5;
-  filter: grayscale(1);
-}
-
 .overlay {
-  position: absolute;
-  inset: 0;
-  z-index: 10;
   display: flex;
   align-items: flex-start;
   justify-content: center;

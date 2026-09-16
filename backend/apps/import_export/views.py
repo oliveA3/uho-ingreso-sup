@@ -15,7 +15,7 @@ from apps.authentication.models import Estudiante, Usuario
 from apps.core.audit import record_audit
 from apps.core.throttling import BulkOperationRateThrottle
 from apps.gestion_provincial.permissions import IsCareerManager
-from apps.superadmin.models import Carrera, Ces, Escuela, Provincia
+from apps.superadmin.models import Carrera, Ces, Escuela, Provincia, TipoOtorgamiento
 from .services.carreras_service import CareerExcelService
 from .services.escalafon_service import EscalafonExcelService, resolve_school
 from apps.gestion_escuela.models import Escalafon, EscalafonItem
@@ -189,11 +189,10 @@ class ImportPlanPlazaView(APIView):
                     if amount <= 0:
                         raise ValueError("Cantidad_Plazas debe ser un entero positivo.")
 
-                    tipo = str(data.get("tipo otorgamiento") or "").strip().lower()
-                    valid_types = {value.lower(): value for value, label in PlanPlaza.TIPOS_OTORGAMIENTO}
-                    if tipo not in valid_types:
-                        raise ValueError("Tipo_Otorgamiento debe ser 'Municipal' o 'Provincial'.")
-                    tipo = valid_types[tipo]
+                    tipo_name = str(data.get("tipo otorgamiento") or "").strip()
+                    tipo = TipoOtorgamiento.objects.filter(nombre__iexact=tipo_name, activa=True).first()
+                    if tipo is None:
+                        raise ValueError("Tipo_Otorgamiento debe ser un tipo de otorgamiento activo (p. ej. 'Municipal' o 'Provincial').")
 
                     sex = str(data.get("sexo") or "").strip().upper()
                     if sex not in {"A", "F", "M"}:
@@ -287,12 +286,12 @@ class ImportPlanPlazaExportView(APIView):
         ]
         sheet.append(headers)
 
-        for item in queryset.order_by("carrera__nombre"):
+        for item in queryset.select_related("otorgamiento_tipo").order_by("carrera__nombre"):
             sheet.append([
                 item.carrera.codigo,
                 item.carrera.nombre,
                 item.cantidad_plazas,
-                "Municipal" if item.otorgamiento_tipo == "municipal" else "Provincial",
+                item.otorgamiento_tipo.nombre,
                 item.ces.nombre,
                 item.carrera.provincia.nombre,
                 item.sexo,
@@ -928,7 +927,7 @@ class LandingOtorgamientosView(APIView):
 
 
 class LandingCortesView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
 
     def get(self, request):
         available_years = list(CorteCarrera.objects.filter(
@@ -978,7 +977,7 @@ class LandingCortesView(APIView):
 
 
 class LandingExcelExportView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
 
     def get(self, request, kind):
         if kind not in {"resultados", "otorgamientos", "cortes"}:
@@ -1038,6 +1037,12 @@ class LandingExcelExportView(APIView):
                 proceso__anio__year=anio,
                 proceso__etapa__nombre=ETAPAS_NOMBRES[6],
             ).select_related("carrera", "proceso")
+            if provincia:
+                province_careers = PlanPlaza.objects.filter(
+                    proceso__anio__year=anio,
+                    provincia__nombre__iexact=provincia,
+                ).values("carrera_id")
+                queryset = queryset.filter(carrera_id__in=province_careers)
             province_names = dict(
                 PlanPlaza.objects.filter(proceso__anio__year=anio)
                 .values_list("carrera_id", "provincia__nombre")

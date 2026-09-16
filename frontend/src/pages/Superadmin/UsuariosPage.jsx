@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import {
   createSuperAdminUser,
   deleteSuperAdminUser,
+  fetchSuperAdminStudents,
   fetchSuperAdminCatalog,
   fetchSuperAdminUsers,
   updateSuperAdminUser,
@@ -21,6 +22,7 @@ const roles = [
   ["ingreso_municipal", "Repr. Municipal"],
   ["director_escuela", "Director de Escuela"],
   ["secretario_escuela", "Secretario de Escuela"],
+  ["estudiante", "Estudiante"],
 ];
 
 const fieldLabels = {
@@ -56,6 +58,11 @@ export default function UsuariosPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [students, setStudents] = useState([]);
+  const [studentFilters, setStudentFilters] = useState({ anio: "", provincia: "", ci: "" });
+  const [studentYears, setStudentYears] = useState([]);
+  const [studentsModalOpen, setStudentsModalOpen] = useState(false);
+  const [studentsLoading, setStudentsLoading] = useState(false);
 
   async function loadUsers() {
     try {
@@ -99,11 +106,51 @@ export default function UsuariosPage() {
     loadUsers();
   }, [filters.rol, filters.provincia, filters.estado]);
 
+  useEffect(() => {
+    if (!studentsModalOpen) return;
+    async function loadStudents() {
+      try {
+        setStudentsLoading(true);
+        const data = await fetchSuperAdminStudents(studentFilters);
+        setStudents(data);
+        if (!studentFilters.anio) {
+          setStudentYears([...new Set(data.flatMap((student) => student.anios))].sort((a, b) => b - a));
+        }
+      } catch (requestError) {
+        setError(requestError.message);
+      } finally {
+        setStudentsLoading(false);
+      }
+    }
+    loadStudents();
+  }, [studentsModalOpen, studentFilters.anio, studentFilters.provincia, studentFilters.ci]);
+
   function openCreate() {
     setEditing(null);
     setForm(emptyForm);
     setShowPassword(false);
     setModalOpen(true);
+  }
+
+  function openStudents() {
+    setStudentFilters({ anio: "", provincia: "", ci: "" });
+    setStudentsModalOpen(true);
+  }
+
+  function openStudentEdit(student) {
+    if (!student.user_id) return;
+    openEdit({
+      id: student.user_id,
+      username: student.username,
+      email: student.email,
+      first_name: student.nombre,
+      last_name: student.apellidos,
+      rol: "estudiante",
+      provincia: student.provincia_id,
+      municipio: "",
+      escuela: "",
+      is_active: student.is_active,
+    });
   }
 
   function openEdit(user) {
@@ -167,6 +214,14 @@ export default function UsuariosPage() {
     }
   }
 
+  async function toggleStudentActive(student) {
+    if (!student.user_id) return;
+    await toggleActive({ id: student.user_id, is_active: student.is_active });
+    setStudents((current) => current.map((item) => item.id === student.id
+      ? { ...item, is_active: !item.is_active }
+      : item));
+  }
+
   async function handleDelete(user) {
     const ok = await confirm({
       title: "Eliminar usuario",
@@ -206,6 +261,28 @@ export default function UsuariosPage() {
     },
   ];
 
+  const studentColumns = [
+    { key: "ci", header: "CI", render: (student) => student.ci },
+    { key: "nombre", header: "Estudiante", render: (student) => `${student.nombre} ${student.apellidos}` },
+    { key: "provincia", header: "Provincia", render: (student) => student.provincia },
+    { key: "escuela", header: "Escuela", render: (student) => student.escuela },
+    { key: "anios", header: "Años", render: (student) => student.anios.join(", ") || "Sin escalafón" },
+    {
+      key: "estado",
+      header: "Cuenta",
+      render: (student) => student.has_account
+        ? <StatusToggle active={student.is_active} onClick={() => toggleStudentActive(student)} />
+        : <span className={styles.noAccount}>Sin cuenta</span>,
+    },
+    {
+      key: "acciones",
+      header: "Acciones",
+      render: (student) => student.has_account
+        ? <EntityActionButton variant="edit" onClick={() => openStudentEdit(student)}>Editar</EntityActionButton>
+        : <span className={styles.mutedAction}>Pendiente de registro</span>,
+    },
+  ];
+
   return (
     <div className="space-y-6">
       <Card padding="p-8">
@@ -214,6 +291,8 @@ export default function UsuariosPage() {
           subtitle="Gestión global de usuarios en todo el sistema."
           actions={<PrimaryButton onClick={openCreate}>+ Nuevo usuario</PrimaryButton>}
         />
+
+        <SecondaryButton onClick={openStudents}>Ver estudiantes</SecondaryButton>
 
         <div className={styles.filtersGrid}>
           <FormField label="Rol">
@@ -246,6 +325,38 @@ export default function UsuariosPage() {
           emptyMessage="No hay usuarios para estos filtros."
         />
       </Card>
+
+      <Modal
+        open={studentsModalOpen}
+        onClose={() => setStudentsModalOpen(false)}
+        title="Estudiantes registrados"
+        size="xl"
+      >
+        <div className={styles.studentFilters}>
+          <FormField label="Año">
+            <Select value={studentFilters.anio} onChange={(event) => setStudentFilters({ ...studentFilters, anio: event.target.value })}>
+              <option value="">Todos los años</option>
+              {studentYears.map((year) => <option key={year} value={year}>{year}</option>)}
+            </Select>
+          </FormField>
+          <FormField label="Provincia">
+            <Select value={studentFilters.provincia} onChange={(event) => setStudentFilters({ ...studentFilters, provincia: event.target.value })}>
+              <option value="">Todas</option>
+              {provinces.map((province) => <option key={province.id} value={province.id}>{province.nombre}</option>)}
+            </Select>
+          </FormField>
+          <FormField label="Buscar por CI">
+            <Input value={studentFilters.ci} onChange={(event) => setStudentFilters({ ...studentFilters, ci: event.target.value })} placeholder="Número de identidad" />
+          </FormField>
+        </div>
+        <DataTable
+          className="table-scroll"
+          columns={studentColumns}
+          data={students}
+          loading={studentsLoading}
+          emptyMessage="No hay estudiantes para estos filtros."
+        />
+      </Modal>
 
       <Modal
         open={modalOpen}

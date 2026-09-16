@@ -1,0 +1,86 @@
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 1rem;
+}
+
+.card {
+  border-radius: 1.5rem;
+  border: 1px solid var(--border-color, #e2e8f0);
+  padding: 1.25rem;
+}
+
+.label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: #64748b;
+}
+
+.value {
+  margin-top: 0.5rem;
+  font-size: 1.875rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.caption {
+  margin-top: 0.25rem;
+  font-size: 0.8125rem;
+  color: #64748b;
+}
+
+.toneNeutral {
+  background-color: #f8fafc;
+}
+
+.tonePrimary {
+  background-color: color-mix(in srgb, var(--brand-primary, #1f4e79) 8%, white);
+  border-color: color-mix(in srgb, var(--brand-primary, #1f4e79) 25%, white);
+}
+
+.tonePrimary .value {
+  color: var(--brand-primary, #1f4e79);
+}
+
+.toneSuccess {
+  background-color: color-mix(in srgb, var(--brand-success, #1a7a4a) 8%, white);
+  border-color: color-mix(in srgb, var(--brand-success, #1a7a4a) 25%, white);
+}
+
+.toneSuccess .value {
+  color: var(--brand-success, #1a7a4a);
+}
+
+.toneError {
+  background-color: color-mix(in srgb, var(--brand-error, #c0392b) 8%, white);
+  border-color: color-mix(in srgb, var(--brand-error, #c0392b) 25%, white);
+}
+
+.toneError .value {
+  color: var(--brand-error, #c0392b);
+}
+
+.toneWarning {
+  background-color: #fef3c7;
+  border-color: #fde68a;
+}
+
+.toneWarning .value {
+  color: #92400e;
+}
+
+@media (max-width: 639px) {
+  .grid {
+    gap: 0.75rem;
+  }
+
+  .card {
+    padding: 1rem;
+  }
+
+  .value {
+    font-size: 1.5rem;
+  }
+}

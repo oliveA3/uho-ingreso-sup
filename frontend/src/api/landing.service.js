@@ -17,7 +17,7 @@ export function fetchLandingOtorgamientos(filters = {}) {
 }
 
 export function fetchLandingCortes(filters = {}) {
-  return request("/import-export/cortes/landing/", { params: filters, credentials: "same-origin" });
+  return request("/import-export/cortes/landing/", { params: filters });
 }
 
 export function downloadLandingExcel(kind, filters = {}) {

@@ -2,6 +2,7 @@ import StageStatusNotice from "../../components/StageStatusNotice/StageStatusNot
 import { useEffect, useState } from "react";
 import { fetchSchoolDashboard } from "../../services/api";
 import BallotMetrics from "../../features/escuela/components/BallotMetrics";
+import { StatCard, StatsGrid } from "../../components";
 import styles from "./DashboardPage.module.css";
 
 export default function SecretarioDashboardPage({ user, title = "Dashboard Secretario" }) {
@@ -32,20 +33,11 @@ export default function SecretarioDashboardPage({ user, title = "Dashboard Secre
 
         <StageStatusNotice />
 
-        <div className="grid gap-3 sm:grid-cols-3">
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-            <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Total Estudiantes</p>
-            <p className="mt-2 text-2xl font-semibold text-slate-900">{dashboard.students}</p>
-          </div>
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-            <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Con cuenta</p>
-            <p className="mt-2 text-2xl font-semibold text-slate-900">{dashboard.students_with_account}</p>
-          </div>
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-            <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Boletas enviadas</p>
-            <p className="mt-2 text-2xl font-semibold text-slate-900">{ballotStats.sent}</p>
-          </div>
-        </div>
+        <StatsGrid>
+          <StatCard label="Total Estudiantes" value={dashboard.students} />
+          <StatCard label="Con cuenta" value={dashboard.students_with_account} />
+          <StatCard label="Boletas enviadas" value={ballotStats.sent} />
+        </StatsGrid>
 
         <div className="grid gap-4 lg:grid-cols-2">
           <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5">

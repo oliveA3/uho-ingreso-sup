@@ -34,7 +34,7 @@ npm install
 npm run dev
 ```
 
-La API queda disponible bajo `http://127.0.0.1:8000/api/v1/` y la documentación interactiva en `/api/v1/docs/`.
+La API queda disponible bajo `http://127.0.0.1:8000/api/v1/` y la documentación interactiva en `/api/docs/` (también disponible en `/api/v1/docs/`).
 
 ## Documentación
 

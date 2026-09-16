@@ -14,19 +14,15 @@ import {
   fetchProvincialCes,
   fetchProvincialProvinces,
   fetchProvincialProceso,
+  fetchProvincialTiposOtorgamiento,
   importPlanPlaza,
   updatePlanPlaza,
 } from "../../services/api";
 
-const types = [
-  ["municipal", "Municipal"],
-  ["provincial", "Provincial"],
-];
-
 const emptyForm = {
   carrera: "",
   cantidad_plazas: 1,
-  otorgamiento_tipo: "municipal",
+  otorgamiento_tipo: "",
   ces: "",
   provincia: "",
   sexo: "A",
@@ -45,6 +41,7 @@ export default function PlazasPage() {
   const [careers, setCareers] = useState([]);
   const [ces, setCes] = useState([]);
   const [provinces, setProvinces] = useState([]);
+  const [tipos, setTipos] = useState([]);
   const [process, setProcess] = useState(null);
   const [stageStatus, setStageStatus] = useState(null);
   const fileInput = useRef(null);
@@ -70,12 +67,14 @@ export default function PlazasPage() {
       fetchProvincialCes(),
       fetchProvincialProvinces(),
       fetchProvincialProceso(),
+      fetchProvincialTiposOtorgamiento(),
     ])
-      .then(([careerData, cesData, provinceData, processData]) => {
+      .then(([careerData, cesData, provinceData, processData, tiposData]) => {
         setCareers(careerData);
         setCes(cesData);
         setProvinces(provinceData);
         setProcess(processData);
+        setTipos(tiposData);
         setForm((current) => ({ ...current, proceso: processData?.id || "" }));
       })
       .catch((requestError) => setError(requestError.message));
@@ -94,6 +93,7 @@ export default function PlazasPage() {
         provincia: Number(form.provincia),
         proceso: Number(form.proceso),
         cantidad_plazas: Number(form.cantidad_plazas),
+        otorgamiento_tipo: Number(form.otorgamiento_tipo),
       };
       if (editingId) await updatePlanPlaza(editingId, payload);
       else await createPlanPlaza(payload);
@@ -271,8 +271,9 @@ export default function PlazasPage() {
             <Input required min="1" type="number" value={form.cantidad_plazas} onChange={updateField("cantidad_plazas")} />
           </FormField>
           <FormField label="Tipo de otorgamiento">
-            <Select value={form.otorgamiento_tipo} onChange={updateField("otorgamiento_tipo")}>
-              {types.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+            <Select required value={form.otorgamiento_tipo} onChange={updateField("otorgamiento_tipo")}>
+              <option value="">Selecciona una opción</option>
+              {tipos.map((tipo) => <option key={tipo.id} value={tipo.id}>{tipo.nombre}</option>)}
             </Select>
           </FormField>
           <FormField label="CES">

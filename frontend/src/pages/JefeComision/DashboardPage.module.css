@@ -73,50 +73,6 @@
   color: #334155;
 }
 
-.statsGrid {
-  margin-top: 1.5rem;
-  display: grid;
-  gap: 1rem;
-}
-
-@media (min-width: 640px) {
-  .statsGrid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (min-width: 1024px) {
-  .statsGrid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-
-@media (min-width: 1280px) {
-  .statsGrid {
-    grid-template-columns: repeat(6, minmax(0, 1fr));
-  }
-}
-
-.statCard {
-  border-radius: 1.5rem;
-  border: 1px solid #e2e8f0;
-  background-color: #f8fafc;
-  padding: 1.5rem;
-  text-align: center;
-}
-
-.statValue {
-  font-size: 1.875rem;
-  font-weight: 600;
-  color: #0f172a;
-}
-
-.statLabel {
-  margin-top: 0.5rem;
-  font-size: 0.875rem;
-  color: #475569;
-}
-
 .panelsGrid {
   display: grid;
   gap: 1.5rem;
@@ -180,4 +136,29 @@
   height: 0.5rem;
   border-radius: 9999px;
   background-color: var(--brand-primary, #1f4e79);
+}
+
+@media (max-width: 639px) {
+  .page {
+    gap: 1rem;
+  }
+
+  .heroCard,
+  .panel {
+    padding: 1rem;
+    border-radius: 1rem;
+  }
+
+  .title {
+    font-size: 1.5rem;
+  }
+
+  .panelsGrid {
+    gap: 1rem;
+  }
+
+  .progressList {
+    margin-top: 1rem;
+    gap: 0.75rem;
+  }
 }

@@ -1,9 +1,16 @@
 .page {
+  --nav-height: 4.5rem;
   display: flex;
   min-height: 100vh;
   flex-direction: column;
   background-color: #f8fafc;
   color: #0f172a;
+}
+
+@media (min-width: 640px) {
+  .page {
+    --nav-height: 5rem;
+  }
 }
 
 .body {
@@ -22,7 +29,7 @@
 .backdrop {
   position: fixed;
   inset: 0;
-  top: 5rem;
+  top: var(--nav-height);
   z-index: 30;
   background-color: rgba(15, 23, 42, 0.5);
 }
@@ -49,6 +56,9 @@
 }
 
 .sidebarWrapperCollapsed {
+  position: fixed;
+  left: 0.75rem;
+  top: calc(var(--nav-height) + 0.75rem);
   z-index: 20;
 }
 
@@ -63,9 +73,9 @@
 .sidebarWrapperOpen {
   position: fixed;
   left: 0;
-  top: 5rem;
+  top: var(--nav-height);
   z-index: 40;
-  height: calc(100vh - 5rem);
+  height: calc(100vh - var(--nav-height));
 }
 
 @media (min-width: 1024px) {
@@ -77,7 +87,7 @@
 
 .sidebarPanel {
   display: flex;
-  height: calc(100vh - 5rem);
+  height: calc(100vh - var(--nav-height));
   min-height: 0;
   width: 250px;
   max-width: 85vw;
@@ -102,8 +112,8 @@
 
 @media (min-width: 1024px) {
   .sidebarScroll {
-    height: calc(100vh - 5rem);
-    max-height: calc(100vh - 5rem);
+    height: calc(100vh - var(--nav-height));
+    max-height: calc(100vh - var(--nav-height));
   }
 }
 
@@ -111,19 +121,18 @@
   position: relative;
   z-index: 10;
   display: flex;
-  height: 2.75rem;
-  width: 2.75rem;
+  height: 2.5rem;
+  width: 2.5rem;
   flex-shrink: 0;
   cursor: pointer;
   align-items: center;
   justify-content: center;
   border: 1px solid #e2e8f0;
-  border-left: none;
+  border-radius: 9999px;
   background-color: #0f172a;
   padding: 0;
   color: #ffffff;
   box-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.1);
-  border-radius: 0 0.75rem 0.75rem 0;
   transition: background-color 0.15s ease;
 }
 
@@ -132,10 +141,17 @@
 }
 
 @media (min-width: 1024px) {
+  .toggleButton {
+    height: 2.75rem;
+    width: 2.75rem;
+  }
+}
+
+@media (min-width: 1024px) {
   .toggleButtonOpen {
     position: absolute;
-    left: 250px;
-    top: 0;
+    left: calc(250px + 0.5rem);
+    top: 0.5rem;
   }
 }
 
@@ -147,6 +163,33 @@
   min-width: 0;
   flex: 1 1 auto;
   padding-left: 0.5rem;
+}
+
+@media (max-width: 639px) {
+  .sidebarWrapperCollapsed {
+    left: 0.5rem;
+    top: calc(var(--nav-height) + 0.5rem);
+  }
+
+  .sidebarWrapperOpen {
+    width: 85vw;
+    max-width: 250px;
+  }
+
+  .toggleButton {
+    height: 2rem;
+    width: 2rem;
+  }
+
+  .toggleButtonOpen {
+    position: absolute;
+    left: calc(100% - 0.75rem);
+    top: 0.75rem;
+  }
+
+  .content {
+    padding-left: 0;
+  }
 }
 
 @media (min-width: 1024px) {

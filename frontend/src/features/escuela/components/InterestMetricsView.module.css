@@ -180,6 +180,35 @@
   color: #64748b;
 }
 
+@media (max-width: 639px) {
+  .wrapper {
+    gap: 1rem;
+  }
+
+  .section,
+  .sectionFlat {
+    padding: 1rem;
+    border-radius: 1rem;
+  }
+
+  .title {
+    font-size: 1.5rem;
+  }
+
+  .metricsGrid,
+  .rankingList {
+    margin-top: 1rem;
+  }
+
+  .metricCard {
+    padding: 1rem;
+  }
+
+  .metricValue {
+    font-size: 1.5rem;
+  }
+}
+
 .distributionGrid {
   display: grid;
   gap: 1.5rem;

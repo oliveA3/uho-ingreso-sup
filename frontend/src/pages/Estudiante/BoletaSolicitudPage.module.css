@@ -209,6 +209,27 @@
   color: #334155;
 }
 
+@media (max-width: 639px) {
+  .title {
+    font-size: 1.5rem;
+  }
+
+  .studentInfoGrid,
+  .selectionBox {
+    margin-top: 1rem;
+  }
+
+  .selectionBox {
+    padding: 1rem;
+    border-radius: 1rem;
+  }
+
+  .infoTile {
+    padding: 1rem;
+    border-radius: 1rem;
+  }
+}
+
 .statusPendiente {
   background-color: color-mix(in srgb, var(--brand-accent, #d97706) 15%, white);
   color: var(--brand-accent, #b45309);

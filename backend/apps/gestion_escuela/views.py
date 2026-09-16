@@ -181,7 +181,7 @@ class SchoolSolicitudView(APIView):
 			for item in valid_items:
 				career = item.plan_plaza.carrera
 				career_counts[career.id] = {"id": career.id, "nombre": career.nombre, "total": career_counts.get(career.id, {}).get("total", 0) + 1}
-				tipo = item.plan_plaza.otorgamiento_tipo
+				tipo = item.plan_plaza.otorgamiento_tipo.nombre
 				type_counts[tipo] = type_counts.get(tipo, 0) + 1
 		return Response({
 			"items": [{**BoletaSolicitudSerializer(ballot).data, "student": {"nombre": ballot.estudiante.nombre, "apellidos": ballot.estudiante.apellidos, "ci": ballot.estudiante.ci, "indice_general": (EscalafonItem.objects.filter(estudiante=ballot.estudiante, escalafon__proceso__anio__year=timezone.now().year).order_by("-escalafon_id", "-id").values_list("indice_general", flat=True).first() or ballot.estudiante.indice_general)}} for ballot in ballots],

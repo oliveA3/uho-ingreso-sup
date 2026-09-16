@@ -5,7 +5,7 @@ import EscalafonTable from "../../components/EscalafonTable/EscalafonTable";
 import ReviewModal from "../../components/Modals/ReviewModal";
 import StageStatusNotice from "../../components/StageStatusNotice/StageStatusNotice";
 import PrimaryButton from "../../components/Buttons/PrimaryButton";
-import { Card } from "../../components";
+import { Card, StatCard, StatsGrid } from "../../components";
 import styles from "./EscalafonPage.module.css";
 
 export default function EstudianteEscalafonPage() {
@@ -50,24 +50,12 @@ export default function EstudianteEscalafonPage() {
 
         <StageStatusNotice stageNumber={1} onStatusChange={handleStageStatus} />
 
-        <div className={styles.statsGrid}>
-          <div className={styles.statTile}>
-            <p className={styles.statLabel}>10mo Grado</p>
-            <p className={styles.statValue}>{current?.indice_10 ?? "--"}</p>
-          </div>
-          <div className={styles.statTile}>
-            <p className={styles.statLabel}>11no Grado</p>
-            <p className={styles.statValue}>{current?.indice_11 ?? "--"}</p>
-          </div>
-          <div className={styles.statTile}>
-            <p className={styles.statLabel}>12vo Grado</p>
-            <p className={styles.statValue}>{current?.indice_12 ?? "--"}</p>
-          </div>
-          <div className={styles.statTile}>
-            <p className={styles.statLabel}>Índice general</p>
-            <p className={styles.statValue}>{current?.indice_general ?? "--"}</p>
-          </div>
-        </div>
+        <StatsGrid className="mt-6">
+          <StatCard label="10mo Grado" value={current?.indice_10 ?? "--"} />
+          <StatCard label="11no Grado" value={current?.indice_11 ?? "--"} />
+          <StatCard label="12vo Grado" value={current?.indice_12 ?? "--"} />
+          <StatCard label="Índice general" value={current?.indice_general ?? "--"} />
+        </StatsGrid>
 
         {error && <FeedbackMessage type="error" className="mt-6 rounded-2xl">{error}</FeedbackMessage>}
         {notice && <FeedbackMessage type="success" className="mt-3 rounded-2xl">{notice}</FeedbackMessage>}

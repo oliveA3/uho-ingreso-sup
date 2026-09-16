@@ -66,6 +66,12 @@ const catalogs = {
     fields: [{ name: "nombre", label: "Nombre", type: "text" }],
     activeField: "activa",
   },
+  "tipos-otorgamiento": {
+    title: "Tipos de Otorgamiento",
+    icon: "🏷️",
+    fields: [{ name: "nombre", label: "Nombre", type: "text" }],
+    activeField: "activa",
+  },
 };
 
 function emptyForm(config) {

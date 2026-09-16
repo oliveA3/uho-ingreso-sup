@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { fetchProvincialDashboard } from "../../services/api";
 import StageStatusNotice from "../../components/StageStatusNotice/StageStatusNotice";
+import { StatCard, StatsGrid } from "../../components";
 import styles from "./DashboardPage.module.css";
 
 export default function DashboardPage({ user }) {
@@ -48,14 +49,11 @@ export default function DashboardPage({ user }) {
 
         <StageStatusNotice />
 
-        <div className={styles.statsGrid}>
+        <StatsGrid className="mt-6">
           {stats.map((stat) => (
-            <div key={stat.label} className={styles.statCard}>
-              <div className={styles.statValue}>{stat.value}</div>
-              <div className={styles.statLabel}>{stat.label}</div>
-            </div>
+            <StatCard key={stat.label} label={stat.label} value={stat.value} />
           ))}
-        </div>
+        </StatsGrid>
       </section>
 
       <div className={styles.panelsGrid}>

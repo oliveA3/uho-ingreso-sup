@@ -28,9 +28,6 @@ export default function StageOneGuard({
   if (!allowed) {
     return (
       <div className={styles.container}>
-        <div className={styles.content}>
-          {children}
-        </div>
         <div className={styles.overlay}>
           <div className={styles.panel}>
             <h1 className={styles.panelTitle}>{panelName} no disponible</h1>

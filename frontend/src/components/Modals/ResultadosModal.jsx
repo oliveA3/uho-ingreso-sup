@@ -84,6 +84,11 @@ export default function ResultadosModal({ onClose }) {
           <span className={styles.name}>Resultados de las pruebas</span>
         </>
       }
+      footer={
+        <PrimaryButton type="button" onClick={downloadExcel} disabled={exporting || !results.length} className={styles.downloadButton}>
+          {exporting ? "Descargando..." : "Descargar Excel"}
+        </PrimaryButton>
+      }
     >
       <div className={styles.filters}>
         {["anio", "provincia", "municipio", "escuela", "asignatura"].map((field) => (
@@ -106,12 +111,6 @@ export default function ResultadosModal({ onClose }) {
           loadingMessage="Cargando resultados..."
           emptyMessage="No hay notas para los filtros seleccionados."
         />
-      </div>
-
-      <div className={styles.footer}>
-        <PrimaryButton type="button" onClick={downloadExcel} disabled={exporting || !results.length} className={styles.downloadButton}>
-          {exporting ? "Descargando..." : "Descargar Excel"}
-        </PrimaryButton>
       </div>
     </Modal>
   );

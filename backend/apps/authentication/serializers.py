@@ -125,9 +125,23 @@ class SuperAdminUserSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         password = validated_data.pop("password", None)
+        generated_password = password or Usuario.objects.make_random_password()
         user = Usuario(**validated_data)
-        user.set_password(password or Usuario.objects.make_random_password())
+        user.set_password(generated_password)
         user.save()
+        send_mail(
+            subject="Bienvenido a IngresoSUP",
+            message=(
+                f"Hola {user.first_name or user.username},\n\n"
+                "Tu cuenta de IngresoSUP ha sido creada por el Super Administrador.\n"
+                f"Usuario: {user.username}\n"
+                f"Contraseña temporal: {generated_password}\n\n"
+                "Por seguridad, cambia esta contraseña después de iniciar sesión."
+            ),
+            from_email=None,
+            recipient_list=[user.email],
+            fail_silently=False,
+        )
         return user
 
     def update(self, instance, validated_data):

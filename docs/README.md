@@ -1,6 +1,6 @@
 # Documentación de IngresoSUP
 
-Esta carpeta contiene la documentación operativa que no debe quedar mezclada con la descripción breve del proyecto.
+Documentación operativa:
 
 - [Instalación y operación local](SETUP.md)
 - [Carga inicial de territorios y usuarios](SEED_INITIAL_DATA.md)

@@ -35,6 +35,10 @@ export function fetchSuperAdminUsers(filters = {}) {
   return request("/superadmin/usuarios/", { params: filters });
 }
 
+export function fetchSuperAdminStudents(filters = {}) {
+  return request("/superadmin/estudiantes/", { params: filters });
+}
+
 export function createSuperAdminUser(payload) {
   return request("/superadmin/usuarios/", { method: "POST", body: payload });
 }

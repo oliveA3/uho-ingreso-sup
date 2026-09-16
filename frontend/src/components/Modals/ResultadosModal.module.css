@@ -17,13 +17,14 @@
 
 .filters {
   display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.5rem;
   margin-bottom: 1rem;
 }
 
 @media (min-width: 640px) {
   .filters {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
@@ -46,12 +47,6 @@
   max-height: 360px;
   overflow-y: auto;
   border-radius: 0.75rem;
-}
-
-.footer {
-  margin-top: 0.75rem;
-  display: flex;
-  justify-content: flex-end;
 }
 
 .downloadButton {

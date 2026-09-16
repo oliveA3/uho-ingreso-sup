@@ -1,5 +1,4 @@
 from django.views import View
-from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from rest_framework import viewsets, filters, status
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -11,6 +10,7 @@ from rest_framework.views import APIView
 from apps.authentication.models import Usuario
 from .models import LogAuditoria, Notificacion
 from .permissions import CanViewAuditLogs
+from .responses import api_success
 from .serializers import AuditLogSerializer, NotificationSerializer
 from .permissions import IsSuperAdmin
 from .audit import record_audit
@@ -20,7 +20,7 @@ class HealthCheckView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        return JsonResponse({"status": "ok", "service": "IngresoSUP backend"})
+        return api_success({"status": "ok", "service": "IngresoSUP backend"})
 
 
 class NotificationListView(APIView):
@@ -46,14 +46,14 @@ class RoleAdminView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        return JsonResponse({"roles": []}, status=status.HTTP_200_OK)
+        return api_success({"roles": []}, status=status.HTTP_200_OK)
 
 
 class RoleListView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        return JsonResponse({"roles": []}, status=status.HTTP_200_OK)
+        return api_success({"roles": []}, status=status.HTTP_200_OK)
 
 
 def filtered_audit_logs(request):
@@ -76,7 +76,7 @@ class AuditLogListView(APIView):
 
     def get(self, request):
         logs = filtered_audit_logs(request)
-        return JsonResponse({"logs": AuditLogSerializer(logs[:500], many=True).data, "total": logs.count()})
+        return api_success({"logs": AuditLogSerializer(logs[:500], many=True).data, "total": logs.count()})
 
 
 class AuditLogExportView(APIView):

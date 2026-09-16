@@ -7,7 +7,7 @@ import ResultadosModal from "../components/Modals/ResultadosModal";
 import OtorgamientosModal from "../components/Modals/OtorgamientosModal";
 import CutoffSection from "../components/CutoffSection/CutoffSection";
 import OfferingsSection from "../components/OfferingsSection/OfferingsSection";
-import { newsItems, cutoffIndices } from "../data/landingData";
+import { newsItems } from "../data/landingData";
 import { fetchLandingData } from "../services/api";
 import { fetchLandingCortes } from "../services/api";
 import styles from "./LandingPage.module.css";
@@ -96,7 +96,7 @@ export default function LandingPage({ user }) {
 
         <div className={styles.sectionsGroup}>
           <NewsSection items={newsItems} />
-          <CutoffSection items={cortesData.items.length ? cortesData.items.slice(0, 4) : cutoffIndices} year={cortesData.year} onViewMore={() => setCortesModalOpen(true)} />
+          <CutoffSection items={cortesData.items.slice(0, 4)} year={cortesData.year} onViewMore={() => setCortesModalOpen(true)} />
           <OfferingsSection items={ces} />
         </div>
 

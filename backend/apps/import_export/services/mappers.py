@@ -1,4 +1,4 @@
-from apps.superadmin.models import Carrera, Ces, Provincia
+from apps.superadmin.models import Carrera, Ces, Provincia, TipoOtorgamiento
 from apps.authentication.models import Estudiante
 from apps.gestion_provincial.models import Proceso, PlanPlaza
 
@@ -48,7 +48,7 @@ PLAN_PLAZA_FK = {
     "proceso": find_proceso_by_year,
     "ces": lambda v: Ces.objects.get(nombre__iexact=v),
     "provincia": lambda v: Provincia.objects.get(nombre__iexact=v),
-    #"otorgamiento_tipo": lambda v: OtorgamientoTipo.objects.get(nombre__iexact=v),
+    "otorgamiento_tipo": lambda v: TipoOtorgamiento.objects.get(nombre__iexact=v),
 }
 
 # mappers para Otorgamiento

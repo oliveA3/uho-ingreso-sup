@@ -28,6 +28,10 @@ export function fetchProvincialCes() {
   return request("/gestion-provincial/ces/");
 }
 
+export function fetchProvincialTiposOtorgamiento() {
+  return request("/gestion-provincial/tipos-otorgamiento/");
+}
+
 export function fetchProvincialEtapas() {
   return request("/gestion-provincial/etapas/");
 }

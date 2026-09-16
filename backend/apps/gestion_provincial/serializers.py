@@ -1,7 +1,7 @@
 from rest_framework import serializers
 
 from apps.authentication.models import ROLES, Usuario
-from apps.superadmin.models import Carrera, Ces, Escuela, Municipio, Provincia
+from apps.superadmin.models import Carrera, Ces, Escuela, Municipio, Provincia, TipoOtorgamiento
 
 from .models import ETAPAS_NOMBRES, Etapa, Proceso
 
@@ -57,6 +57,12 @@ class ProvincialProvinciaSerializer(serializers.ModelSerializer):
 class ProvincialCesSerializer(serializers.ModelSerializer):
     class Meta:
         model = Ces
+        fields = ["id", "nombre", "activa"]
+
+
+class ProvincialTipoOtorgamientoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TipoOtorgamiento
         fields = ["id", "nombre", "activa"]
 
 

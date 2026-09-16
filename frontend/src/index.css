@@ -228,3 +228,22 @@ img {
 .focus\:border-sky-500:focus {
   --tw-ring-color: var(--brand-accent, #5ba3d9) !important;
 }
+
+@media (max-width: 639px) {
+  .p-8 {
+    padding: 1rem !important;
+  }
+
+  .p-6 {
+    padding: 1rem !important;
+  }
+
+  .py-6 {
+    padding-top: 1rem !important;
+    padding-bottom: 1rem !important;
+  }
+
+  .space-y-6 > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 1rem !important;
+  }
+}

@@ -11,8 +11,7 @@ import StatusToggle from "../../components/Buttons/StatusToggle";
 import PrimaryButton from "../../components/Buttons/PrimaryButton";
 import SecondaryButton from "../../components/Buttons/SecondaryButton";
 import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
-import { Card, DataTable, FormField, Input, Modal, useConfirm } from "../../components";
-import styles from "./EscuelasPage.module.css";
+import { Card, DataTable, FormField, Input, Modal, StatCard, StatsGrid, useConfirm } from "../../components";
 
 const emptyForm = { nombre: "", codigo: "", descripcion: "", activa: true };
 
@@ -115,15 +114,11 @@ export default function EscuelasPage({ user }) {
           <PrimaryButton onClick={openCreate}>+ Nueva escuela</PrimaryButton>
         </div>
         {error && <FeedbackMessage type="error" className="mt-5 rounded-2xl">{error}</FeedbackMessage>}
-        <div className="mt-6 grid gap-4 sm:grid-cols-3">
+        <StatsGrid className="mt-6">
           {stats.map(([label, value, caption]) => (
-            <div key={label} className={styles.statCard}>
-              <p className="text-sm uppercase tracking-[0.18em] text-slate-500">{label}</p>
-              <p className="mt-3 text-3xl font-semibold text-slate-900">{value}</p>
-              <p className="mt-1 text-sm text-slate-500">{caption}</p>
-            </div>
+            <StatCard key={label} label={label} value={value} caption={caption} />
           ))}
-        </div>
+        </StatsGrid>
       </Card>
       <Card padding="p-8">
         <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por nombre o código" className="!mt-0 max-w-md" />

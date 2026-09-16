@@ -6,8 +6,15 @@
 }
 
 .userName {
+  display: none;
   font-size: 0.875rem;
   color: #334155;
+}
+
+@media (min-width: 640px) {
+  .userName {
+    display: inline;
+  }
 }
 
 .logoutButton {

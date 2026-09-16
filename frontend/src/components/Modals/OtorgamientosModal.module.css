@@ -17,13 +17,22 @@
 
 .filters {
   display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.5rem;
   margin-bottom: 1rem;
+}
+
+.searchField {
+  grid-column: 1 / -1;
 }
 
 @media (min-width: 640px) {
   .filters {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .searchField {
+    grid-column: auto;
   }
 }
 
@@ -47,12 +56,6 @@
   text-align: center;
   font-size: 0.875rem;
   color: #64748b;
-}
-
-.footer {
-  margin-top: 0.75rem;
-  display: flex;
-  justify-content: flex-end;
 }
 
 .downloadButton {

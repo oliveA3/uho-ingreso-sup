@@ -5,7 +5,7 @@ import EntityActionButton from "../../components/Buttons/EntityActionButton";
 import SecondaryButton from "../../components/Buttons/SecondaryButton";
 import StageStatusNotice from "../../components/StageStatusNotice/StageStatusNotice";
 import { fetchCommissionPendingModifications, resolveCommissionModification } from "../../services/api";
-import { Card, DataTable } from "../../components";
+import { Card, DataTable, StatCard, StatsGrid } from "../../components";
 import styles from "./SolicitudesPage.module.css";
 
 export default function SolicitudesPage() {
@@ -77,20 +77,11 @@ export default function SolicitudesPage() {
         </div>
 
         <StageStatusNotice stageNumber={3} onStatusChange={setStageStatus} />
-        <div className={styles.statsGrid}>
-          <div className={styles.statCardSuccess}>
-            <p className={styles.statLabel}>Aprobadas</p>
-            <p className={styles.statValue}>{total}</p>
-          </div>
-          <div className={styles.statCardWarning}>
-            <p className={styles.statLabel}>Pend. Comisión</p>
-            <p className={styles.statValue}>{data.metrics?.pendientes ?? 0}</p>
-          </div>
-          <div className={styles.statCardError}>
-            <p className={styles.statLabel}>Mod. por aprobar</p>
-            <p className={styles.statValue}>{data.metrics?.pendientes ?? 0}</p>
-          </div>
-        </div>
+        <StatsGrid className="mt-6">
+          <StatCard label="Aprobadas" value={total} tone="success" />
+          <StatCard label="Pend. Comisión" value={data.metrics?.pendientes ?? 0} tone="warning" />
+          <StatCard label="Mod. por aprobar" value={data.metrics?.pendientes ?? 0} tone="error" />
+        </StatsGrid>
       </Card>
 
       {error && <FeedbackMessage type="error" className="rounded-2xl">{error}</FeedbackMessage>}

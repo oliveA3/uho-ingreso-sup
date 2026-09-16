@@ -13,7 +13,7 @@ import PrimaryButton from "../../components/Buttons/PrimaryButton";
 import SecondaryButton from "../../components/Buttons/SecondaryButton";
 import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
 import StageStatusNotice from "../../components/StageStatusNotice/StageStatusNotice";
-import { Modal } from "../../components";
+import { Modal, StatCard, StatsGrid } from "../../components";
 import styles from "./EscalafonPage.module.css";
 
 const indexFields = ["indice_10", "indice_11", "indice_12", "indice_general"];
@@ -238,11 +238,11 @@ export default function SecretarioEscalafonPage() {
       
       <StageStatusNotice stageNumber={1} onStatusChange={handleStageStatus} />
 
-      <div className="my-5 grid gap-4 sm:grid-cols-3">
-        <div className={`${styles.statCard} ${styles.statCardSuccess}`}><p className="text-sm text-slate-600">Aceptado</p><p className="mt-2 text-3xl font-semibold text-slate-900">{summary?.estudiantes_aceptaron ?? "-"}</p></div>
-        <div className={`${styles.statCard} ${styles.statCardWarning}`}><p className="text-sm text-slate-600">Pendientes</p><p className="mt-2 text-3xl font-semibold text-slate-900">{summary?.estudiantes_pendientes ?? "-"}</p></div>
-        <div className={`${styles.statCard} ${styles.statCardNeutral}`}><p className="text-sm text-slate-600">Total estudiantes</p><p className="mt-2 text-3xl font-semibold text-slate-900">{summary?.total_estudiantes ?? "-"}</p></div>
-      </div>
+      <StatsGrid className="my-5">
+        <StatCard label="Aceptado" value={summary?.estudiantes_aceptaron ?? "-"} tone="success" />
+        <StatCard label="Pendientes" value={summary?.estudiantes_pendientes ?? "-"} tone="warning" />
+        <StatCard label="Total estudiantes" value={summary?.total_estudiantes ?? "-"} tone="neutral" />
+      </StatsGrid>
 
       <div className="mb-4 flex flex-wrap gap-2">
         <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden" disabled={!stageActive && !import.meta.env.DEV} onChange={handleImport} />

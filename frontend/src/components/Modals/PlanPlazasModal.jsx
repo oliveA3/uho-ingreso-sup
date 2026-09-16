@@ -33,9 +33,7 @@ export default function PlanPlazasModal({ items = [], years = [], defaultProvinc
       sexo: item.sexo ?? "A",
       plazas: item.cantidad_plazas ?? item.plazas ?? 0,
       year: item.year ?? item.anio ?? new Date().getFullYear(),
-      tipo: item.otorgamiento_tipo
-        ? item.otorgamiento_tipo.charAt(0).toUpperCase() + item.otorgamiento_tipo.slice(1)
-        : "Municipal",
+      tipo: item.otorgamiento_tipo || item.tipo_otorgamiento_label || "Municipal",
     })),
   [items]);
 
@@ -109,20 +107,19 @@ export default function PlanPlazasModal({ items = [], years = [], defaultProvinc
           </span>
         </>
       }
+      footer={
+        <PrimaryButton type="button" onClick={handleDownload} disabled={exporting || filtered.length === 0} className={styles.downloadButton}>
+          {exporting ? "Descargando..." : "Descargar Excel"}
+        </PrimaryButton>
+      }
     >
       <div className={styles.filters}>
-        <FormField label="Buscar">
+        <FormField label="Buscar" className={styles.searchField}>
           <Input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Carrera, provincia, CES" />
         </FormField>
         <FormField label="Año">
           <Select value={selectedYear} onChange={(event) => setSelectedYear(Number(event.target.value))}>
             {availableYears.map((year) => <option key={year} value={year}>{year}</option>)}
-          </Select>
-        </FormField>
-        <FormField label="Provincia">
-          <Select value={selectedProvince} onChange={(event) => setSelectedProvince(event.target.value)}>
-            <option value="Todos">Todas</option>
-            {availableProvinces.map((province) => <option key={province} value={province}>{province}</option>)}
           </Select>
         </FormField>
         <FormField label="Sexo">
@@ -133,6 +130,12 @@ export default function PlanPlazasModal({ items = [], years = [], defaultProvinc
             <option value="A">A</option>
           </Select>
         </FormField>
+        <FormField label="Provincia" className={styles.searchField}>
+          <Select value={selectedProvince} onChange={(event) => setSelectedProvince(event.target.value)}>
+            <option value="Todos">Todas</option>
+            {availableProvinces.map((province) => <option key={province} value={province}>{province}</option>)}
+          </Select>
+        </FormField>
       </div>
 
       <div className={styles.tableWrapper}>
@@ -141,12 +144,6 @@ export default function PlanPlazasModal({ items = [], years = [], defaultProvinc
           data={filtered}
           emptyMessage="No hay planes de plazas para los filtros seleccionados."
         />
-      </div>
-
-      <div className={styles.footer}>
-        <PrimaryButton type="button" onClick={handleDownload} disabled={exporting || filtered.length === 0} className={styles.downloadButton}>
-          {exporting ? "Descargando..." : "Descargar Excel"}
-        </PrimaryButton>
       </div>
     </Modal>
   );

@@ -1,4 +1,4 @@
-import { apiFetch, API_BASE, clearTokens, csrfHeaders, getRefreshToken, handleResponse, persistAuthTokens, request } from "./httpClient";
+import { apiFetch, API_BASE, csrfHeaders, handleResponse, request } from "./httpClient";
 
 export async function login(credentials) {
   const csrf = await csrfHeaders();
@@ -8,9 +8,7 @@ export async function login(credentials) {
     credentials: "include",
     body: JSON.stringify(credentials),
   });
-  const data = await handleResponse(response);
-  persistAuthTokens(data);
-  return data;
+  return handleResponse(response);
 }
 
 export function register(payload) {
@@ -27,18 +25,12 @@ export function changePendingEmail(payload) {
 
 export async function logout() {
   const csrf = await csrfHeaders();
-  const refresh = getRefreshToken();
   const response = await apiFetch(`${API_BASE}/authentication/logout/`, {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json", ...csrf },
-    body: JSON.stringify({ refresh }),
   });
-  try {
-    return await handleResponse(response);
-  } finally {
-    clearTokens();
-  }
+  return handleResponse(response);
 }
 
 export async function fetchRegisterSchema() {

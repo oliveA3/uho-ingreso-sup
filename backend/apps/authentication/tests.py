@@ -1,4 +1,5 @@
 from django.test import TestCase
+from django.core import mail
 from django.utils import timezone
 from datetime import timedelta
 
@@ -17,12 +18,12 @@ class AutheticationSmokeTests(TestCase):
         )
 
         response = self.client.post(
-            "/api/authentication/login/",
+            "/api/v1/authentication/login/",
             data={"username": user.username, "password": "secret1234"},
         )
 
         self.assertEqual(response.status_code, 403)
-        self.assertIn("verificar tu correo", response.json()["detail"])
+        self.assertIn("verificar tu correo", response.json()["error"]["detail"])
 
     def test_verification_code_activates_user(self):
         user = Usuario.objects.create_user(
@@ -38,7 +39,7 @@ class AutheticationSmokeTests(TestCase):
         )
 
         response = self.client.post(
-            "/api/authentication/verify-email/",
+            "/api/v1/authentication/verify-email/",
             data={"username": user.username, "code": "123456"},
         )
 
@@ -48,11 +49,11 @@ class AutheticationSmokeTests(TestCase):
         self.assertTrue(user.email_verificado)
 
     def test_login_endpoint_returns_400_for_missing_credentials(self):
-        response = self.client.post("/api/authentication/login/", data={})
+        response = self.client.post("/api/v1/authentication/login/", data={})
         self.assertEqual(response.status_code, 400)
 
     def test_register_endpoint_returns_400_for_missing_fields(self):
-        response = self.client.post("/api/authentication/register/", data={})
+        response = self.client.post("/api/v1/authentication/register/", data={})
         self.assertEqual(response.status_code, 400)
 
     def test_login_endpoint_returns_role_details_for_authenticated_user(self):
@@ -67,13 +68,13 @@ class AutheticationSmokeTests(TestCase):
         user.save(update_fields=["rol"])
 
         response = self.client.post(
-            "/api/authentication/login/",
+            "/api/v1/authentication/login/",
             data={"username": "superadmin.test", "password": "secret1234"},
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json()["user"]["rol"], "superadmin")
-        self.assertEqual(response.json()["user"]["rol_label"], "Super Administrador")
+        self.assertEqual(response.json()["data"]["user"]["rol"], "superadmin")
+        self.assertEqual(response.json()["data"]["user"]["rol_label"], "Super Administrador")
 
     def test_login_blocks_after_five_failed_attempts(self):
         user = Usuario.objects.create_user(
@@ -84,13 +85,13 @@ class AutheticationSmokeTests(TestCase):
 
         for _ in range(4):
             response = self.client.post(
-                "/api/authentication/login/",
+                "/api/v1/authentication/login/",
                 data={"username": user.username, "password": "wrong-password"},
             )
             self.assertEqual(response.status_code, 401)
 
         response = self.client.post(
-            "/api/authentication/login/",
+            "/api/v1/authentication/login/",
             data={"username": user.username, "password": "wrong-password"},
         )
         attempt = LoginAttempt.objects.get(identifier=user.username, ip="127.0.0.1")
@@ -100,7 +101,7 @@ class AutheticationSmokeTests(TestCase):
         self.assertGreater(attempt.locked_until, timezone.now())
         self.assertEqual(
             self.client.post(
-                "/api/authentication/login/",
+                "/api/v1/authentication/login/",
                 data={"username": user.username, "password": "secret1234"},
             ).status_code,
             429,
@@ -182,3 +183,22 @@ class SuperAdminUserScopeTests(TestCase):
             partial=True,
         )
         self.assertTrue(serializer.is_valid(), serializer.errors)
+
+    def test_superadmin_user_creation_sends_welcome_email(self):
+        serializer = SuperAdminUserSerializer(data={
+            "username": "welcome.user",
+            "email": "welcome@example.com",
+            "first_name": "Welcome",
+            "last_name": "User",
+            "password": "secret1234",
+            "rol": "superadmin",
+        })
+
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+        user = serializer.save()
+
+        self.assertEqual(user.rol, "superadmin")
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, ["welcome@example.com"])
+        self.assertIn("Usuario: welcome.user", mail.outbox[0].body)
+        self.assertIn("Contraseña temporal: secret1234", mail.outbox[0].body)

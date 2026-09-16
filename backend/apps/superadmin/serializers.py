@@ -7,6 +7,7 @@ from .models import (
     IdentidadVisual,
     Municipio,
     Provincia,
+    TipoOtorgamiento,
 )
 
 
@@ -74,4 +75,10 @@ class CarreraSerializer(serializers.ModelSerializer):
 class AsignaturaSerializer(serializers.ModelSerializer):
     class Meta:
         model = Asignatura
+        fields = ['id', 'nombre', 'activa']
+
+
+class TipoOtorgamientoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TipoOtorgamiento
         fields = ['id', 'nombre', 'activa']

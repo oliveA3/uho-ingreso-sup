@@ -1,20 +1,14 @@
 import { Outlet } from "react-router-dom";
+import RequireRole from "../../components/RequireRole/RequireRole";
 
 export default function RepresentanteProvincialLayout({ user, onLogout }) {
-  if (!user) {
-    return (
-      <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm m-4">
-        <h1 className="text-2xl font-semibold text-slate-900">Panel Repr. Provincial</h1>
-        <p className="mt-4 text-sm text-slate-600">Inicia sesión para acceder al panel de representante provincial.</p>
-      </div>
-    );
-  }
-
   return (
-    <div className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
-      <div className="space-y-6">
-        <Outlet />
+    <RequireRole user={user} allow={["repr_provincial"]} panelTitle="Panel Repr. Provincial">
+      <div className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
+        <div className="space-y-6">
+          <Outlet />
+        </div>
       </div>
-    </div>
+    </RequireRole>
   );
 }

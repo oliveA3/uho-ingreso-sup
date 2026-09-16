@@ -35,4 +35,4 @@ pnpm-debug.log*
 .idea/
 .DS_Store
 guideline/
-.github_scripts.md
+github_scripts.md

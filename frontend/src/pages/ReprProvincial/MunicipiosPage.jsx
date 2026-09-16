@@ -13,7 +13,7 @@ import StatusToggle from "../../components/Buttons/StatusToggle";
 import PrimaryButton from "../../components/Buttons/PrimaryButton";
 import SecondaryButton from "../../components/Buttons/SecondaryButton";
 import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
-import { Card, DataTable, FormField, Input, Modal, Select, useConfirm } from "../../components";
+import { Card, DataTable, FormField, Input, Modal, Select, StatCard, StatsGrid, useConfirm } from "../../components";
 
 const emptySchool = {
   nombre: "",
@@ -215,14 +215,11 @@ export default function MunicipiosPage({ user }) {
           </div>
         </div>
         {error && <FeedbackMessage type="error" className="mt-5 rounded-2xl">{error}</FeedbackMessage>}
-        <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatsGrid className="mt-6">
           {stats.map(([value, label]) => (
-            <div key={label} className="rounded-3xl border border-slate-200 bg-slate-50 p-6 text-center">
-              <div className="text-3xl font-semibold text-slate-900">{value}</div>
-              <div className="mt-2 text-sm text-slate-600">{label}</div>
-            </div>
+            <StatCard key={label} label={label} value={value} />
           ))}
-        </div>
+        </StatsGrid>
       </Card>
 
       <Card padding="p-8" className="overflow-x-auto">

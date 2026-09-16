@@ -1,25 +1,7 @@
-export const API_BASE = import.meta.env.VITE_API_BASE || "/api";
+export const API_BASE = import.meta.env.VITE_API_BASE || "/api/v1";
 
-const ACCESS_TOKEN_KEY = "ingresosup_access_token";
-const REFRESH_TOKEN_KEY = "ingresosup_refresh_token";
-
-function getAccessToken() {
-  return window.localStorage.getItem(ACCESS_TOKEN_KEY);
-}
-
-function saveTokens(tokens) {
-  if (tokens?.access) window.localStorage.setItem(ACCESS_TOKEN_KEY, tokens.access);
-  if (tokens?.refresh) window.localStorage.setItem(REFRESH_TOKEN_KEY, tokens.refresh);
-}
-
-export function clearTokens() {
-  window.localStorage.removeItem(ACCESS_TOKEN_KEY);
-  window.localStorage.removeItem(REFRESH_TOKEN_KEY);
-}
-
-export function getRefreshToken() {
-  return window.localStorage.getItem(REFRESH_TOKEN_KEY);
-}
+// Access/refresh JWTs live in httpOnly cookies set by the backend — they are
+// never readable from JS, which keeps them safe from XSS token theft.
 
 function getCookie(name) {
   return document.cookie
@@ -42,38 +24,32 @@ export async function csrfHeaders() {
 }
 
 async function refreshAccessToken() {
-  const refresh = getRefreshToken();
-  if (!refresh) return false;
+  const csrf = await csrfHeaders();
   const response = await window.fetch(`${API_BASE}/authentication/token/refresh/`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ refresh }),
+    credentials: "include",
+    headers: { "Content-Type": "application/json", ...csrf },
   });
-  if (!response.ok) {
-    clearTokens();
-    return false;
-  }
-  const tokens = await response.json();
-  saveTokens(tokens);
-  return Boolean(tokens.access);
+  return response.ok;
 }
 
 export async function apiFetch(url, options = {}, retried = false) {
-  const headers = new Headers(options.headers || {});
-  const access = getAccessToken();
-  if (access) headers.set("Authorization", `Bearer ${access}`);
-  const response = await window.fetch(url, { ...options, headers });
+  const response = await window.fetch(url, { ...options, credentials: options.credentials ?? "include" });
   if (response.status === 401 && !retried && !url.includes("/authentication/token/refresh/")) {
     if (await refreshAccessToken()) return apiFetch(url, options, true);
   }
   return response;
 }
 
-export function persistAuthTokens(tokens) {
-  saveTokens(tokens);
+// Backend responses use a {success, data, error} envelope; unwrap it so the
+// rest of the frontend can keep working with the underlying payload.
+function isEnvelope(body) {
+  return Boolean(body) && typeof body === "object" && "success" in body && "data" in body && "error" in body;
 }
 
 function formatApiError(body) {
+  if (!body) return "Ocurrió un error en la comunicación con el servidor.";
+  if (isEnvelope(body)) body = body.error;
   if (!body) return "Ocurrió un error en la comunicación con el servidor.";
   if (typeof body === "string") return body;
   if (body.detail || body.error) return body.detail || body.error;
@@ -124,7 +100,7 @@ export async function handleResponse(response) {
   if (!response.ok) {
     throw new Error(formatApiError(body));
   }
-  return body;
+  return isEnvelope(body) ? body.data : body;
 }
 
 export async function handleBlobResponse(response, errorMessage) {

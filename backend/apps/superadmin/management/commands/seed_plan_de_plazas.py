@@ -2,7 +2,7 @@ from django.core.management.base import BaseCommand
 from django.utils import timezone
 
 from apps.gestion_provincial.models import ETAPAS_NOMBRES, Etapa, PlanPlaza, Proceso
-from apps.superadmin.models import Carrera, Ces, Provincia
+from apps.superadmin.models import Carrera, Ces, Provincia, TipoOtorgamiento
 
 
 class Command(BaseCommand):
@@ -43,11 +43,14 @@ class Command(BaseCommand):
             if carrera_created:
                 count_carreras += 1
 
+        tipo_municipal, _ = TipoOtorgamiento.objects.get_or_create(nombre="Municipal")
+        tipo_provincial, _ = TipoOtorgamiento.objects.get_or_create(nombre="Provincial")
+
         total_planes = 0
         for idx, carrera in enumerate(Carrera.objects.filter(activa=True).order_by("codigo")[:30], start=1):
             sexo = "A" if idx % 3 == 0 else "F" if idx % 2 == 0 else "M"
             cantidad = 8 + (idx % 7)
-            tipo = "municipal" if idx % 2 == 0 else "provincial"
+            tipo = tipo_municipal if idx % 2 == 0 else tipo_provincial
             _, created = PlanPlaza.objects.get_or_create(
                 proceso=proceso,
                 carrera=carrera,

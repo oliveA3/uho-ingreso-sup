@@ -1,9 +1,9 @@
 from .audit import build_audit_action, record_audit, sanitize_audit_data
-from rest_framework_simplejwt.authentication import JWTAuthentication
+from apps.authentication.cookie_auth import CookieJWTAuthentication
 
 
 class AuditMiddleware:
-    excluded_prefixes = ("/api/core/logs", "/admin/jsi18n")
+    excluded_prefixes = ("/api/v1/logs", "/admin/jsi18n")
 
     def __init__(self, get_response):
         self.get_response = get_response
@@ -11,7 +11,7 @@ class AuditMiddleware:
     def __call__(self, request):
         if not request.user.is_authenticated:
             try:
-                authenticated = JWTAuthentication().authenticate(request)
+                authenticated = CookieJWTAuthentication().authenticate(request)
                 if authenticated:
                     request.user, request.auth = authenticated
             except Exception:

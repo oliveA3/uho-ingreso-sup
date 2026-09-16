@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { fetchStudentDashboard } from "../../services/api";
 import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
 import StageStatusNotice from "../../components/StageStatusNotice/StageStatusNotice";
-import { Card } from "../../components";
+import { Card, StatCard, StatsGrid } from "../../components";
 import styles from "./HomePage.module.css";
 
 const stageLabels = {
@@ -38,10 +38,10 @@ export default function EstudianteHomePage() {
   const navLinkClass = (stageNumber) => `${styles.navLink} ${activeEarlyStage === stageNumber ? styles.navLinkActive : styles.navLinkInactive}`;
 
   const stats = [
-    [academic?.indice_general ?? "--", "Índice General", styles.statValuePrimary],
-    [academic?.position ? `#${academic.position}` : "--", "Posición Escalafón", styles.statValueSuccess],
-    [`${dashboard?.interest_count ?? 0}/10`, "Carreras Seleccionadas", styles.statValueAccent],
-    [`${dashboard?.confirmations_count ?? 0}`, "Pruebas Confirmadas", styles.statValuePrimary],
+    [academic?.indice_general ?? "--", "Índice General", "primary"],
+    [academic?.position ? `#${academic.position}` : "--", "Posición Escalafón", "success"],
+    [`${dashboard?.interest_count ?? 0}/10`, "Carreras Seleccionadas", "primary"],
+    [`${dashboard?.confirmations_count ?? 0}`, "Pruebas Confirmadas", "primary"],
   ];
 
   return (
@@ -57,14 +57,11 @@ export default function EstudianteHomePage() {
         {error && <FeedbackMessage type="error" className="mt-6 rounded-2xl">{error}</FeedbackMessage>}
         <StageStatusNotice />
 
-        <div className={styles.statsGrid}>
-          {stats.map(([value, label, colorClass]) => (
-            <div key={label} className={styles.statTile}>
-              <p className={`${styles.statValue} ${colorClass}`}>{value}</p>
-              <p className={styles.statLabel}>{label}</p>
-            </div>
+        <StatsGrid className="mt-6">
+          {stats.map(([value, label, tone]) => (
+            <StatCard key={label} label={label} value={value} tone={tone} />
           ))}
-        </div>
+        </StatsGrid>
 
         <div className={styles.processSection}>
           <section className={styles.processCard}>

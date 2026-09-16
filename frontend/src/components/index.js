@@ -7,3 +7,4 @@ export { default as FormField } from "./FormField/FormField";
 export { default as Input } from "./Input/Input";
 export { default as Select } from "./Select/Select";
 export { default as TextArea } from "./TextArea/TextArea";
+export { default as StatCard, StatsGrid } from "./StatCard/StatCard";

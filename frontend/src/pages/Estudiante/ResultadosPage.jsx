@@ -3,7 +3,7 @@ import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
 import StageStatusNotice from "../../components/StageStatusNotice/StageStatusNotice";
 import PrimaryButton from "../../components/Buttons/PrimaryButton";
 import SecondaryButton from "../../components/Buttons/SecondaryButton";
-import { Card, FormField, Modal, TextArea } from "../../components";
+import { Card, FormField, Modal, StatCard, StatsGrid, TextArea } from "../../components";
 import { fetchResults, submitStudentResultClaim } from "../../services/api";
 import styles from "./ResultadosPage.module.css";
 
@@ -65,15 +65,17 @@ export default function ResultadosPage() {
         <StageStatusNotice stageNumber={5} />
 
         {error && <FeedbackMessage type="error" className="mt-6 rounded-xl">{error}</FeedbackMessage>}
-        <div className={styles.statsGrid}>
+        <StatsGrid className="mt-6">
           {resultados.map((item) => (
-            <article key={item.subject} className={styles.statCard}>
-              <p className={styles.statSubject}>{item.subject}</p>
-              <p className={styles.statGrade}>{item.grade ?? "-"}</p>
-              <p className={styles.statStatus}>{item.grade == null ? "Pendiente de publicación" : "Nota publicada"}</p>
-            </article>
+            <StatCard
+              key={item.subject}
+              label={item.subject}
+              value={item.grade ?? "-"}
+              caption={item.grade == null ? "Pendiente de publicación" : "Nota publicada"}
+              tone={item.grade == null ? "warning" : "success"}
+            />
           ))}
-        </div>
+        </StatsGrid>
 
         <div className={styles.claimList}>
           {resultados.map((item) => (

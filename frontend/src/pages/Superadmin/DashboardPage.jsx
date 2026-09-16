@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { fetchSuperAdminDashboard } from "../../services/api";
 import StageStatusNotice from "../../components/StageStatusNotice/StageStatusNotice";
 import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
-import { Card, PageHeader } from "../../components";
+import { Card, PageHeader, StatCard, StatsGrid } from "../../components";
 import styles from "./DashboardPage.module.css";
 
 export default function DashboardPage({ user }) {
@@ -37,14 +37,11 @@ export default function DashboardPage({ user }) {
 
         {error && <FeedbackMessage type="error" className="mt-4 rounded-2xl">{error}</FeedbackMessage>}
         <StageStatusNotice />
-        <div className={styles.statsGrid}>
+        <StatsGrid className="mt-6">
           {cards.map((stat) => (
-            <div key={stat.label} className={styles.statCard}>
-              <p className={styles.statValue}>{stat.value}</p>
-              <p className={styles.statLabel}>{stat.label}</p>
-            </div>
+            <StatCard key={stat.label} label={stat.label} value={stat.value} />
           ))}
-        </div>
+        </StatsGrid>
 
         <div className={styles.infoBanner}>
           ⚙️ Acceso total. Gestiona nomencladores, roles, usuarios, identidad visual y configuración de despliegue.

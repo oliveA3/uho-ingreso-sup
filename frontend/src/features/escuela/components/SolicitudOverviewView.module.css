@@ -171,6 +171,35 @@
   margin-top: 1.25rem;
 }
 
+@media (max-width: 639px) {
+  .wrapper {
+    gap: 1rem;
+  }
+
+  .section,
+  .sectionFlat {
+    padding: 1rem;
+    border-radius: 1rem;
+  }
+
+  .title {
+    font-size: 1.5rem;
+  }
+
+  .metrics {
+    margin-top: 1rem;
+  }
+
+  .tableWrapper,
+  .rankingSection {
+    margin-top: 1rem;
+  }
+
+  .tbody td {
+    padding: 0.75rem;
+  }
+}
+
 .rankingItem + .rankingItem {
   margin-top: 1rem;
 }

@@ -12,7 +12,7 @@ from apps.authentication.models import Estudiante, Usuario
 from apps.core.audit import record_audit
 from apps.gestion_personal.models import BoletaInteres, BoletaInteresItem, BoletaSolicitud, BoletaSolicitudItem, BoletaSolicitudItemAnterior, ConfirmacionPrueba
 from apps.gestion_personal.models import BoletaSolicitud
-from apps.superadmin.models import Asignatura, Carrera, Ces, Escuela, Municipio, Provincia
+from apps.superadmin.models import Asignatura, Carrera, Ces, Escuela, Municipio, Provincia, TipoOtorgamiento
 
 
 def build_plan_plaza_landing_payload(request):
@@ -47,7 +47,7 @@ def build_plan_plaza_landing_payload(request):
 
     selected_items = list(
         PlanPlaza.objects.filter(proceso__etapa=plan_stage, proceso__anio__year=selected_year)
-        .select_related('carrera', 'ces', 'provincia', 'proceso')
+        .select_related('carrera', 'ces', 'provincia', 'proceso', 'otorgamiento_tipo')
         .order_by('carrera__nombre')
     )
     selected_plan = PlanPlaza.objects.filter(
@@ -81,7 +81,7 @@ def build_plan_plaza_landing_payload(request):
                 'carrera': item.carrera.nombre,
                 'carrera_codigo': item.carrera.codigo,
                 'cantidad_plazas': item.cantidad_plazas,
-                'otorgamiento_tipo': item.otorgamiento_tipo,
+                'otorgamiento_tipo': item.otorgamiento_tipo.nombre,
                 'ces': item.ces.nombre,
                 'provincia': item.provincia.nombre,
                 'sexo': item.sexo,
@@ -107,6 +107,7 @@ from .serializers import (
     ProvincialUserSerializer,
     ProvincialCarreraSerializer,
     ProvincialCesSerializer,
+    ProvincialTipoOtorgamientoSerializer,
 )
 from .permissions import IsCareerManager
 from .serializers_plan import PlanPlazaSerializer
@@ -156,7 +157,7 @@ class ProvincialDashboardView(APIView):
         solicitud_process = Proceso.get_for_stage_and_year(timezone.now().year, ETAPAS_NOMBRES[3])
         solicitud_forms = BoletaSolicitud.objects.filter(
             proceso=solicitud_process,
-            estado__in={"por_aprobar", "aprobada"},
+            estado__in={"pendiente", "aprobada", "modificada"},
         ) if solicitud_process else BoletaSolicitud.objects.none()
         if province_id and not (request.user.is_superuser or request.user.rol == "superadmin"):
             solicitud_forms = solicitud_forms.filter(estudiante__escuela__municipio__provincia_id=province_id)
@@ -265,6 +266,14 @@ class ProvincialCesViewSet(viewsets.ReadOnlyModelViewSet):
         return Ces.objects.filter(activa=True).order_by("nombre")
 
 
+class ProvincialTipoOtorgamientoViewSet(viewsets.ReadOnlyModelViewSet):
+    serializer_class = ProvincialTipoOtorgamientoSerializer
+    permission_classes = [IsCareerManager]
+
+    def get_queryset(self):
+        return TipoOtorgamiento.objects.filter(activa=True).order_by("nombre")
+
+
 class ProvincialEtapaViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = ProvincialEtapaSerializer
     permission_classes = [CanAccessEscalafon]
@@ -290,7 +299,7 @@ class ProvincialEtapaViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class PublicEtapasDisponibilidadView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
 
     def get(self, request):
         Etapa.objects.filter(

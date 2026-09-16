@@ -1,7 +1,7 @@
 from django.core.exceptions import ValidationError
 from django.db import models
 
-from apps.superadmin.models import Carrera, Ces, Provincia
+from apps.superadmin.models import Carrera, Ces, Provincia, TipoOtorgamiento
 from apps.authentication.models import Estudiante
 
 
@@ -80,16 +80,13 @@ class Proceso(models.Model):
 
 
 class PlanPlaza(models.Model):
-    TIPOS_OTORGAMIENTO = [
-        ("municipal", "Municipal"),
-        ("provincial", "Provincial"),
-    ]
     proceso = models.ForeignKey(
         Proceso, on_delete=models.PROTECT, related_name='plan_plaza')
     carrera = models.ForeignKey(
         Carrera, on_delete=models.PROTECT, related_name='plan_plaza')
     cantidad_plazas = models.PositiveIntegerField()
-    otorgamiento_tipo = models.CharField(max_length=32, choices=TIPOS_OTORGAMIENTO)
+    otorgamiento_tipo = models.ForeignKey(
+        TipoOtorgamiento, on_delete=models.PROTECT, related_name='plan_plaza')
     ces = models.ForeignKey(
         Ces, on_delete=models.PROTECT, related_name='plan_plaza')
     provincia = models.ForeignKey(

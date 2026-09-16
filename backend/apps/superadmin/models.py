@@ -62,6 +62,18 @@ class Asignatura(models.Model):
     activa = models.BooleanField(default=True)
 
 
+class TipoOtorgamiento(models.Model):
+    nombre = models.CharField(max_length=100, unique=True)
+    activa = models.BooleanField(default=True)
+
+    class Meta:
+        verbose_name = "Tipo de Otorgamiento"
+        verbose_name_plural = "Tipos de Otorgamiento"
+
+    def __str__(self):
+        return self.nombre
+
+
 class IdentidadVisual(models.Model):
     logo_url = models.TextField(
         blank=True, help_text="URL o imagen codificada del logo institucional")

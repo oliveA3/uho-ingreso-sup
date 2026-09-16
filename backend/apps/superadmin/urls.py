@@ -9,7 +9,9 @@ from .views import (
     MunicipioViewSet,
     EscuelaViewSet,
     SuperAdminDashboard,
+    SuperAdminStudentViewSet,
     SuperAdminUserViewSet,
+    TipoOtorgamientoViewSet,
 )
 
 urlpatterns = [
@@ -25,8 +27,11 @@ urlpatterns = [
     path("carreras/<int:pk>/", CarreraViewSet.as_view({"get": "retrieve", "put": "update", "patch": "partial_update", "delete": "destroy"}), name="carrera-detail"),
     path("asignaturas/", AsignaturaViewSet.as_view({"get": "list", "post": "create"}), name="asignaturas"),
     path("asignaturas/<int:pk>/", AsignaturaViewSet.as_view({"get": "retrieve", "put": "update", "patch": "partial_update", "delete": "destroy"}), name="asignatura-detail"),
+    path("tipos-otorgamiento/", TipoOtorgamientoViewSet.as_view({"get": "list", "post": "create"}), name="tipos-otorgamiento"),
+    path("tipos-otorgamiento/<int:pk>/", TipoOtorgamientoViewSet.as_view({"get": "retrieve", "put": "update", "patch": "partial_update", "delete": "destroy"}), name="tipo-otorgamiento-detail"),
     path("usuarios/", SuperAdminUserViewSet.as_view({"get": "list", "post": "create"}), name="superadmin-usuarios"),
     path("usuarios/<int:pk>/", SuperAdminUserViewSet.as_view({"get": "retrieve", "put": "update", "patch": "partial_update", "delete": "destroy"}), name="superadmin-usuario-detail"),
+    path("estudiantes/", SuperAdminStudentViewSet.as_view({"get": "list"}), name="superadmin-estudiantes"),
     path("dashboard/", SuperAdminDashboard.as_view(), name="superadmin-dashboard"),
     path("config/", IdentidadVisualConfig.as_view(), name="identidad-visual-config"),
 ]

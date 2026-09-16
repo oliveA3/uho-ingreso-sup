@@ -247,7 +247,7 @@ class StudentSolicitudView(APIView):
 			return Response({"detail": "No hay un proceso de solicitud activo."}, status=404)
 		ballot, _ = BoletaSolicitud.objects.get_or_create(estudiante=student, proceso=process)
 		province_id = student.escuela.municipio.provincia_id
-		plans = PlanPlaza.objects.filter(proceso=process, provincia_id=province_id).select_related("carrera", "ces", "provincia").order_by("carrera__nombre")
+		plans = PlanPlaza.objects.filter(proceso=process, provincia_id=province_id).select_related("carrera", "ces", "provincia", "otorgamiento_tipo").order_by("carrera__nombre")
 		active_stage = Etapa.objects.filter(estado="en_curso").order_by("id").first()
 		active_stage_number = next((number for number, name in ETAPAS_NOMBRES.items() if active_stage and name == active_stage.nombre), None)
 		allow_modification = active_stage_number == 3
@@ -259,7 +259,7 @@ class StudentSolicitudView(APIView):
 				"provincia": student.escuela.municipio.provincia.nombre, "indice_general": student_escalafon_index(student)},
 			"available_plans": [{"id": plan.id, "carrera_nombre": plan.carrera.nombre, "carrera_codigo": plan.carrera.codigo,
 				"ces_nombre": plan.ces.nombre, "provincia_nombre": plan.provincia.nombre,
-				"cantidad_plazas": plan.cantidad_plazas, "otorgamiento_tipo": plan.otorgamiento_tipo, "sexo": plan.sexo}
+				"cantidad_plazas": plan.cantidad_plazas, "otorgamiento_tipo": plan.otorgamiento_tipo.nombre, "sexo": plan.sexo}
 				for plan in plans],
 			"max_items": 10,
 			"stage": {"numero": active_stage_number or (3 if stage and stage.estado == "en_curso" else None),

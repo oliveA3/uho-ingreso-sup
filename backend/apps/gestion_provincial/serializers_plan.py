@@ -10,7 +10,7 @@ class PlanPlazaSerializer(serializers.ModelSerializer):
     nombre_carrera = serializers.CharField(source="carrera.nombre", read_only=True)
     ces_nombre = serializers.CharField(source="ces.nombre", read_only=True)
     provincia_nombre = serializers.CharField(source="provincia.nombre", read_only=True)
-    tipo_otorgamiento_label = serializers.CharField(source="get_otorgamiento_tipo_display", read_only=True)
+    tipo_otorgamiento_label = serializers.CharField(source="otorgamiento_tipo.nombre", read_only=True)
 
     class Meta:
         model = PlanPlaza

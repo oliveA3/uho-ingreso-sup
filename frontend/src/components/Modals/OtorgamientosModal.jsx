@@ -8,8 +8,6 @@ import PrimaryButton from "../Buttons/PrimaryButton";
 import DataTable from "../DataTable/DataTable";
 import styles from "./OtorgamientosModal.module.css";
 
-const initialFilters = { anio: new Date().getFullYear(), provincia: "", ci: "", carrera: "" };
-
 const cortesColumns = [
   { key: "career", header: "Carrera" },
   { key: "career_code", header: "Código" },
@@ -27,7 +25,12 @@ const otorgamientosColumns = [
 ];
 
 export default function OtorgamientosModal({ onClose, mode = "otorgamientos" }) {
-  const [filters, setFilters] = useState(initialFilters);
+  const [filters, setFilters] = useState(() => ({
+    anio: mode === "cortes" ? "" : new Date().getFullYear(),
+    provincia: "",
+    ci: "",
+    carrera: "",
+  }));
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -86,6 +89,16 @@ export default function OtorgamientosModal({ onClose, mode = "otorgamientos" }) 
           </span>
         </>
       }
+      footer={
+        <PrimaryButton
+          type="button"
+          onClick={downloadExcel}
+          disabled={exporting || !hasData}
+          className={styles.downloadButton}
+        >
+          {exporting ? "Descargando..." : "Descargar Excel"}
+        </PrimaryButton>
+      }
     >
       <div className={styles.filters}>
         <FormField label="Año">
@@ -100,11 +113,11 @@ export default function OtorgamientosModal({ onClose, mode = "otorgamientos" }) 
           </Select>
         </FormField>
         {mode === "cortes" ? (
-          <FormField label="Buscar carrera">
+          <FormField label="Buscar carrera" className={styles.searchField}>
             <Input value={filters.carrera} onChange={(event) => changeFilter("carrera", event.target.value)} placeholder="Nombre de carrera" />
           </FormField>
         ) : (
-          <FormField label="Buscar por CI">
+          <FormField label="Buscar por CI" className={styles.searchField}>
             <Input value={filters.ci} onChange={(event) => changeFilter("ci", event.target.value)} inputMode="numeric" placeholder="11 dígitos" />
           </FormField>
         )}
@@ -120,17 +133,6 @@ export default function OtorgamientosModal({ onClose, mode = "otorgamientos" }) 
           loadingMessage="Cargando información..."
           emptyMessage={mode === "cortes" ? "No hay índices de corte disponibles." : "No hay otorgamientos para los filtros seleccionados."}
         />
-      </div>
-
-      <div className={styles.footer}>
-        <PrimaryButton
-          type="button"
-          onClick={downloadExcel}
-          disabled={exporting || !hasData}
-          className={styles.downloadButton}
-        >
-          {exporting ? "Descargando..." : "Descargar Excel"}
-        </PrimaryButton>
       </div>
     </Modal>
   );

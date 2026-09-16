@@ -71,3 +71,21 @@
   text-decoration-thickness: 2px;
   opacity: 0.6;
 }
+
+.studentFilters {
+  display: grid;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+@media (min-width: 640px) {
+  .studentFilters {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.noAccount,
+.mutedAction {
+  color: #64748b;
+  font-size: 0.75rem;
+}

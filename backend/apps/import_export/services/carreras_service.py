@@ -58,13 +58,26 @@ class CareerExcelService:
             if row_errors:
                 errors.append({"row": row_number, "errors": row_errors, "data": data})
             else:
-                rows.append(Carrera(codigo=code, nombre=name, ces=ces, provincia=province, activa=True))
+                rows.append({"codigo": code, "nombre": name, "ces": ces, "provincia": province})
 
         if errors:
             return CareerImportResult(errors=errors)
         with transaction.atomic():
-            Carrera.objects.all().delete()
-            Carrera.objects.bulk_create(rows)
+            imported_codes = set()
+            for row in rows:
+                Carrera.objects.update_or_create(
+                    codigo=row["codigo"],
+                    defaults={
+                        "nombre": row["nombre"],
+                        "ces": row["ces"],
+                        "provincia": row["provincia"],
+                        "activa": True,
+                    },
+                )
+                imported_codes.add(row["codigo"])
+            # Careers dropped from the sheet are deactivated, not deleted,
+            # since existing boletas/planes de plaza may still reference them.
+            Carrera.objects.exclude(codigo__in=imported_codes).update(activa=False)
         return CareerImportResult(inserted=len(rows))
 
     def export_file(self, queryset):

@@ -43,3 +43,14 @@
   flex-direction: column;
   gap: 1.5rem;
 }
+
+@media (max-width: 639px) {
+  .content {
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+  }
+
+  .contentInner {
+    gap: 1rem;
+  }
+}

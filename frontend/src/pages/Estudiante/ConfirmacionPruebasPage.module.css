@@ -71,6 +71,21 @@
   gap: 0.5rem;
 }
 
+@media (max-width: 639px) {
+  .title {
+    font-size: 1.5rem;
+  }
+
+  .examList {
+    margin-top: 1rem;
+  }
+
+  .examRow {
+    padding: 1rem;
+    border-radius: 1rem;
+  }
+}
+
 @media (min-width: 640px) {
   .examActions {
     justify-content: flex-end;

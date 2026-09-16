@@ -106,7 +106,7 @@ class EscalafonTests(TestCase):
 
 		client = APIClient()
 		client.force_authenticate(user=secretary)
-		response = client.get("/api/gestion-escuela/estudiantes/sin-cuenta/")
+		response = client.get("/api/v1/gestion-escuela/estudiantes/sin-cuenta/")
 
 		self.assertEqual(response.status_code, 200)
 		self.assertEqual(response.json()["students"], [{

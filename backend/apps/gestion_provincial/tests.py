@@ -4,8 +4,9 @@ from django.urls import reverse
 from django.utils import timezone
 from rest_framework.test import APITestCase
 
-from apps.authentication.models import Usuario
-from apps.superadmin.models import Escuela, Municipio, Provincia
+from apps.authentication.models import Estudiante, Usuario
+from apps.gestion_personal.models import BoletaInteres, BoletaInteresItem, BoletaSolicitud, BoletaSolicitudItem
+from apps.superadmin.models import Carrera, Ces, Escuela, Municipio, Provincia, TipoOtorgamiento
 
 from .models import ETAPAS_NOMBRES, Etapa, PlanPlaza, Proceso
 
@@ -211,6 +212,86 @@ class EtapaActivationTests(APITestCase):
         self.assertEqual(response.data["escuelas"], 1)
         self.assertEqual(response.data["municipios_lista"][0]["nombre"], "Municipio propio")
 
+    def test_dashboard_top_careers_uses_active_stage_and_own_province(self):
+        own_province = Provincia.objects.create(nombre="Provincia del jefe")
+        other_province = Provincia.objects.create(nombre="Otra provincia")
+        own_school = Escuela.objects.create(
+            nombre="Escuela propia",
+            municipio=Municipio.objects.create(nombre="Municipio propio", provincia=own_province),
+        )
+        other_school = Escuela.objects.create(
+            nombre="Escuela ajena",
+            municipio=Municipio.objects.create(nombre="Municipio ajeno", provincia=other_province),
+        )
+        self.user.provincia = own_province
+        self.user.save(update_fields=["provincia"])
+
+        own_student = Estudiante.objects.create(
+            ci="10000000001", nombre="Estudiante", apellidos="Propio", sexo="F",
+            direccion="Calle 1", escuela=own_school,
+        )
+        other_student = Estudiante.objects.create(
+            ci="10000000002", nombre="Estudiante", apellidos="Ajeno", sexo="M",
+            direccion="Calle 2", escuela=other_school,
+        )
+        ces = Ces.objects.create(nombre="CES de prueba")
+        interest_career = Carrera.objects.create(
+            codigo="INT-1", nombre="Carrera de interés", ces=ces, provincia=own_province,
+        )
+        request_career = Carrera.objects.create(
+            codigo="SOL-1", nombre="Carrera de solicitud", ces=ces, provincia=own_province,
+        )
+        interest_process = Proceso.objects.create(
+            anio=date(timezone.now().year, 1, 1), etapa=Etapa.objects.get(nombre=ETAPAS_NOMBRES[2]),
+        )
+        own_interest = BoletaInteres.objects.create(
+            estudiante=own_student, proceso=interest_process, enviada=True,
+        )
+        other_interest = BoletaInteres.objects.create(
+            estudiante=other_student, proceso=interest_process, enviada=True,
+        )
+        BoletaInteresItem.objects.create(boleta_interes=own_interest, carrera=interest_career, prioridad=1)
+        BoletaInteresItem.objects.create(boleta_interes=other_interest, carrera=request_career, prioridad=1)
+
+        stage_2 = Etapa.objects.get(nombre=ETAPAS_NOMBRES[2])
+        stage_2.estado = "en_curso"
+        stage_2.save(update_fields=["estado"])
+        interest_response = self.client.get(reverse("provincial-dashboard"))
+
+        self.assertEqual(interest_response.status_code, 200)
+        self.assertEqual(interest_response.data["top_carreras"], [{"carrera__nombre": "Carrera de interés", "total": 1}])
+
+        stage_2.estado = "completada"
+        stage_2.save(update_fields=["estado"])
+        stage_3 = Etapa.objects.get(nombre=ETAPAS_NOMBRES[3])
+        stage_3.estado = "en_curso"
+        stage_3.save(update_fields=["estado"])
+        request_process = Proceso.objects.create(
+            anio=date(timezone.now().year, 1, 1), etapa=stage_3,
+        )
+        tipo_provincial, _ = TipoOtorgamiento.objects.get_or_create(nombre="Provincial")
+        plan = PlanPlaza.objects.create(
+            proceso=request_process, carrera=request_career, cantidad_plazas=1,
+            otorgamiento_tipo=tipo_provincial, ces=ces, provincia=own_province, sexo="A",
+        )
+        request_ballot = BoletaSolicitud.objects.create(
+            estudiante=own_student, proceso=request_process, estado="pendiente",
+        )
+        BoletaSolicitudItem.objects.create(boleta_solicitud=request_ballot, plan_plaza=plan, prioridad=1)
+        other_plan = PlanPlaza.objects.create(
+            proceso=request_process, carrera=interest_career, cantidad_plazas=1,
+            otorgamiento_tipo=tipo_provincial, ces=ces, provincia=other_province, sexo="A",
+        )
+        other_request = BoletaSolicitud.objects.create(
+            estudiante=other_student, proceso=request_process, estado="aprobada",
+        )
+        BoletaSolicitudItem.objects.create(boleta_solicitud=other_request, plan_plaza=other_plan, prioridad=1)
+
+        request_response = self.client.get(reverse("provincial-dashboard"))
+
+        self.assertEqual(request_response.status_code, 200)
+        self.assertEqual(request_response.data["top_carreras"], [{"carrera__nombre": "Carrera de solicitud", "total": 1}])
+
     def test_director_can_read_stage_status(self):
         director = Usuario.objects.create_user(
             username="director",
@@ -222,6 +303,15 @@ class EtapaActivationTests(APITestCase):
         response = self.client.get(reverse("provincial-etapas"))
 
         self.assertEqual(response.status_code, 200)
+
+    def test_landing_can_read_stage_availability_without_authentication(self):
+        self.client.force_authenticate(user=None)
+
+        response = self.client.get(reverse("etapas-disponibilidad"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("etapas", response.data)
+        self.assertIn("registro_estudiantil", response.data)
 
 
 class PlanPlazaImportTests(APITestCase):
@@ -284,7 +374,7 @@ class PlanPlazaImportTests(APITestCase):
         plan = self.carrera.plan_plaza.order_by("-id").first()
         self.assertIsNotNone(plan)
         self.assertEqual(plan.carrera_id, self.carrera.id)
-        self.assertEqual(plan.otorgamiento_tipo, "municipal")
+        self.assertEqual(plan.otorgamiento_tipo.nombre, "Municipal")
         self.assertEqual(plan.proceso.etapa_id, self.active_stage.id)
         self.assertEqual(plan.cantidad_plazas, 12)
         self.assertEqual(plan.sexo, "A")
@@ -366,7 +456,7 @@ class PlanPlazaImportTests(APITestCase):
             proceso=active_process,
             carrera=self.carrera,
             cantidad_plazas=20,
-            otorgamiento_tipo="municipal",
+            otorgamiento_tipo=TipoOtorgamiento.objects.get(nombre="Municipal"),
             ces=self.ces,
             provincia=self.provincia,
             sexo="A",

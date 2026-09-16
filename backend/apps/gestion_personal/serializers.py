@@ -28,7 +28,7 @@ class BoletaSolicitudItemSerializer(serializers.ModelSerializer):
     ces_nombre = serializers.CharField(source="plan_plaza.ces.nombre", read_only=True)
     provincia_nombre = serializers.CharField(source="plan_plaza.provincia.nombre", read_only=True)
     cantidad_plazas = serializers.IntegerField(source="plan_plaza.cantidad_plazas", read_only=True)
-    otorgamiento_tipo = serializers.CharField(source="plan_plaza.otorgamiento_tipo", read_only=True)
+    otorgamiento_tipo = serializers.CharField(source="plan_plaza.otorgamiento_tipo.nombre", read_only=True)
 
     class Meta:
         model = BoletaSolicitudItem
