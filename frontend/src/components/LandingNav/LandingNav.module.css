@@ -61,9 +61,17 @@
 }
 
 .logo {
-  height: 2rem;
-  width: 2rem;
+  height: 2.75rem;
+  width: auto;
+  max-width: 9rem;
   object-fit: contain;
+}
+
+@media (min-width: 640px) {
+  .logo {
+    height: 3.25rem;
+    max-width: 11rem;
+  }
 }
 
 .brandName {

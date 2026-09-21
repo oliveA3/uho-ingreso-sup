@@ -4,7 +4,7 @@ import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
 import PrimaryButton from "../../components/Buttons/PrimaryButton";
 import SecondaryButton from "../../components/Buttons/SecondaryButton";
 import { Card } from "../../components";
-import { downloadStageSixExport, fetchOtorgamientoSummary, importCortesCarrera, importOtorgamientos } from "../../services/api";
+import { downloadStageSixExport, fetchOtorgamientoSummary, importCortesCarrera, importOtorgamientos } from "../../api/results.service";
 import styles from "./OtorgamientoPage.module.css";
 
 export default function OtorgamientoPage() {

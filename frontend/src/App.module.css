@@ -80,8 +80,12 @@
 
 @media (min-width: 1024px) {
   .sidebarWrapperOpen {
-    position: static;
-    height: auto;
+    position: fixed;
+    left: 0;
+    top: var(--nav-height);
+    height: calc(100vh - var(--nav-height));
+    max-height: calc(100vh - var(--nav-height));
+    z-index: 35;
   }
 }
 
@@ -198,6 +202,7 @@
   }
 
   .contentShifted {
+    margin-left: 250px;
     padding-left: 0;
   }
 }

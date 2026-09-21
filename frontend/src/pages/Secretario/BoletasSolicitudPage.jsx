@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
-import SolicitudOverviewView from "../../features/escuela/components/SolicitudOverviewView";
-import { approveSchoolSolicitud, downloadSchoolSolicitudPdf, fetchSchoolSolicitudes } from "../../services/api";
+import SolicitudOverviewView from "../../components/SolicitudOverviewView";
+import { approveSchoolSolicitud, downloadSchoolSolicitudPdf, fetchSchoolSolicitudes } from "../../api/school.service";
 
 export default function SecretarioBoletasSolicitudPage() {
   const [data, setData] = useState(null);

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { fetchStudentsWithoutAccount } from "../../services/api";
+import { fetchStudentsWithoutAccount } from "../../api/school.service";
 import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
 import { Card, DataTable, PageHeader } from "../../components";
 

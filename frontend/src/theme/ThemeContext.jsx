@@ -28,6 +28,18 @@ function applyThemeToDocument(theme) {
   Object.entries(CSS_VARIABLE_MAP).forEach(([field, cssVariable]) => {
     root.setProperty(cssVariable, theme[field] || DEFAULT_THEME[field]);
   });
+
+  let favicon = document.querySelector('link[rel="icon"]');
+  if (!favicon) {
+    favicon = document.createElement("link");
+    favicon.rel = "icon";
+    document.head.appendChild(favicon);
+  }
+  if (theme.logo_url) {
+    favicon.href = theme.logo_url;
+  } else {
+    favicon.removeAttribute("href");
+  }
 }
 
 const ThemeContext = createContext({

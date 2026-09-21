@@ -4,7 +4,8 @@ import StageStatusNotice from "../../components/StageStatusNotice/StageStatusNot
 import PrimaryButton from "../../components/Buttons/PrimaryButton";
 import SecondaryButton from "../../components/Buttons/SecondaryButton";
 import { Card, DataTable } from "../../components";
-import { downloadStageSixExport, fetchSchoolOtorgamientos } from "../../services/api";
+import { downloadStageSixExport } from "../../api/results.service";
+import { fetchSchoolOtorgamientos } from "../../api/school.service";
 
 export default function SecretarioOtorgamientosPage() {
   const year = new Date().getFullYear();

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
-import InterestMetricsView from "../../features/escuela/components/InterestMetricsView";
-import { fetchSchoolInterestMetrics } from "../../services/api";
+import InterestMetricsView from "../../components/InterestMetricsView";
+import { fetchSchoolInterestMetrics } from "../../api/school.service";
 
 export default function SecretarioBoletaInteresPage({ user }) {
   const [metrics, setMetrics] = useState(null);

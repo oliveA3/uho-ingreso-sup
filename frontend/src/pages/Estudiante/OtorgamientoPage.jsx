@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
 import StageStatusNotice from "../../components/StageStatusNotice/StageStatusNotice";
 import { Card } from "../../components";
-import { fetchStudentOtorgamiento } from "../../services/api";
+import { fetchStudentOtorgamiento } from "../../api/student.service";
 import styles from "./OtorgamientoPage.module.css";
 
 export default function EstudianteOtorgamientoPage() {

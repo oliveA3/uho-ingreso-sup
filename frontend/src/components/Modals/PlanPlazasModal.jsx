@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { downloadPlanPlazaExport } from "../../services/api";
+import { downloadPlanPlazaExport } from "../../api/provincial.service";
 import Modal from "./Modal";
 import FormField from "../FormField/FormField";
 import Input from "../Input/Input";

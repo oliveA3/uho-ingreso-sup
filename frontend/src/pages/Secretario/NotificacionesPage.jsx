@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
-import { fetchNotifications, markNotificationAsRead } from "../../services/api";
+import { fetchNotifications, markNotificationAsRead } from "../../api/notifications.service";
 import styles from "./NotificacionesPage.module.css";
 
 export default function SecretarioNotificacionesPage() {

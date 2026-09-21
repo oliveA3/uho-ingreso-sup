@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { fetchRegistrationAvailability } from "../../services/api";
+import { fetchRegistrationAvailability } from "../../api/landing.service";
 import PrimaryButton from "../Buttons/PrimaryButton";
 import styles from "./AuthActions.module.css";
 

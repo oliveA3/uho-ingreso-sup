@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { fetchSuperAdminDashboard } from "../../services/api";
+import { fetchSuperAdminDashboard } from "../../api/superadmin.service";
 import StageStatusNotice from "../../components/StageStatusNotice/StageStatusNotice";
 import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
 import { Card, PageHeader, StatCard, StatsGrid } from "../../components";

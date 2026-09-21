@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { fetchProvincialDashboard } from "../../services/api";
+import { fetchProvincialDashboard } from "../../api/provincial.service";
 import StageStatusNotice from "../../components/StageStatusNotice/StageStatusNotice";
 import { StatCard, StatsGrid } from "../../components";
 import styles from "./DashboardPage.module.css";

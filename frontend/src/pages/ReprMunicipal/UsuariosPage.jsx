@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { createMunicipalUser, deleteMunicipalUser, fetchMunicipalSchools, fetchMunicipalUsers, updateMunicipalUser } from "../../services/api";
+import { createMunicipalUser, deleteMunicipalUser, fetchMunicipalSchools, fetchMunicipalUsers, updateMunicipalUser } from "../../api/municipal.service";
 import EntityActionButton from "../../components/Buttons/EntityActionButton";
 import StatusToggle from "../../components/Buttons/StatusToggle";
 import PrimaryButton from "../../components/Buttons/PrimaryButton";

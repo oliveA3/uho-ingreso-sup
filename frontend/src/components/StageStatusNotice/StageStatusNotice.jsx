@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { fetchLandingData } from "../../services/api";
+import { fetchLandingData } from "../../api/landing.service";
 import styles from "./StageStatusNotice.module.css";
 
 const stageTitles = {

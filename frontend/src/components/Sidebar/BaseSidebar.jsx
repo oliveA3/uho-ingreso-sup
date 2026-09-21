@@ -1,7 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 import NotificationModal from "../Modals/NotificationModal";
-import { fetchNotifications } from "../../services/api";
+import { fetchNotifications } from "../../api/notifications.service";
 import styles from "./BaseSidebar.module.css";
 
 export default function BaseSidebar({ title, roleLabel, scope, sections, onLogout }) {

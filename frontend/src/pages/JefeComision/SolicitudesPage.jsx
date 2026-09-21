@@ -4,7 +4,7 @@ import BallotDetailModal from "../../components/Modals/BallotDetailModal";
 import EntityActionButton from "../../components/Buttons/EntityActionButton";
 import SecondaryButton from "../../components/Buttons/SecondaryButton";
 import StageStatusNotice from "../../components/StageStatusNotice/StageStatusNotice";
-import { fetchCommissionPendingModifications, resolveCommissionModification } from "../../services/api";
+import { fetchCommissionPendingModifications, resolveCommissionModification } from "../../api/provincial.service";
 import { Card, DataTable, StatCard, StatsGrid } from "../../components";
 import styles from "./SolicitudesPage.module.css";
 

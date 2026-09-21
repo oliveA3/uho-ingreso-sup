@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { login } from "../../services/api";
+import { login } from "../../api/auth.service";
 import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
 import PrimaryButton from "../../components/Buttons/PrimaryButton";
 import { Card, FormField, Input } from "../../components";

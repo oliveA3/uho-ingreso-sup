@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { fetchProvincialEtapas } from "../../services/api";
+import { fetchProvincialEtapas } from "../../api/provincial.service";
 import styles from "./StageOneGuard.module.css";
 
 const allStagesActive = import.meta.env.DEV || import.meta.env.VITE_ALL_STAGES_ACTIVE === "true";

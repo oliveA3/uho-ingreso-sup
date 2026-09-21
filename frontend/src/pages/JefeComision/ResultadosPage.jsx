@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
-import { downloadResultsExport, fetchResultClaims, fetchResults, importResults, updateResultClaim } from "../../services/api";
+import { downloadResultsExport, fetchResultClaims, fetchResults, importResults, updateResultClaim } from "../../api/results.service";
 import EntityActionButton from "../../components/Buttons/EntityActionButton";
 import SecondaryButton from "../../components/Buttons/SecondaryButton";
 import PrimaryButton from "../../components/Buttons/PrimaryButton";

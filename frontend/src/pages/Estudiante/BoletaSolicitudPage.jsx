@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
 import StageStatusNotice from "../../components/StageStatusNotice/StageStatusNotice";
-import { downloadStudentSolicitudPdf, editStudentSolicitud, fetchStudentSolicitud, submitStudentSolicitud } from "../../services/api";
+import { downloadStudentSolicitudPdf, editStudentSolicitud, fetchStudentSolicitud, submitStudentSolicitud } from "../../api/student.service";
 import { Card, Select, useConfirm } from "../../components";
 import PrimaryButton from "../../components/Buttons/PrimaryButton";
 import SecondaryButton from "../../components/Buttons/SecondaryButton";

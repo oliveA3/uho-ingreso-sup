@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
-import SolicitudOverviewView from "../../features/escuela/components/SolicitudOverviewView";
-import { downloadSchoolSolicitudPdf, fetchSchoolSolicitudes } from "../../services/api";
+import SolicitudOverviewView from "../../components/SolicitudOverviewView";
+import { downloadSchoolSolicitudPdf, fetchSchoolSolicitudes } from "../../api/school.service";
 import { Card } from "../../components";
 
 export default function DirectorBoletasSolicitudPage() {

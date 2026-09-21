@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
 import PrimaryButton from "../../components/Buttons/PrimaryButton";
 import { Card, FormField, Input } from "../../components";
-import { fetchStudentProfile, updateStudentProfile } from "../../services/api";
+import { fetchStudentProfile, updateStudentProfile } from "../../api/student.service";
 import styles from "./PerfilPage.module.css";
 
 const editableFields = [

@@ -5,7 +5,26 @@ from rest_framework.test import APITestCase
 from apps.authentication.models import Estudiante, Usuario
 from apps.gestion_escuela.models import Escalafon, EscalafonItem
 from apps.gestion_provincial.models import ETAPAS_NOMBRES, Etapa, Proceso
-from .models import Escuela, Municipio, Provincia
+from .models import Escuela, IdentidadVisual, Municipio, Provincia
+
+
+class IdentidadVisualConfigTests(APITestCase):
+    def test_public_read_returns_saved_logo(self):
+        IdentidadVisual.objects.create(logo_url="data:image/png;base64,logo-real")
+
+        response = self.client.get("/api/v1/superadmin/config/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["data"]["config"]["logo_url"], "data:image/png;base64,logo-real")
+
+    def test_update_requires_superadmin(self):
+        response = self.client.put(
+            "/api/v1/superadmin/config/",
+            {"logo_url": "https://example.com/logo.png"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 401)
 
 
 class SuperAdminStudentListTests(APITestCase):

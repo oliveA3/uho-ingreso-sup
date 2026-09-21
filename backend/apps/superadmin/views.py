@@ -192,6 +192,8 @@ class IdentidadVisualConfig(APIView):
     permission_classes = [IsSuperAdmin]
 
     def get_permissions(self):
+        if self.request.method == "GET":
+            return []
         return [IsSuperAdmin()]
 
     def get(self, request):

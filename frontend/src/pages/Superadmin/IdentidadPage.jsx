@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { fetchSuperAdminConfig, updateSuperAdminConfig } from "../../services/api";
+import { fetchSuperAdminConfig, updateSuperAdminConfig } from "../../api/branding.service";
 import { useTheme } from "../../theme/ThemeContext";
 import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
 import PrimaryButton from "../../components/Buttons/PrimaryButton";

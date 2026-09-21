@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 160" role="img" aria-labelledby="title desc">
+  <title id="title">Logo de prueba IngresoSUP</title>
+  <desc id="desc">Marca azul con un birrete y el texto IngresoSUP</desc>
+  <rect width="520" height="160" rx="24" fill="#1F4E79"/>
+  <path d="M48 62 104 38l56 24-56 24-56-24Z" fill="#F4C542"/>
+  <path d="M68 76v25c20 17 52 17 72 0V76l-36 15L68 76Z" fill="#FFFFFF"/>
+  <path d="m151 57 18-9v31" fill="none" stroke="#F4C542" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="169" cy="82" r="6" fill="#F4C542"/>
+  <text x="198" y="91" fill="#FFFFFF" font-family="Arial, sans-serif" font-size="42" font-weight="700">IngresoSUP</text>
+  <text x="202" y="119" fill="#B9D8EE" font-family="Arial, sans-serif" font-size="15" letter-spacing="2">EDUCACION SUPERIOR</text>
+</svg>

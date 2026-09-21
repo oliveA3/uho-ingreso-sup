@@ -5,7 +5,7 @@ import {
   fetchMunicipalSchools,
   fetchMunicipalUsers,
   updateMunicipalSchool,
-} from "../../services/api";
+} from "../../api/municipal.service";
 import EntityActionButton from "../../components/Buttons/EntityActionButton";
 import StatusToggle from "../../components/Buttons/StatusToggle";
 import PrimaryButton from "../../components/Buttons/PrimaryButton";

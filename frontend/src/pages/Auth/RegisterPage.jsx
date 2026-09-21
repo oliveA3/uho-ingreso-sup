@@ -2,11 +2,11 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
     changePendingEmail,
-    fetchRegistrationAvailability,
-    fetchSuperAdminCatalog,
     register,
     verifyEmail,
-} from "../../services/api";
+} from "../../api/auth.service";
+import { fetchRegistrationAvailability } from "../../api/landing.service";
+import { fetchSuperAdminCatalog } from "../../api/superadmin.service";
 import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
 import PrimaryButton from "../../components/Buttons/PrimaryButton";
 import SecondaryButton from "../../components/Buttons/SecondaryButton";

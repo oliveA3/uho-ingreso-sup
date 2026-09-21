@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { fetchStudentDashboard } from "../../services/api";
+import { fetchStudentDashboard } from "../../api/student.service";
 import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
 import StageStatusNotice from "../../components/StageStatusNotice/StageStatusNotice";
 import { Card, StatCard, StatsGrid } from "../../components";

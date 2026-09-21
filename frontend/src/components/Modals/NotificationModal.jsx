@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import Modal from "./Modal";
-import { fetchNotifications, markNotificationAsRead } from "../../services/api";
+import { fetchNotifications, markNotificationAsRead } from "../../api/notifications.service";
 import styles from "./NotificationModal.module.css";
 
 function formatDate(value) {

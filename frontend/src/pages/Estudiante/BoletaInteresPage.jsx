@@ -8,7 +8,7 @@ import {
   reorderStudentInterestCareer,
   sendStudentInterest,
   downloadStudentInterestPdf,
-} from "../../services/api";
+} from "../../api/student.service";
 import StageStatusNotice from "../../components/StageStatusNotice/StageStatusNotice";
 import CareerPreferenceList from "../../components/CareerPreferenceList/CareerPreferenceList";
 import PrimaryButton from "../../components/Buttons/PrimaryButton";

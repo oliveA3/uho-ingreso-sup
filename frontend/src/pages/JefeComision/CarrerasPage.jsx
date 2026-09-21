@@ -8,7 +8,7 @@ import {
     fetchProvincialProvinces,
     importProvincialCareers,
     updateProvincialCareer,
-} from "../../services/api";
+} from "../../api/provincial.service";
 import EntityActionButton from "../../components/Buttons/EntityActionButton";
 import StatusToggle from "../../components/Buttons/StatusToggle";
 import PrimaryButton from "../../components/Buttons/PrimaryButton";

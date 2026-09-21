@@ -4,7 +4,7 @@ import {
   deleteSuperAdminCatalogItem,
   fetchSuperAdminCatalog,
   updateSuperAdminCatalogItem,
-} from "../../services/api";
+} from "../../api/superadmin.service";
 import EntityActionButton from "../../components/Buttons/EntityActionButton";
 import StatusToggle from "../../components/Buttons/StatusToggle";
 import PrimaryButton from "../../components/Buttons/PrimaryButton";

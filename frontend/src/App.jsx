@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
-import { fetchCurrentUser, logout } from "./services/api";
+import { fetchCurrentUser, logout } from "./api/auth.service";
 import styles from "./App.module.css";
 import { ThemeProvider, useTheme } from "./theme/ThemeContext";
 import { ConfirmDialogProvider } from "./components/ConfirmDialog/ConfirmDialogProvider";

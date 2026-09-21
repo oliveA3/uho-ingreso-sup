@@ -1,7 +1,7 @@
 import { useState } from "react";
-import BallotDetailModal from "../../../components/Modals/BallotDetailModal";
-import StageStatusNotice from "../../../components/StageStatusNotice/StageStatusNotice";
-import DataTable from "../../../components/DataTable/DataTable";
+import BallotDetailModal from "./Modals/BallotDetailModal";
+import StageStatusNotice from "./StageStatusNotice/StageStatusNotice";
+import DataTable from "./DataTable/DataTable";
 import BallotMetrics from "./BallotMetrics";
 import styles from "./SolicitudOverviewView.module.css";
 

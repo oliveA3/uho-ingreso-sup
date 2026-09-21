@@ -4,7 +4,7 @@ import StageStatusNotice from "../../components/StageStatusNotice/StageStatusNot
 import PrimaryButton from "../../components/Buttons/PrimaryButton";
 import SecondaryButton from "../../components/Buttons/SecondaryButton";
 import { Card, FormField, Modal, StatCard, StatsGrid, TextArea } from "../../components";
-import { fetchResults, submitStudentResultClaim } from "../../services/api";
+import { fetchResults, submitStudentResultClaim } from "../../api/results.service";
 import styles from "./ResultadosPage.module.css";
 
 function isClaimDeadlineExpired(deadline) {

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { fetchEscalafon, submitEscalafonAction } from "../../services/api";
+import { fetchEscalafon, submitEscalafonAction } from "../../api/escalafon.service";
 import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
 import EscalafonTable from "../../components/EscalafonTable/EscalafonTable";
 import ReviewModal from "../../components/Modals/ReviewModal";

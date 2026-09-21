@@ -1,0 +1,3 @@
+- (Índice General / 2) + (Promedio pruebas / 2). Calculado externamente.
+- El superadmin solo crea usuarios de nivel superior
+- Asegurarse de que todo el frontend use los colores de la paleta

@@ -17,7 +17,7 @@ import {
   fetchProvincialTiposOtorgamiento,
   importPlanPlaza,
   updatePlanPlaza,
-} from "../../services/api";
+} from "../../api/provincial.service";
 
 const emptyForm = {
   carrera: "",

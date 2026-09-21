@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { fetchAuditLogs, getAuditLogExportUrl } from "../../services/api";
+import { fetchAuditLogs, getAuditLogExportUrl } from "../../api/audit.service";
 import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
 import PrimaryButton from "../../components/Buttons/PrimaryButton";
 import SecondaryButton from "../../components/Buttons/SecondaryButton";

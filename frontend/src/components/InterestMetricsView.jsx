@@ -1,4 +1,4 @@
-import StageStatusNotice from "../../../components/StageStatusNotice/StageStatusNotice";
+import StageStatusNotice from "./StageStatusNotice/StageStatusNotice";
 import styles from "./InterestMetricsView.module.css";
 
 const toneClasses = {

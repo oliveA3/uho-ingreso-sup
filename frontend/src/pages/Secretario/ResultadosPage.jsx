@@ -3,7 +3,7 @@ import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
 import StageStatusNotice from "../../components/StageStatusNotice/StageStatusNotice";
 import PrimaryButton from "../../components/Buttons/PrimaryButton";
 import { Card, DataTable } from "../../components";
-import { downloadResultsExport, fetchResults } from "../../services/api";
+import { downloadResultsExport, fetchResults } from "../../api/results.service";
 
 export default function SecretarioResultadosPage() {
   const year = new Date().getFullYear();

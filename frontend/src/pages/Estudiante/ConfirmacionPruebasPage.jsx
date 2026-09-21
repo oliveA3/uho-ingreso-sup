@@ -3,7 +3,7 @@ import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
 import EntityActionButton from "../../components/Buttons/EntityActionButton";
 import StageStatusNotice from "../../components/StageStatusNotice/StageStatusNotice";
 import { Card } from "../../components";
-import { fetchStudentExamConfirmations, updateStudentExamConfirmation } from "../../services/api";
+import { fetchStudentExamConfirmations, updateStudentExamConfirmation } from "../../api/student.service";
 import styles from "./ConfirmacionPruebasPage.module.css";
 
 const dateFormatter = new Intl.DateTimeFormat("es-CU", {

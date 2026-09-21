@@ -4,7 +4,7 @@ import {
   closeProvincialEtapa,
   fetchProvincialEtapas,
   resetProvincialEtapas,
-} from "../../services/api";
+} from "../../api/provincial.service";
 import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
 import PrimaryButton from "../../components/Buttons/PrimaryButton";
 import SecondaryButton from "../../components/Buttons/SecondaryButton";

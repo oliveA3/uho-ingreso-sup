@@ -7,7 +7,7 @@ import {
   markEscalafonReviewAsReviewed,
   sendEscalafonToCommission,
   updateEscalafonEntry,
-} from "../../services/api";
+} from "../../api/escalafon.service";
 import EntityActionButton from "../../components/Buttons/EntityActionButton";
 import PrimaryButton from "../../components/Buttons/PrimaryButton";
 import SecondaryButton from "../../components/Buttons/SecondaryButton";

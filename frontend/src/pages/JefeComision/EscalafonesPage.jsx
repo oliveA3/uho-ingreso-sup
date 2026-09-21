@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { downloadProvincialEscalafon, downloadSchoolEscalafon, fetchProvincialEscalafonSummary } from "../../services/api";
+import { downloadProvincialEscalafon, downloadSchoolEscalafon, fetchProvincialEscalafonSummary } from "../../api/escalafon.service";
 import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
 import StageStatusNotice from "../../components/StageStatusNotice/StageStatusNotice";
 import PrimaryButton from "../../components/Buttons/PrimaryButton";

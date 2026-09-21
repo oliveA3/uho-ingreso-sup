@@ -8,8 +8,7 @@ import OtorgamientosModal from "../components/Modals/OtorgamientosModal";
 import CutoffSection from "../components/CutoffSection/CutoffSection";
 import OfferingsSection from "../components/OfferingsSection/OfferingsSection";
 import { newsItems } from "../data/landingData";
-import { fetchLandingData } from "../services/api";
-import { fetchLandingCortes } from "../services/api";
+import { fetchLandingData, fetchLandingCortes } from "../api/landing.service";
 import styles from "./LandingPage.module.css";
 
 const stageTitles = {

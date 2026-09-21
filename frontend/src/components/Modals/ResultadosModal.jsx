@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { downloadLandingExcel, fetchLandingResults } from "../../services/api";
+import { downloadLandingExcel, fetchLandingResults } from "../../api/landing.service";
 import Modal from "./Modal";
 import FormField from "../FormField/FormField";
 import Select from "../Select/Select";

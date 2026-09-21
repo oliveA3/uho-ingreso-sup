@@ -1,4 +1,4 @@
-.wrapper {
+ .wrapper {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
@@ -27,27 +27,11 @@
   color: #334155;
 }
 
-.titleRow {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.75rem;
-}
-
 .title {
   margin-top: 0.5rem;
   font-size: 1.875rem;
   font-weight: 600;
   color: #0f172a;
-}
-
-.schoolBadge {
-  border-radius: 9999px;
-  background-color: #f1f5f9;
-  padding: 0.25rem 0.75rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: #334155;
 }
 
 .subtitle {
@@ -56,51 +40,11 @@
   color: #475569;
 }
 
-.metricsGrid {
+.metrics {
   margin-top: 1.5rem;
-  display: grid;
-  gap: 1rem;
 }
 
-@media (min-width: 640px) {
-  .metricsGrid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-
-.metricCard {
-  border-radius: 1.5rem;
-  border: 1px solid #e2e8f0;
-  background-color: #f8fafc;
-  padding: 1.5rem;
-}
-
-.metricLabel {
-  font-size: 0.875rem;
-  text-transform: uppercase;
-  letter-spacing: 0.18em;
-  color: #64748b;
-}
-
-.metricValue {
-  margin-top: 0.75rem;
-  font-size: 1.875rem;
-  font-weight: 600;
-}
-
-.toneSuccess {
-  color: var(--brand-success, #1a7a4a);
-}
-
-.toneWarning {
-  color: #b45309;
-}
-
-.toneDefault {
-  color: #0f172a;
-}
-
-.rankingSectionHeader {
+.tableSectionHeader {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
@@ -108,31 +52,156 @@
   gap: 0.75rem;
 }
 
-.sectionEyebrow {
-  font-size: 0.875rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.18em;
-  color: #64748b;
-}
-
-.sectionTitle {
-  margin-top: 0.25rem;
+.tableTitle {
   font-size: 1.25rem;
   font-weight: 600;
   color: #0f172a;
 }
 
-.countText {
+.tableCount {
+  margin-top: 0.25rem;
   font-size: 0.875rem;
   color: #64748b;
 }
 
-.rankingList {
-  margin-top: 1.5rem;
+.tableWrapper {
+  margin-top: 1.25rem;
+  overflow-x: auto;
+  border-radius: 1rem;
+  border: 1px solid #e2e8f0;
+}
+
+.table {
+  min-width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  text-align: left;
+  font-size: 0.875rem;
+}
+
+.thead {
+  background-color: #f1f5f9;
+  color: #64748b;
+}
+
+.thead th {
+  padding: 0.75rem 1rem;
+}
+
+.tbody tr {
+  border-top: 1px solid #e2e8f0;
+  background-color: #ffffff;
+}
+
+.tbody td {
+  padding: 1rem;
+}
+
+.studentCell {
+  font-weight: 500;
+  color: #0f172a;
+}
+
+.indexCell {
+  color: #475569;
+}
+
+.emptyRow {
+  padding: 2.5rem 1rem;
+  text-align: center;
+  font-size: 0.875rem;
+  color: #64748b;
+}
+
+.actions {
   display: flex;
-  flex-direction: column;
-  gap: 1rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.actionButton {
+  border-radius: 0.75rem;
+  border: 1px solid #e2e8f0;
+  background-color: #f8fafc;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+}
+
+.actionButton:hover:not(:disabled) {
+  background-color: #f1f5f9;
+}
+
+.actionButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.statusBadge {
+  display: inline-flex;
+  border-radius: 9999px;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.statusPendiente {
+  background-color: #fef3c7;
+  color: #b45309;
+}
+
+.statusPorEnviar {
+  background-color: #f1f5f9;
+  color: #334155;
+}
+
+.statusAprobada {
+  background-color: color-mix(in srgb, var(--brand-success, #1a7a4a) 15%, white);
+  color: var(--brand-success, #1a7a4a);
+}
+
+.statusModificada {
+  background-color: color-mix(in srgb, var(--brand-error, #c0392b) 15%, white);
+  color: var(--brand-error, #c0392b);
+}
+
+.rankingSection {
+  margin-top: 1.25rem;
+}
+
+@media (max-width: 639px) {
+  .wrapper {
+    gap: 1rem;
+  }
+
+  .section,
+  .sectionFlat {
+    padding: 1rem;
+    border-radius: 1rem;
+  }
+
+  .title {
+    font-size: 1.5rem;
+  }
+
+  .metrics {
+    margin-top: 1rem;
+  }
+
+  .tableWrapper,
+  .rankingSection {
+    margin-top: 1rem;
+  }
+
+  .tbody td {
+    padding: 0.75rem;
+  }
+}
+
+.rankingItem + .rankingItem {
+  margin-top: 1rem;
 }
 
 .rankingRow {
@@ -172,41 +241,12 @@
 }
 
 .emptyText {
-  margin-top: 1.5rem;
+  margin-top: 1.25rem;
   border-radius: 1rem;
   background-color: #f8fafc;
   padding: 1.25rem;
   font-size: 0.875rem;
   color: #64748b;
-}
-
-@media (max-width: 639px) {
-  .wrapper {
-    gap: 1rem;
-  }
-
-  .section,
-  .sectionFlat {
-    padding: 1rem;
-    border-radius: 1rem;
-  }
-
-  .title {
-    font-size: 1.5rem;
-  }
-
-  .metricsGrid,
-  .rankingList {
-    margin-top: 1rem;
-  }
-
-  .metricCard {
-    padding: 1rem;
-  }
-
-  .metricValue {
-    font-size: 1.5rem;
-  }
 }
 
 .distributionGrid {
