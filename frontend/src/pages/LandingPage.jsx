@@ -104,7 +104,7 @@ export default function LandingPage({ user }) {
 
         <div className={styles.sectionsGroup}>
           <NewsSection items={newsItems} />
-          <CutoffSection items={cortesData.items.slice(0, 4)} year={cortesData.year} onViewMore={() => setCortesModalOpen(true)} />
+          {cortesData.items.length > 0 && <CutoffSection items={cortesData.items.slice(0, 4)} year={cortesData.year} onViewMore={() => setCortesModalOpen(true)} />}
           <OfferingsSection items={ces} />
         </div>
 

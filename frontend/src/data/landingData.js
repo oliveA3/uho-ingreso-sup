@@ -41,6 +41,8 @@ export const newsItems = [
     date: "03 Ene 2025",
     description: "La UHo y otras instituciones ofrecen 47 carreras para el curso diurno 2025-2026.",
     mediaType: "documento",
+    documentFormat: "PDF",
+    documentName: "Oferta de carreras 2025 (PDF)",
     mediaUrl: "#",
   },
   {

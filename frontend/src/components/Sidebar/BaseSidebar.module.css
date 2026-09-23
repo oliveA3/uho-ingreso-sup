@@ -84,13 +84,16 @@
 }
 
 .unreadDot {
-  margin-right: 0.5rem;
-  display: inline-block;
+  position: absolute;
+  top: 0.4rem;
+  left: 0.55rem;
   height: 0.625rem;
   width: 0.625rem;
   border-radius: 9999px;
   background-color: var(--color-error, #c0392b);
-  vertical-align: middle;
+  border: 2px solid var(--color-primario, #1f4e79);
+  box-sizing: content-box;
+  pointer-events: none;
 }
 
 .navLink {

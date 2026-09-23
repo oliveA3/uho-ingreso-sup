@@ -1,3 +1,4 @@
+import NewsMedia from "./NewsMedia";
 import styles from "./NewsSection.module.css";
 
 export default function NewsSection({ items }) {
@@ -12,13 +13,11 @@ export default function NewsSection({ items }) {
       <div className={styles.grid}>
         {items.map((item) => (
           <article key={item.id} className={styles.card}>
-            <div className={styles.mediaWrapper}>
-              {item.mediaType === "imagen" ? (
-                <img className={styles.mediaImage} src={item.mediaUrl} alt={item.title} />
-              ) : (
-                <div className={styles.mediaFallback}>{item.mediaType}</div>
-              )}
-            </div>
+            {item.mediaType && item.mediaType !== "texto" && (
+              <div className={styles.mediaWrapper}>
+                <NewsMedia item={item} />
+              </div>
+            )}
             <div className={styles.meta}>
               <span>{item.category}</span>
               <span>{item.date}</span>
