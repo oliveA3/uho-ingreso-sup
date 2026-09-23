@@ -1,6 +1,6 @@
 from django.urls import path
 
-from .views import ChangePendingEmailView, CookieTokenRefreshView, CsrfCookieView, CurrentUserView, LoginView, LogoutView, RegisterView, VerifyEmailView
+from .views import ChangePasswordView, ChangePendingEmailView, CookieTokenRefreshView, CsrfCookieView, CurrentUserView, LoginView, LogoutView, RegisterView, VerifyEmailView
 
 urlpatterns = [
     path("login/", LoginView.as_view(), name="login"),
@@ -9,6 +9,7 @@ urlpatterns = [
     path("verify-email/", VerifyEmailView.as_view(), name="verify-email"),
     path("change-pending-email/", ChangePendingEmailView.as_view(), name="change-pending-email"),
     path("logout/", LogoutView.as_view(), name="logout"),
+    path("change-password/", ChangePasswordView.as_view(), name="change-password"),
     path("me/", CurrentUserView.as_view(), name="current-user"),
     path("csrf/", CsrfCookieView.as_view(), name="csrf-cookie"),
 ]

@@ -5,10 +5,11 @@ import EntityActionButton from "../../components/Buttons/EntityActionButton";
 import SecondaryButton from "../../components/Buttons/SecondaryButton";
 import StageStatusNotice from "../../components/StageStatusNotice/StageStatusNotice";
 import { fetchCommissionPendingModifications, resolveCommissionModification } from "../../api/provincial.service";
-import { Card, DataTable, StatCard, StatsGrid } from "../../components";
+import { Card, DataTable, StatCard, StatsGrid, useConfirm } from "../../components";
 import styles from "./SolicitudesPage.module.css";
 
 export default function SolicitudesPage() {
+  const confirm = useConfirm();
   const [data, setData] = useState({ items: [], metrics: { total: 0, pendientes: 0 } });
   const [error, setError] = useState(null);
   const [message, setMessage] = useState(null);
@@ -34,6 +35,16 @@ export default function SolicitudesPage() {
   const total = useMemo(() => data.metrics?.aprobadas ?? data.metrics?.total ?? 0, [data]);
 
   const respond = async (id, action) => {
+    const ok = await confirm({
+      title: action === "approve" ? "Aprobar modificación" : "Rechazar modificación",
+      message:
+        action === "approve"
+          ? "¿Deseas aprobar esta modificación de boleta? El estudiante no podrá volver a solicitarla."
+          : "¿Deseas rechazar esta modificación de boleta? Esta acción no se puede deshacer.",
+      confirmLabel: action === "approve" ? "Aprobar" : "Rechazar",
+      tone: action === "approve" ? "default" : "danger",
+    });
+    if (!ok) return;
     try {
       setProcessingId(id);
       await resolveCommissionModification(id, action);

@@ -11,6 +11,8 @@ import StageOneGuard from "./components/StageOneGuard/StageOneGuard";
 import LandingPage from "./pages/LandingPage";
 import LoginPage from "./pages/Auth/LoginPage";
 import RegisterPage from "./pages/Auth/RegisterPage";
+import PolicyPrivacyPage from "./pages/PolicyPrivacyPage";
+import ChangePasswordPage from "./pages/Auth/ChangePasswordPage";
 import SuperAdminLayout from "./pages/Superadmin/SuperAdminLayout";
 import DashboardPage from "./pages/Superadmin/DashboardPage";
 import NomencladoresPage from "./pages/Superadmin/NomencladoresPage";
@@ -66,7 +68,8 @@ import DirectorResultadosPage from "./pages/Director/ResultadosPage";
 function AppContent() {
   const [user, setUser] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  // En escritorio el menú lateral arranca desplegado; en móvil se abre bajo demanda para no tapar el contenido.
+  const [isMenuOpen, setIsMenuOpen] = useState(() => window.matchMedia("(min-width: 1024px)").matches);
   const { theme } = useTheme();
 
   useEffect(() => {
@@ -105,8 +108,8 @@ function AppContent() {
 
       <div className={styles.page}>
         <div className={styles.body}>
-          {user && isMenuOpen && <div className={styles.backdrop} onClick={() => setIsMenuOpen(false)} />}
-          {user && (
+          {user && !user.debe_cambiar_password && isMenuOpen && <div className={styles.backdrop} onClick={() => setIsMenuOpen(false)} />}
+          {user && !user.debe_cambiar_password && (
             <div
               className={`${styles.sidebarWrapper} ${isMenuOpen ? styles.sidebarWrapperOpen : styles.sidebarWrapperCollapsed}`}
             >
@@ -141,83 +144,89 @@ function AppContent() {
               </button>
             </div>
           )}
-          <div className={`${styles.content} ${isMenuOpen ? styles.contentShifted : ""}`}>
-            {!authChecked ? null : (
+          <main id="main-content" className={`${styles.content} ${isMenuOpen ? styles.contentShifted : ""}`}>
+            {user?.debe_cambiar_password ? (
+              <ChangePasswordPage
+                onChanged={() => setUser((current) => ({ ...current, debe_cambiar_password: false }))}
+                onLogout={handleLogout}
+              />
+            ) : (
             <Routes>
-            <Route path="/" element={<LandingPage user={user} />} />
-            <Route path="/login" element={<LoginPage onLogin={handleLogin} />} />
-            <Route path="/registro" element={<RegisterPage />} />
-            <Route path="/superadmin/*" element={<SuperAdminLayout user={user} onLogout={handleLogout} />}>
-              <Route index element={<DashboardPage user={user} />} />
-              <Route path="dashboard" element={<DashboardPage user={user} />} />
-              <Route path="nomencladores" element={<NomencladoresPage />} />
-              <Route path="roles" element={<RolesPage />} />
-              <Route path="usuarios" element={<UsuariosPage />} />
-              <Route path="despliegue" element={<DesplieguePage />} />
-              <Route path="identidad" element={<IdentidadPage />} />
-              <Route path="logs" element={<AuditLogsPage />} />
-            </Route>
-            <Route path="/estudiante/*" element={<EstudianteLayout user={user} onLogout={handleLogout} />}>
-              <Route index element={<EstudianteHomePage user={user} />} />
-              <Route path="perfil" element={<EstudiantePerfilPage />} />
-              <Route path="boleta" element={<StageOneGuard stageNumber={3} stageName="Plan de plazas y boleta de solicitud" panelName="Boleta de Solicitud"><BoletaPage /></StageOneGuard>} />
-              <Route path="escalafon" element={<StageOneGuard panelName="Escalafón"><EstudianteEscalafonPage /></StageOneGuard>} />
-              <Route path="boleta-interes" element={<StageOneGuard stageNumber={2} stageName="Boleta de Interés de Carrera" panelName="Boleta de Interés"><EstudianteBoletaInteresPage /></StageOneGuard>} />
-              <Route path="confirmacion-pruebas" element={<StageOneGuard stageNumber={4} stageName="Confirmación de las pruebas de ingreso" panelName="Confirmación de Pruebas"><EstudianteConfirmacionPruebasPage /></StageOneGuard>} />
-              <Route path="resultados" element={<StageOneGuard stageNumber={5} stageName="Publicación de resultados en las pruebas de ingreso" panelName="Resultados de tus Pruebas"><ResultadosPage /></StageOneGuard>} />
-              <Route path="otorgamiento" element={<StageOneGuard stageNumber={6} stageName="Otorgamiento de carreras" panelName="Mi Otorgamiento"><EstudianteOtorgamientoPage /></StageOneGuard>} />
-            </Route>
-            <Route path="/jefe_comision/*" element={<JefeComisionLayout user={user} onLogout={handleLogout} />}>
-              <Route index element={<JefeComisionDashboard user={user} />} />
-              <Route path="dashboard" element={<JefeComisionDashboard user={user} />} />
-              <Route path="etapas" element={<JefeComisionEtapas />} />
-              <Route path="escalafones" element={<StageOneGuard panelName="Escalafones"><JefeComisionEscalafones /></StageOneGuard>} />
-              <Route path="plazas" element={<StageOneGuard stageNumber={3} stageName="Plan de plazas y boleta de solicitud" panelName="Plan de Plazas"><JefeComisionPlazas /></StageOneGuard>} />
-              <Route path="solicitudes" element={<StageOneGuard stageNumber={3} stageName="Plan de plazas y boleta de solicitud" panelName="Solicitudes"><JefeComisionSolicitudes /></StageOneGuard>} />
-              <Route path="resultados" element={<StageOneGuard stageNumber={5} stageName="Publicación de resultados en las pruebas de ingreso" panelName="Gestión de Resultados"><JefeComisionResultados /></StageOneGuard>} />
-              <Route path="otorgamiento" element={<StageOneGuard stageNumber={6} stageName="Otorgamiento de carreras" panelName="Gestión de Otorgamientos"><JefeComisionOtorgamiento /></StageOneGuard>} />
-              <Route path="api" element={<JefeComisionApi />} />
-              <Route path="logs" element={<JefeComisionLogs />} />
-              <Route path="carreras" element={<JefeComisionCarreras />} />
-            </Route>
-            <Route path="/repr_provincial/*" element={<RepresentanteProvincialLayout user={user} onLogout={handleLogout} />}>
-              <Route index element={<ReprProvMunicipios user={user} />} />
-              <Route path="dashboard" element={<Navigate to="/repr_provincial/municipios" replace />} />
-              <Route path="municipios" element={<ReprProvMunicipios user={user} />} />
-              <Route path="usuarios" element={<ReprProvUsuarios />} />
-            </Route>
-            <Route path="/repr_municipal/*" element={<RepresentanteMunicipalLayout user={user} onLogout={handleLogout} />}>
-              <Route index element={<Navigate to="escuelas" replace />} />
-              <Route path="dashboard" element={<Navigate to="/repr_municipal/escuelas" replace />} />
-              <Route path="escuelas" element={<ReprMunicipalEscuelas user={user} />} />
-              <Route path="usuarios" element={<ReprMunicipalUsuarios />} />
-            </Route>
-            <Route path="/secretario/*" element={<SecretarioLayout user={user} onLogout={handleLogout} />}>
-              <Route index element={<SecretarioDashboardPage user={user} />} />
-              <Route path="dashboard" element={<SecretarioDashboardPage user={user} />} />
-              <Route path="escalafon" element={<StageOneGuard panelName="Escalafón"><SecretarioEscalafonPage /></StageOneGuard>} />
-              <Route path="sincuenta" element={<SecretarioSinCuentaPage />} />
-              <Route path="boleta-interes" element={<StageOneGuard stageNumber={2} stageName="Boleta de Interés de Carrera" panelName="Boleta de Interés"><SecretarioBoletaInteresPage user={user} /></StageOneGuard>} />
-              <Route path="boletas-solicitud" element={<StageOneGuard stageNumber={3} stageName="Plan de plazas y boleta de solicitud" panelName="Boletas de Solicitud"><SecretarioBoletasSolicitudPage /></StageOneGuard>} />
-              <Route path="confirmacion-pruebas" element={<StageOneGuard stageNumber={4} stageName="Confirmación de las pruebas de ingreso" panelName="Confirmación de Pruebas"><SecretarioConfirmacionPruebasPage /></StageOneGuard>} />
-              <Route path="resultados" element={<StageOneGuard stageNumber={5} stageName="Publicación de resultados en las pruebas de ingreso" panelName="Resultados"><SecretarioResultadosPage /></StageOneGuard>} />
-              <Route path="otorgamientos" element={<SecretarioOtorgamientosPage />} />
-              <Route path="notificaciones" element={<SecretarioNotificacionesPage />} />
-            </Route>
-            <Route path="/director/*" element={<DirectorLayout user={user} onLogout={handleLogout} />}>
-              <Route index element={<Navigate to="dashboard" replace />} />
-              <Route path="dashboard" element={<DirectorDashboardPage user={user} />} />
-              <Route path="sincuenta" element={<SecretarioSinCuentaPage />} />
-              <Route path="boleta-interes" element={<StageOneGuard stageNumber={2} stageName="Boleta de Interés de Carrera" panelName="Boletas de Interés"><DirectorBoletaInteresPage user={user} /></StageOneGuard>} />
-              <Route path="boletas-solicitud" element={<StageOneGuard stageNumber={3} stageName="Plan de plazas y boleta de solicitud" panelName="Estadísticas de Boletas"><DirectorBoletasSolicitudPage /></StageOneGuard>} />
-              <Route path="confirmacion-pruebas" element={<StageOneGuard stageNumber={4} stageName="Confirmación de las pruebas de ingreso" panelName="Estadísticas de Confirmación"><DirectorConfirmacionPruebasPage /></StageOneGuard>} />
-              <Route path="otorgamientos" element={<StageOneGuard stageNumber={6} stageName="Otorgamiento de carreras" panelName="Otorgamientos"><DirectorOtorgamientosPage /></StageOneGuard>} />
-              <Route path="resultados" element={<StageOneGuard stageNumber={5} stageName="Publicación de resultados en las pruebas de ingreso" panelName="Resultados"><DirectorResultadosPage /></StageOneGuard>} />
-            </Route>
-            <Route path="*" element={<Navigate to="/" replace />} />
+              <Route path="/" element={<LandingPage user={user} />} />
+              <Route path="/login" element={<LoginPage onLogin={handleLogin} />} />
+              <Route path="/registro" element={<RegisterPage />} />
+              <Route path="/politica-privacidad" element={<PolicyPrivacyPage />} />
+              <Route path="/superadmin/*" element={<SuperAdminLayout user={user} onLogout={handleLogout} />}>
+                <Route index element={<DashboardPage user={user} />} />
+                <Route path="dashboard" element={<DashboardPage user={user} />} />
+                <Route path="nomencladores" element={<NomencladoresPage />} />
+                <Route path="roles" element={<RolesPage />} />
+                <Route path="usuarios" element={<UsuariosPage />} />
+                <Route path="despliegue" element={<DesplieguePage />} />
+                <Route path="identidad" element={<IdentidadPage />} />
+                <Route path="logs" element={<AuditLogsPage />} />
+              </Route>
+              <Route path="/estudiante/*" element={<EstudianteLayout user={user} onLogout={handleLogout} />}>
+                <Route index element={<EstudianteHomePage user={user} />} />
+                <Route path="perfil" element={<EstudiantePerfilPage />} />
+                <Route path="boleta" element={<StageOneGuard stageNumber={3} stageName="Plan de plazas y boleta de solicitud" panelName="Boleta de Solicitud"><BoletaPage /></StageOneGuard>} />
+                <Route path="escalafon" element={<StageOneGuard panelName="Escalafón"><EstudianteEscalafonPage /></StageOneGuard>} />
+                <Route path="boleta-interes" element={<StageOneGuard stageNumber={2} stageName="Boleta de Interés de Carrera" panelName="Boleta de Interés"><EstudianteBoletaInteresPage /></StageOneGuard>} />
+                <Route path="confirmacion-pruebas" element={<StageOneGuard stageNumber={4} stageName="Confirmación de las pruebas de ingreso" panelName="Confirmación de Pruebas"><EstudianteConfirmacionPruebasPage /></StageOneGuard>} />
+                <Route path="resultados" element={<StageOneGuard stageNumber={5} stageName="Publicación de resultados en las pruebas de ingreso" panelName="Resultados de tus Pruebas"><ResultadosPage /></StageOneGuard>} />
+                <Route path="otorgamiento" element={<StageOneGuard stageNumber={6} stageName="Otorgamiento de carreras" panelName="Mi Otorgamiento"><EstudianteOtorgamientoPage /></StageOneGuard>} />
+              </Route>
+              <Route path="/jefe_comision/*" element={<JefeComisionLayout user={user} onLogout={handleLogout} />}>
+                <Route index element={<JefeComisionDashboard user={user} />} />
+                <Route path="dashboard" element={<JefeComisionDashboard user={user} />} />
+                <Route path="etapas" element={<JefeComisionEtapas />} />
+                <Route path="escalafones" element={<StageOneGuard panelName="Escalafones"><JefeComisionEscalafones /></StageOneGuard>} />
+                <Route path="plazas" element={<StageOneGuard stageNumber={3} stageName="Plan de plazas y boleta de solicitud" panelName="Plan de Plazas"><JefeComisionPlazas /></StageOneGuard>} />
+                <Route path="solicitudes" element={<StageOneGuard stageNumber={3} stageName="Plan de plazas y boleta de solicitud" panelName="Solicitudes"><JefeComisionSolicitudes /></StageOneGuard>} />
+                <Route path="resultados" element={<StageOneGuard stageNumber={5} stageName="Publicación de resultados en las pruebas de ingreso" panelName="Gestión de Resultados"><JefeComisionResultados /></StageOneGuard>} />
+                <Route path="otorgamiento" element={<StageOneGuard stageNumber={6} stageName="Otorgamiento de carreras" panelName="Gestión de Otorgamientos"><JefeComisionOtorgamiento /></StageOneGuard>} />
+                <Route path="api" element={<JefeComisionApi />} />
+                <Route path="logs" element={<JefeComisionLogs />} />
+                <Route path="carreras" element={<JefeComisionCarreras />} />
+              </Route>
+              <Route path="/repr_provincial/*" element={<RepresentanteProvincialLayout user={user} onLogout={handleLogout} />}>
+                <Route index element={<ReprProvMunicipios user={user} />} />
+                <Route path="dashboard" element={<Navigate to="/repr_provincial/municipios" replace />} />
+                <Route path="municipios" element={<ReprProvMunicipios user={user} />} />
+                <Route path="usuarios" element={<ReprProvUsuarios />} />
+              </Route>
+              <Route path="/repr_municipal/*" element={<RepresentanteMunicipalLayout user={user} onLogout={handleLogout} />}>
+                <Route index element={<Navigate to="escuelas" replace />} />
+                <Route path="dashboard" element={<Navigate to="/repr_municipal/escuelas" replace />} />
+                <Route path="escuelas" element={<ReprMunicipalEscuelas user={user} />} />
+                <Route path="usuarios" element={<ReprMunicipalUsuarios />} />
+              </Route>
+              <Route path="/secretario/*" element={<SecretarioLayout user={user} onLogout={handleLogout} />}>
+                <Route index element={<SecretarioDashboardPage user={user} />} />
+                <Route path="dashboard" element={<SecretarioDashboardPage user={user} />} />
+                <Route path="escalafon" element={<StageOneGuard panelName="Escalafón"><SecretarioEscalafonPage /></StageOneGuard>} />
+                <Route path="sincuenta" element={<SecretarioSinCuentaPage />} />
+                <Route path="boleta-interes" element={<StageOneGuard stageNumber={2} stageName="Boleta de Interés de Carrera" panelName="Boleta de Interés"><SecretarioBoletaInteresPage user={user} /></StageOneGuard>} />
+                <Route path="boletas-solicitud" element={<StageOneGuard stageNumber={3} stageName="Plan de plazas y boleta de solicitud" panelName="Boletas de Solicitud"><SecretarioBoletasSolicitudPage /></StageOneGuard>} />
+                <Route path="confirmacion-pruebas" element={<StageOneGuard stageNumber={4} stageName="Confirmación de las pruebas de ingreso" panelName="Confirmación de Pruebas"><SecretarioConfirmacionPruebasPage /></StageOneGuard>} />
+                <Route path="resultados" element={<StageOneGuard stageNumber={5} stageName="Publicación de resultados en las pruebas de ingreso" panelName="Resultados"><SecretarioResultadosPage /></StageOneGuard>} />
+                <Route path="otorgamientos" element={<SecretarioOtorgamientosPage />} />
+                <Route path="notificaciones" element={<SecretarioNotificacionesPage />} />
+              </Route>
+              <Route path="/director/*" element={<DirectorLayout user={user} onLogout={handleLogout} />}>
+                <Route index element={<Navigate to="dashboard" replace />} />
+                <Route path="dashboard" element={<DirectorDashboardPage user={user} />} />
+                <Route path="sincuenta" element={<SecretarioSinCuentaPage />} />
+                <Route path="boleta-interes" element={<StageOneGuard stageNumber={2} stageName="Boleta de Interés de Carrera" panelName="Boletas de Interés"><DirectorBoletaInteresPage user={user} /></StageOneGuard>} />
+                <Route path="boletas-solicitud" element={<StageOneGuard stageNumber={3} stageName="Plan de plazas y boleta de solicitud" panelName="Estadísticas de Boletas"><DirectorBoletasSolicitudPage /></StageOneGuard>} />
+                <Route path="confirmacion-pruebas" element={<StageOneGuard stageNumber={4} stageName="Confirmación de las pruebas de ingreso" panelName="Estadísticas de Confirmación"><DirectorConfirmacionPruebasPage /></StageOneGuard>} />
+                <Route path="otorgamientos" element={<StageOneGuard stageNumber={6} stageName="Otorgamiento de carreras" panelName="Otorgamientos"><DirectorOtorgamientosPage /></StageOneGuard>} />
+                <Route path="resultados" element={<StageOneGuard stageNumber={5} stageName="Publicación de resultados en las pruebas de ingreso" panelName="Resultados"><DirectorResultadosPage /></StageOneGuard>} />
+              </Route>
+              <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
             )}
-          </div>
+          </main>
         </div>
 
         <Footer />

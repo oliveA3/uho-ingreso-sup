@@ -12,6 +12,7 @@ export default function FeedbackMessage({ type = "error", children, className = 
   return (
     <div
       role={type === "error" ? "alert" : "status"}
+      aria-live={type === "error" ? "assertive" : "polite"}
       className={`${styles.container} ${styles[variant.className]} ${className}`}
     >
       <span aria-hidden="true" className={styles.icon}>{variant.icon}</span>

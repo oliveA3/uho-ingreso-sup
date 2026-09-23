@@ -1,4 +1,4 @@
-import { request } from "./httpClient";
+import { request, requestImport } from "./httpClient";
 
 export function fetchProvincialDashboard() {
   return request("/gestion-provincial/dashboard/");
@@ -106,7 +106,7 @@ export function deletePlanPlaza(id) {
 export function importPlanPlaza(file) {
   const form = new FormData();
   form.append("file", file);
-  return request("/import-export/import/plan-plaza/", { method: "POST", body: form });
+  return requestImport("/import-export/import/plan-plaza/", form);
 }
 
 export function downloadPlanPlazaTemplate() {
@@ -146,7 +146,7 @@ export function deleteProvincialCareer(id) {
 export function importProvincialCareers(file) {
   const form = new FormData();
   form.append("file", file);
-  return request("/import-export/import/carreras/", { method: "POST", body: form });
+  return requestImport("/import-export/import/carreras/", form);
 }
 
 export function exportProvincialCareers() {

@@ -1,4 +1,4 @@
-import { request } from "./httpClient";
+import { request, requestImport } from "./httpClient";
 
 export function fetchResults(anio) {
   return request("/import-export/resultados/", { params: anio ? { anio } : undefined });
@@ -35,13 +35,13 @@ export function importResults(file, anio, asignatura, fechaLimiteReclamo) {
   form.append("anio", String(anio));
   form.append("asignatura", asignatura);
   form.append("fecha_limite_reclamo", fechaLimiteReclamo);
-  return request("/import-export/import/resultados/", { method: "POST", body: form });
+  return requestImport("/import-export/import/resultados/", form);
 }
 
 function importStageSixFile(path, file) {
   const form = new FormData();
   form.append("file", file);
-  return request(`/import-export/${path}/`, { method: "POST", body: form });
+  return requestImport(`/import-export/${path}/`, form);
 }
 
 export function importOtorgamientos(file) {

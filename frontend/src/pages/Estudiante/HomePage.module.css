@@ -1,13 +1,13 @@
 .greeting {
   font-size: 1.875rem;
   font-weight: 600;
-  color: #0f172a;
+  color: var(--gris-900);
 }
 
 .subheading {
   margin-top: 0.5rem;
   font-size: 0.875rem;
-  color: #475569;
+  color: var(--gris-600);
 }
 
 .processSection {
@@ -19,14 +19,14 @@
 .processCard {
   min-width: 0;
   border-radius: 1.5rem;
-  border: 1px solid var(--border-color, #e2e8f0);
-  background-color: #f8fafc;
+  border: 1px solid var(--border-color, var(--gris-200));
+  background-color: var(--gris-50);
   padding: 1.5rem;
 }
 
 .processTitle {
   font-weight: 600;
-  color: #0f172a;
+  color: var(--gris-900);
 }
 
 .stageGrid {
@@ -69,32 +69,32 @@
 }
 
 .stageBadgeDone {
-  border-color: var(--brand-success, #059669);
-  background-color: var(--brand-success, #059669);
-  color: #ffffff;
+  border-color: var(--color-exito, #1a7a4a);
+  background-color: var(--color-exito, #1a7a4a);
+  color: var(--color-exito-texto);
 }
 
 .stageBadgeActive {
-  border-color: var(--brand-primary, #0284c7);
-  background-color: var(--brand-primary, #0284c7);
-  color: #ffffff;
+  border-color: var(--color-primario, #1f4e79);
+  background-color: var(--color-primario, #1f4e79);
+  color: var(--color-primario-texto);
 }
 
 .stageBadgePending {
-  border-color: #cbd5e1;
-  background-color: #ffffff;
-  color: #64748b;
+  border-color: var(--gris-300);
+  background-color: var(--blanco);
+  color: var(--gris-500);
 }
 
 .stageLabel {
   margin-top: 0.5rem;
   font-size: 0.75rem;
-  color: #475569;
+  color: var(--gris-600);
 }
 
 .stageLabelActive {
   font-weight: 600;
-  color: var(--brand-primary, #0369a1);
+  color: var(--color-primario, #1f4e79);
 }
 
 @media (max-width: 639px) {
@@ -121,7 +121,7 @@
   margin-top: 0.25rem;
   font-size: 0.625rem;
   line-height: 1.1;
-  color: #64748b;
+  color: var(--gris-500);
 }
 
 .navLinks {
@@ -142,21 +142,21 @@
 }
 
 .navLinkActive {
-  border-color: var(--brand-primary, #0284c7);
-  background-color: var(--brand-primary, #0284c7);
-  color: #ffffff;
+  border-color: var(--color-primario, #1f4e79);
+  background-color: var(--color-primario, #1f4e79);
+  color: var(--color-primario-texto);
 }
 
 .navLinkActive:hover {
-  background-color: color-mix(in srgb, var(--brand-primary, #0284c7) 85%, black);
+  background-color: color-mix(in srgb, var(--color-primario, #1f4e79) 85%, var(--gris-950));
 }
 
 .navLinkInactive {
-  border-color: #cbd5e1;
-  background-color: #ffffff;
-  color: #334155;
+  border-color: var(--gris-300);
+  background-color: var(--blanco);
+  color: var(--gris-700);
 }
 
 .navLinkInactive:hover {
-  background-color: #f8fafc;
+  background-color: var(--gris-50);
 }

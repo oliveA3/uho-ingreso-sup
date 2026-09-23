@@ -1,29 +1,44 @@
 from django.db.models import Count
 from django.db import transaction
-from django.conf import settings
 from django.utils import timezone
-from datetime import datetime, time
+from drf_spectacular.utils import OpenApiExample, extend_schema, inline_serializer
 from rest_framework import serializers, viewsets
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import AllowAny
 
 from apps.authentication.models import Estudiante, Usuario
 from apps.core.audit import record_audit
-from apps.gestion_personal.models import BoletaInteres, BoletaInteresItem, BoletaSolicitud, BoletaSolicitudItem, BoletaSolicitudItemAnterior, ConfirmacionPrueba
+from apps.gestion_personal.models import BoletaInteres, BoletaInteresItem, BoletaSolicitud, BoletaSolicitudItem
 from apps.gestion_personal.models import BoletaSolicitud
-from apps.superadmin.models import Asignatura, Carrera, Ces, Escuela, Municipio, Provincia, TipoOtorgamiento
+from apps.superadmin.models import Carrera, Ces, Escuela, Municipio, Provincia, TipoOtorgamiento
+
+
+def _landing_scope_province(request):
+    """Returns (provincia_id, provincia_nombre) to scope the plan de plazas
+    landing to, or (None, 'Todas') for an unauthenticated or national view."""
+    user = getattr(request, "user", None)
+    if not user or not user.is_authenticated or user.is_superuser or user.rol == "superadmin":
+        return None, "Todas"
+    provincia_id = getattr(user, "provincia_id", None)
+    if not provincia_id:
+        return None, "Todas"
+    provincia = Provincia.objects.filter(pk=provincia_id).first()
+    if not provincia:
+        return None, "Todas"
+    return provincia_id, provincia.nombre
 
 
 def build_plan_plaza_landing_payload(request):
-    active_stage = Etapa.objects.filter(estado='en_curso').order_by('id').first()
+    active_stage = Etapa.objects.en_curso().order_by('id').first()
     plan_stage = Etapa.objects.filter(nombre=ETAPAS_NOMBRES[3]).first()
+    provincia_id, provincia_nombre = _landing_scope_province(request)
     if not plan_stage:
         return {
             'year': timezone.now().year,
             'plan_year': None,
-            'provincia_id': None,
-            'provincia_nombre': 'Todas',
+            'provincia_id': provincia_id,
+            'provincia_nombre': provincia_nombre,
             'ces': [],
             'items': [],
             'years': [],
@@ -31,8 +46,10 @@ def build_plan_plaza_landing_payload(request):
             'active_stage_nombre': active_stage.nombre if active_stage else None,
         }
 
+    scope_filter = {'provincia_id': provincia_id} if provincia_id else {}
+
     years = list(
-        PlanPlaza.objects.filter(proceso__etapa=plan_stage)
+        PlanPlaza.objects.filter(proceso__etapa=plan_stage, **scope_filter)
         .values_list('proceso__anio__year', flat=True)
         .distinct()
         .order_by('-proceso__anio__year')
@@ -46,7 +63,7 @@ def build_plan_plaza_landing_payload(request):
         selected_year = years[0] if years else timezone.now().year
 
     selected_items = list(
-        PlanPlaza.objects.filter(proceso__etapa=plan_stage, proceso__anio__year=selected_year)
+        PlanPlaza.objects.filter(proceso__etapa=plan_stage, proceso__anio__year=selected_year, **scope_filter)
         .select_related('carrera', 'ces', 'provincia', 'proceso', 'otorgamiento_tipo')
         .order_by('carrera__nombre')
     )
@@ -54,6 +71,7 @@ def build_plan_plaza_landing_payload(request):
         proceso__etapa=plan_stage,
         proceso__anio__year=selected_year,
         carrera__activa=True,
+        **scope_filter,
     )
     ces_data = [
         {
@@ -72,8 +90,8 @@ def build_plan_plaza_landing_payload(request):
     return {
         'year': selected_year,
         'plan_year': selected_year,
-        'provincia_id': None,
-        'provincia_nombre': 'Todas',
+        'provincia_id': provincia_id,
+        'provincia_nombre': provincia_nombre,
         'ces': ces_data,
         'items': [
             {
@@ -111,6 +129,8 @@ from .serializers import (
 )
 from .permissions import IsCareerManager
 from .serializers_plan import PlanPlazaSerializer
+from .services.boletas import BoletaRuleError, resolve_modification
+from .services.etapas import StageRuleError, activate_stage
 
 
 class ProvincialScopedMixin:
@@ -125,6 +145,124 @@ class ProvincialScopedMixin:
         return queryset.filter(provincia_id=province_id)
 
 
+@extend_schema(
+    tags=["Gestión"],
+    summary="Panel de indicadores provinciales",
+    description=(
+        "Devuelve los indicadores agregados del proceso de ingreso para la provincia del usuario "
+        "autenticado (municipios, escuelas, representantes, estudiantes, boletas de interés/solicitud y "
+        "avance por municipio). Un superusuario o un usuario con rol `superadmin` ve los datos a nivel "
+        "nacional; el resto de los roles autorizados ven solo su provincia. "
+        "Solo pueden acceder usuarios con rol `jefe_comision`, `ingreso_provincial` o `superadmin` "
+        "(o superusuarios). Como efecto colateral, cierra automáticamente cualquier etapa `en_curso` "
+        "cuya `fecha_fin` ya haya pasado, marcándola como `completada`."
+    ),
+    responses={
+        200: inline_serializer(
+            name="ProvincialDashboardResponse",
+            fields={
+                "municipios": serializers.IntegerField(),
+                "municipios_activos": serializers.IntegerField(),
+                "escuelas": serializers.IntegerField(),
+                "escuelas_activas": serializers.IntegerField(),
+                "representantes_municipales": serializers.IntegerField(),
+                "representantes_activos": serializers.IntegerField(),
+                "usuarios_creados": serializers.IntegerField(),
+                "estudiantes": serializers.IntegerField(),
+                "estudiantes_con_cuenta": serializers.IntegerField(),
+                "boletas_interes_enviadas": serializers.IntegerField(),
+                "boletas_interes_pendientes": serializers.IntegerField(),
+                "etapa_activa": ProvincialEtapaSerializer(allow_null=True),
+                "top_carreras": inline_serializer(
+                    name="ProvincialDashboardTopCarrera",
+                    fields={
+                        "carrera__nombre": serializers.CharField(),
+                        "total": serializers.IntegerField(),
+                    },
+                    many=True,
+                ),
+                "municipios_lista": inline_serializer(
+                    name="ProvincialDashboardMunicipio",
+                    fields={
+                        "id": serializers.IntegerField(),
+                        "nombre": serializers.CharField(),
+                        "provincia": serializers.IntegerField(),
+                        "activo": serializers.BooleanField(),
+                        "escuelas_count": serializers.IntegerField(),
+                        "representante": serializers.DictField(allow_null=True),
+                        "completed": serializers.IntegerField(),
+                        "total": serializers.IntegerField(),
+                        "label": serializers.CharField(),
+                    },
+                    many=True,
+                ),
+                "avance": inline_serializer(
+                    name="ProvincialDashboardAvance",
+                    fields={
+                        "label": serializers.CharField(),
+                        "proceso": serializers.DateField(allow_null=True),
+                    },
+                ),
+            },
+        ),
+        403: inline_serializer(
+            name="ProvincialDashboardForbidden",
+            fields={"detail": serializers.CharField()},
+        ),
+    },
+    examples=[
+        OpenApiExample(
+            "Respuesta del dashboard",
+            value={
+                "success": True,
+                "data": {
+                    "municipios": 12,
+                    "municipios_activos": 11,
+                    "escuelas": 48,
+                    "escuelas_activas": 45,
+                    "representantes_municipales": 12,
+                    "representantes_activos": 10,
+                    "usuarios_creados": 60,
+                    "estudiantes": 530,
+                    "estudiantes_con_cuenta": 480,
+                    "boletas_interes_enviadas": 300,
+                    "boletas_interes_pendientes": 20,
+                    "etapa_activa": {
+                        "id": 3,
+                        "numero": 3,
+                        "nombre": "Solicitud de plazas",
+                        "fecha_inicio": "2026-03-01",
+                        "fecha_fin": "2026-03-31",
+                        "fecha_matematica": None,
+                        "fecha_espanol": None,
+                        "fecha_historia": None,
+                        "estado": "en_curso",
+                    },
+                    "top_carreras": [
+                        {"carrera__nombre": "Medicina", "total": 45},
+                    ],
+                    "municipios_lista": [
+                        {
+                            "id": 1,
+                            "nombre": "Plaza",
+                            "provincia": 1,
+                            "activo": True,
+                            "escuelas_count": 5,
+                            "representante": {"id": 7, "nombre": "Ana Pérez", "activo": True},
+                            "completed": 4,
+                            "total": 5,
+                            "label": "Boletas de solicitud enviadas",
+                        }
+                    ],
+                    "avance": {"label": "Boletas de solicitud enviadas", "proceso": "2026-01-01"},
+                },
+                "error": None,
+            },
+            response_only=True,
+            status_codes=["200"],
+        ),
+    ],
+)
 class ProvincialDashboardView(APIView):
     permission_classes = [CanViewProvincialDashboard]
 
@@ -153,7 +291,7 @@ class ProvincialDashboardView(APIView):
                 estudiante__escuela__municipio__provincia_id=province_id,
                 proceso=interest_process,
             ) if interest_process else BoletaInteres.objects.none()
-        active_stage = Etapa.objects.filter(estado="en_curso").order_by("id").first()
+        active_stage = Etapa.objects.en_curso().order_by("id").first()
         solicitud_process = Proceso.get_for_stage_and_year(timezone.now().year, ETAPAS_NOMBRES[3])
         solicitud_forms = BoletaSolicitud.objects.filter(
             proceso=solicitud_process,
@@ -298,6 +436,88 @@ class ProvincialEtapaViewSet(viewsets.ReadOnlyModelViewSet):
         return Response(data)
 
 
+@extend_schema(
+    tags=["Gestión"],
+    summary="Disponibilidad de etapas",
+    description=(
+        "Consulta pública (sin autenticación) del estado de todas las etapas del proceso de ingreso, "
+        "indicando cuál etapa está en curso, cuáles están bloqueadas (una etapa `no_iniciada` se marca "
+        "como `bloqueada` si la etapa anterior aún no está `completada`) y si el registro estudiantil "
+        "(etapa 1) está abierto. Incluye además el landing público del plan de plazas vigente."
+    ),
+    responses={
+        200: inline_serializer(
+            name="PublicEtapasDisponibilidadResponse",
+            fields={
+                "etapas": ProvincialEtapaSerializer(many=True),
+                "registro_estudiantil": serializers.BooleanField(),
+                "plan_de_plazas": inline_serializer(
+                    name="PublicEtapasPlanPlazaLanding",
+                    fields={
+                        "year": serializers.IntegerField(),
+                        "plan_year": serializers.IntegerField(allow_null=True),
+                        "provincia_id": serializers.IntegerField(allow_null=True),
+                        "provincia_nombre": serializers.CharField(),
+                        "ces": serializers.ListField(),
+                        "items": serializers.ListField(),
+                        "years": serializers.ListField(child=serializers.IntegerField()),
+                        "active_stage": serializers.IntegerField(allow_null=True),
+                        "active_stage_nombre": serializers.CharField(allow_null=True),
+                    },
+                ),
+            },
+        ),
+    },
+    examples=[
+        OpenApiExample(
+            "Respuesta de disponibilidad de etapas",
+            value={
+                "success": True,
+                "data": {
+                    "etapas": [
+                        {
+                            "id": 1,
+                            "numero": 1,
+                            "nombre": "Escalafón",
+                            "fecha_inicio": "2026-01-10",
+                            "fecha_fin": "2026-02-01",
+                            "fecha_matematica": None,
+                            "fecha_espanol": None,
+                            "fecha_historia": None,
+                            "estado": "completada",
+                        },
+                        {
+                            "id": 2,
+                            "numero": 2,
+                            "nombre": "Boleta de interés",
+                            "fecha_inicio": None,
+                            "fecha_fin": None,
+                            "fecha_matematica": None,
+                            "fecha_espanol": None,
+                            "fecha_historia": None,
+                            "estado": "bloqueada",
+                        },
+                    ],
+                    "registro_estudiantil": False,
+                    "plan_de_plazas": {
+                        "year": 2026,
+                        "plan_year": 2026,
+                        "provincia_id": None,
+                        "provincia_nombre": "Todas",
+                        "ces": [],
+                        "items": [],
+                        "years": [2026],
+                        "active_stage": 1,
+                        "active_stage_nombre": "Escalafón",
+                    },
+                },
+                "error": None,
+            },
+            response_only=True,
+            status_codes=["200"],
+        ),
+    ],
+)
 class PublicEtapasDisponibilidadView(APIView):
     permission_classes = [AllowAny]
 
@@ -327,8 +547,95 @@ class PublicEtapasDisponibilidadView(APIView):
         return Response(payload)
 
 
+@extend_schema(
+    tags=["Gestión"],
+    summary="Landing público de plan de plazas",
+    description=(
+        "Consulta pública (sin autenticación) del catálogo de plazas ofertadas para el año vigente del "
+        "plan de plazas (etapa 4 del proceso). Si el usuario está autenticado y pertenece a una "
+        "provincia (rol distinto de superadmin), la respuesta se restringe a esa provincia; en caso "
+        "contrario, devuelve el agregado nacional."
+    ),
+    responses={
+        200: inline_serializer(
+            name="PublicPlanPlazaLandingResponse",
+            fields={
+                "year": serializers.IntegerField(),
+                "plan_year": serializers.IntegerField(allow_null=True),
+                "provincia_id": serializers.IntegerField(allow_null=True),
+                "provincia_nombre": serializers.CharField(),
+                "ces": inline_serializer(
+                    name="PublicPlanPlazaLandingCes",
+                    fields={
+                        "id": serializers.IntegerField(),
+                        "nombre": serializers.CharField(),
+                        "carreras_count": serializers.IntegerField(),
+                        "plan_year": serializers.IntegerField(),
+                    },
+                    many=True,
+                ),
+                "items": inline_serializer(
+                    name="PublicPlanPlazaLandingItem",
+                    fields={
+                        "id": serializers.IntegerField(),
+                        "carrera": serializers.CharField(),
+                        "carrera_codigo": serializers.CharField(),
+                        "cantidad_plazas": serializers.IntegerField(),
+                        "otorgamiento_tipo": serializers.CharField(),
+                        "ces": serializers.CharField(),
+                        "provincia": serializers.CharField(),
+                        "sexo": serializers.CharField(),
+                        "year": serializers.IntegerField(),
+                    },
+                    many=True,
+                ),
+                "years": serializers.ListField(child=serializers.IntegerField()),
+                "provincias": serializers.ListField(child=serializers.CharField()),
+                "active_stage": serializers.IntegerField(allow_null=True),
+                "active_stage_nombre": serializers.CharField(allow_null=True),
+            },
+        ),
+    },
+    examples=[
+        OpenApiExample(
+            "Respuesta del landing de plan de plazas",
+            value={
+                "success": True,
+                "data": {
+                    "year": 2026,
+                    "plan_year": 2026,
+                    "provincia_id": None,
+                    "provincia_nombre": "Todas",
+                    "ces": [
+                        {"id": 1, "nombre": "Universidad de La Habana", "carreras_count": 30, "plan_year": 2026},
+                    ],
+                    "items": [
+                        {
+                            "id": 10,
+                            "carrera": "Medicina",
+                            "carrera_codigo": "MED-01",
+                            "cantidad_plazas": 50,
+                            "otorgamiento_tipo": "Curso regular diurno",
+                            "ces": "Universidad de La Habana",
+                            "provincia": "La Habana",
+                            "sexo": "indistinto",
+                            "year": 2026,
+                        }
+                    ],
+                    "years": [2026, 2025],
+                    "provincias": ["La Habana"],
+                    "active_stage": 4,
+                    "active_stage_nombre": "Plan de plazas",
+                },
+                "error": None,
+            },
+            response_only=True,
+            status_codes=["200"],
+        ),
+    ],
+)
 class PublicPlanPlazaLandingView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
 
     def get(self, request):
         return Response(build_plan_plaza_landing_payload(request))
@@ -352,8 +659,84 @@ class ProvincialProcesoViewSet(viewsets.GenericViewSet):
 class CommissionSolicitudAuthorizationView(APIView):
     permission_classes = [IsCommissionChief]
 
+    @extend_schema(
+        tags=["Gestión"],
+        summary="Listar solicitudes de modificación de boleta pendientes de autorización",
+        description=(
+            "Devuelve las boletas de solicitud (etapa 3) en estado `modificada` que están pendientes de "
+            "que el Jefe de Comisión apruebe o rechace la modificación solicitada por el estudiante, junto "
+            "con métricas agregadas. Solo disponible para el rol `jefe_comision` (o superusuario/"
+            "`superadmin`). Si la etapa 3 no está actualmente en curso, devuelve listas y contadores en "
+            "cero. Si el usuario tiene provincia asignada, los resultados se restringen a esa provincia."
+        ),
+        responses={
+            200: inline_serializer(
+                name="CommissionSolicitudAuthorizationListResponse",
+                fields={
+                    "items": inline_serializer(
+                        name="CommissionSolicitudAuthorizationItem",
+                        fields={
+                            "id": serializers.IntegerField(),
+                            "student": serializers.CharField(),
+                            "school": serializers.CharField(),
+                            "municipio": serializers.CharField(),
+                            "provincia": serializers.CharField(),
+                            "date": serializers.CharField(),
+                            "estado": serializers.CharField(),
+                            "items": inline_serializer(
+                                name="CommissionSolicitudAuthorizationBoletaItem",
+                                fields={
+                                    "prioridad": serializers.IntegerField(),
+                                    "carrera_nombre": serializers.CharField(),
+                                    "ces_nombre": serializers.CharField(),
+                                },
+                                many=True,
+                            ),
+                        },
+                        many=True,
+                    ),
+                    "metrics": inline_serializer(
+                        name="CommissionSolicitudAuthorizationMetrics",
+                        fields={
+                            "total": serializers.IntegerField(),
+                            "pendientes": serializers.IntegerField(),
+                            "aprobadas": serializers.IntegerField(),
+                        },
+                    ),
+                },
+            ),
+        },
+        examples=[
+            OpenApiExample(
+                "Respuesta con solicitudes pendientes",
+                value={
+                    "success": True,
+                    "data": {
+                        "items": [
+                            {
+                                "id": 15,
+                                "student": "Juan Pérez",
+                                "school": "IPU Lenin",
+                                "municipio": "Plaza",
+                                "provincia": "La Habana",
+                                "date": "10/03/2026",
+                                "estado": "modificada",
+                                "items": [
+                                    {"prioridad": 1, "carrera_nombre": "Medicina", "ces_nombre": "UH"},
+                                ],
+                            }
+                        ],
+                        "metrics": {"total": 5, "pendientes": 1, "aprobadas": 5},
+                    },
+                    "error": None,
+                },
+                response_only=True,
+                status_codes=["200"],
+            ),
+        ],
+    )
     def get(self, request):
-        current_stage = Etapa.objects.filter(estado="en_curso").order_by("id").first()
+        current_stage = Etapa.objects.en_curso().order_by("id").first()
         if not current_stage or current_stage.nombre != ETAPAS_NOMBRES[3]:
             return Response({"items": [], "metrics": {"total": 0, "pendientes": 0, "aprobadas": 0}})
         user_province_id = getattr(request.user, "provincia_id", None)
@@ -405,56 +788,142 @@ class CommissionSolicitudAuthorizationView(APIView):
             },
         })
 
+    @extend_schema(
+        tags=["Gestión"],
+        summary="Aprobar o rechazar una solicitud de modificación de boleta",
+        description=(
+            "Permite al Jefe de Comisión (o superusuario/`superadmin`) decidir sobre una boleta de "
+            "solicitud en estado `modificada`. Con `action=approve` la boleta pasa a `aprobada` y se "
+            "descarta el respaldo de la versión anterior; se notifica al estudiante. Con `action=reject` "
+            "se restauran los ítems previos a la modificación (a partir del respaldo guardado en "
+            "`BoletaSolicitudItemAnterior`), la boleta queda `aprobada` con sus valores originales y "
+            "también se notifica al estudiante. Precondiciones: la etapa 3 (Solicitud de plazas) debe "
+            "estar `en_curso` (403 en caso contrario), debe existir una boleta con ese id en estado "
+            "`modificada` (404 si no existe) y, para `reject`, debe existir un respaldo previo (409 si no "
+            "existe)."
+        ),
+        request=inline_serializer(
+            name="CommissionSolicitudAuthorizationDecision",
+            fields={"action": serializers.ChoiceField(choices=["approve", "reject"])},
+        ),
+        responses={
+            200: inline_serializer(
+                name="CommissionSolicitudAuthorizationDecisionResponse",
+                fields={"detail": serializers.CharField()},
+            ),
+            400: inline_serializer(
+                name="CommissionSolicitudAuthorizationBadRequest",
+                fields={"detail": serializers.CharField()},
+            ),
+            403: inline_serializer(
+                name="CommissionSolicitudAuthorizationForbidden",
+                fields={"detail": serializers.CharField()},
+            ),
+            404: inline_serializer(
+                name="CommissionSolicitudAuthorizationNotFound",
+                fields={"detail": serializers.CharField()},
+            ),
+            409: inline_serializer(
+                name="CommissionSolicitudAuthorizationConflict",
+                fields={"detail": serializers.CharField()},
+            ),
+        },
+        examples=[
+            OpenApiExample(
+                "Solicitud de aprobación",
+                value={"action": "approve"},
+                request_only=True,
+            ),
+            OpenApiExample(
+                "Respuesta al aprobar",
+                value={"success": True, "data": {"detail": "La modificación fue aprobada."}, "error": None},
+                response_only=True,
+                status_codes=["200"],
+            ),
+            OpenApiExample(
+                "Respuesta al rechazar",
+                value={
+                    "success": True,
+                    "data": {"detail": "La modificación fue rechazada."},
+                    "error": None,
+                },
+                response_only=True,
+                status_codes=["200"],
+            ),
+        ],
+    )
     @transaction.atomic
     def post(self, request, ballot_id):
-        current_stage = Etapa.objects.filter(estado="en_curso").order_by("id").first()
-        if not current_stage or current_stage.nombre != ETAPAS_NOMBRES[3]:
-            return Response({"detail": "Las decisiones del Jefe de Comisión solo están disponibles durante la etapa 3."}, status=403)
-        action = request.data.get("action")
-        if action not in {"approve", "reject"}:
-            return Response({"detail": "Acción inválida."}, status=400)
-        ballot = BoletaSolicitud.objects.filter(pk=ballot_id, estado="modificada").first()
-        if not ballot:
-            return Response({"detail": "No existe una solicitud de modificación pendiente para esta boleta."}, status=404)
-        if action == "approve":
-            ballot.estado = "aprobada"
-            ballot.aprobada_por = request.user.get_full_name() or request.user.username
-            ballot.fecha_aprobada = timezone.localdate()
-            ballot.save(update_fields=["estado", "aprobada_por", "fecha_aprobada"])
-            record_audit(request.user, "Aprobación de modificación de boleta", request.path, request=request, previous={"estado": "modificada"}, new={"estado": "aprobada", "boleta_id": ballot.id})
-            BoletaSolicitudItemAnterior.objects.filter(boleta_solicitud=ballot).delete()
-            from apps.core.notifications import notify_users
-            notify_users(
-                [Usuario.objects.filter(pk=ballot.estudiante.usuario_id).first()],
-                "Modificación de boleta aprobada",
-                f"El Jefe de Comisión aprobó tu solicitud de modificación de la boleta del proceso {ballot.proceso.anio.year}.",
-            )
-            return Response({"detail": "La modificación fue aprobada."})
-        previous_items = list(BoletaSolicitudItemAnterior.objects.filter(boleta_solicitud=ballot))
-        if not previous_items:
-            return Response({"detail": "No existe un respaldo de la boleta anterior para restaurarla."}, status=409)
-        ballot.boleta_solicitud.all().delete()
-        BoletaSolicitudItem.objects.bulk_create([
-            BoletaSolicitudItem(
-                boleta_solicitud=ballot,
-                plan_plaza=item.plan_plaza,
-                prioridad=item.prioridad,
-            )
-            for item in previous_items
-        ])
-        BoletaSolicitudItemAnterior.objects.filter(boleta_solicitud=ballot).delete()
-        ballot.estado = "aprobada"
-        ballot.save(update_fields=["estado"])
-        record_audit(request.user, "Rechazo de modificación de boleta", request.path, request=request, previous={"estado": "modificada"}, new={"estado": "aprobada", "boleta_id": ballot.id})
-        from apps.core.notifications import notify_users
-        notify_users(
-            [Usuario.objects.filter(pk=ballot.estudiante.usuario_id).first()],
-            "Modificación de boleta rechazada",
-            f"El Jefe de Comisión rechazó tu solicitud de modificación de la boleta del proceso {ballot.proceso.anio.year}. Se conservaron tus preferencias anteriores.",
-        )
-        return Response({"detail": "La modificación fue rechazada."})
+        try:
+            detail = resolve_modification(ballot_id, request.data.get("action"), request.user, request, request.path)
+        except BoletaRuleError as error:
+            return Response({"detail": str(error)}, status=error.status)
+        return Response({"detail": detail})
 
 
+@extend_schema(
+    tags=["Gestión"],
+    summary="Activar una etapa del proceso de ingreso",
+    description=(
+        "Activa (pone en estado `en_curso`) la etapa indicada por `pk`, estableciendo su rango de "
+        "fechas. Solo puede invocarlo el Jefe de Comisión (o superusuario/`superadmin`). Precondiciones "
+        "validadas por el servidor: no debe existir ya otra etapa `en_curso` (400), la etapa objetivo "
+        "debe estar en estado `no_iniciada` (400) y las etapas deben activarse estrictamente en el orden "
+        "definido por `ETAPAS_NOMBRES` -es decir, la etapa inmediatamente anterior debe estar "
+        "`completada`- (400). Si la etapa a activar es la etapa 4 (Plan de plazas/Exámenes), son "
+        "obligatorias además `fecha_matematica`, `fecha_espanol` y `fecha_historia`, y todas deben caer "
+        "dentro del rango `[fecha_inicio, fecha_fin]`; en ese caso también se crean automáticamente "
+        "registros `ConfirmacionPrueba` para cada estudiante con escalafón del año en curso y cada "
+        "asignatura de examen. Al activarse, se crea/recupera el `Proceso` del año en curso asociado a "
+        "la etapa y se notifica a todos los usuarios (excepto superadmin) del cambio."
+    ),
+    request=ActivarEtapaSerializer,
+    responses={
+        200: ProvincialEtapaSerializer,
+        400: inline_serializer(
+            name="ProvincialActivarEtapaBadRequest",
+            fields={"detail": serializers.CharField()},
+        ),
+    },
+    examples=[
+        OpenApiExample(
+            "Activar etapa 1 (Escalafón)",
+            value={"fecha_inicio": "2026-01-10", "fecha_fin": "2026-02-01"},
+            request_only=True,
+        ),
+        OpenApiExample(
+            "Activar etapa 4 (con fechas de exámenes)",
+            value={
+                "fecha_inicio": "2026-05-01",
+                "fecha_fin": "2026-05-31",
+                "fecha_matematica": "2026-05-10",
+                "fecha_espanol": "2026-05-15",
+                "fecha_historia": "2026-05-20",
+            },
+            request_only=True,
+        ),
+        OpenApiExample(
+            "Respuesta al activar",
+            value={
+                "success": True,
+                "data": {
+                    "id": 1,
+                    "numero": 1,
+                    "nombre": "Escalafón",
+                    "fecha_inicio": "2026-01-10",
+                    "fecha_fin": "2026-02-01",
+                    "fecha_matematica": None,
+                    "fecha_espanol": None,
+                    "fecha_historia": None,
+                    "estado": "en_curso",
+                },
+                "error": None,
+            },
+            response_only=True,
+            status_codes=["200"],
+        ),
+    ],
+)
 class ProvincialActivarEtapaView(APIView):
     permission_classes = [IsCommissionChief]
 
@@ -463,83 +932,54 @@ class ProvincialActivarEtapaView(APIView):
         serializer = ActivarEtapaSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        etapa = Etapa.objects.select_for_update().get(pk=pk)
-
-        active_stage = Etapa.objects.filter(estado='en_curso').exclude(pk=etapa.pk).exists()
-        if active_stage:
-            return Response(
-                {"detail": "Ya hay una etapa activa para este proceso."},
-                status=400,
-            )
-        if etapa.estado != 'no_iniciada':
-            return Response(
-                {"detail": "La etapa ya fue activada y no puede modificarse."},
-                status=400,
-            )
-
-        ordered_names = list(ETAPAS_NOMBRES.values())
-        stage_index = ordered_names.index(etapa.nombre)
-        previous_stage = Etapa.objects.filter(
-            nombre=ordered_names[stage_index - 1]
-        ).first() if stage_index else None
-        if previous_stage and previous_stage.estado != "completada":
-            return Response(
-                {"detail": "Las etapas deben activarse estrictamente en secuencia."},
-                status=400,
-            )
-
-        etapa.fecha_inicio = serializer.validated_data["fecha_inicio"]
-        etapa.fecha_fin = serializer.validated_data["fecha_fin"]
-        if stage_index == 3:
-            exam_dates = [serializer.validated_data.get(field) for field in ("fecha_matematica", "fecha_espanol", "fecha_historia")]
-            if any(date is None for date in exam_dates):
-                return Response({"detail": "Debes indicar las fechas de Matemática, Español e Historia."}, status=400)
-            if any(date < etapa.fecha_inicio or date > etapa.fecha_fin for date in exam_dates):
-                return Response({"detail": "Las fechas de los exámenes deben estar dentro de la etapa 4."}, status=400)
-            etapa.fecha_matematica, etapa.fecha_espanol, etapa.fecha_historia = exam_dates
-        etapa.estado = 'en_curso'
-        etapa.full_clean()
-        update_fields = ["fecha_inicio", "fecha_fin", "estado"]
-        if stage_index == 3:
-            update_fields.extend(["fecha_matematica", "fecha_espanol", "fecha_historia"])
-        etapa.save(update_fields=update_fields)
-        record_audit(request.user, "Activación de etapa", request.path, request=request, previous={"estado": "no_iniciada"}, new={"estado": "en_curso", "etapa": etapa.nombre, "fecha_inicio": etapa.fecha_inicio, "fecha_fin": etapa.fecha_fin})
-        process, _ = Proceso.objects.get_or_create(
-            anio=timezone.localdate().replace(month=1, day=1),
-            etapa=etapa,
-        )
-        if stage_index == 3:
-            students = Estudiante.objects.filter(
-                escalafones__escalafon__proceso__anio__year=timezone.now().year,
-            ).distinct()
-            subjects = {
-                "Matemática": etapa.fecha_matematica,
-                "Español": etapa.fecha_espanol,
-                "Historia": etapa.fecha_historia,
-            }
-            for subject_name, exam_date in subjects.items():
-                subject = Asignatura.objects.filter(nombre__iexact=subject_name, activa=True).first()
-                if subject is None and subject_name == "Historia":
-                    subject = Asignatura.objects.filter(nombre__iexact="Historia de Cuba", activa=True).first()
-                if not subject:
-                    return Response({"detail": f"No existe la asignatura activa '{subject_name}'."}, status=400)
-                for student in students:
-                    ConfirmacionPrueba.objects.get_or_create(
-                        estudiante=student,
-                        proceso=process,
-                        asignatura=subject,
-                        defaults={"confirmada": None, "fecha_prueba": timezone.make_aware(datetime.combine(exam_date, time.min))},
-                    )
-        from apps.core.notifications import notify_users
-        recipients = Usuario.objects.exclude(rol="superadmin").exclude(is_superuser=True)
-        notify_users(
-            recipients,
-            "Etapa activada",
-            f"Se activó {etapa.nombre} desde {etapa.fecha_inicio} hasta {etapa.fecha_fin}.",
-        )
+        try:
+            etapa = activate_stage(pk, serializer.validated_data, request.user, request, request.path)
+        except StageRuleError as error:
+            return Response({"detail": str(error)}, status=400)
         return Response(ProvincialEtapaSerializer(etapa).data)
 
 
+@extend_schema(
+    tags=["Gestión"],
+    summary="Cerrar una etapa del proceso de ingreso",
+    description=(
+        "Cierra (marca como `completada`) la etapa indicada por `pk`. Solo puede invocarlo el Jefe de "
+        "Comisión (o superusuario/`superadmin`). Precondición: la etapa debe estar actualmente `en_curso` "
+        "(400 en caso contrario). Si la etapa cerrada es la etapa 1 (Escalafón), como efecto adicional "
+        "todos los escalafones `pendientes` de ese proceso pasan a estado `enviado` y sus ítems quedan "
+        "con `indices_bloqueados=True`, impidiendo modificaciones posteriores."
+    ),
+    request=None,
+    responses={
+        200: ProvincialEtapaSerializer,
+        400: inline_serializer(
+            name="ProvincialCerrarEtapaBadRequest",
+            fields={"detail": serializers.CharField()},
+        ),
+    },
+    examples=[
+        OpenApiExample(
+            "Respuesta al cerrar",
+            value={
+                "success": True,
+                "data": {
+                    "id": 1,
+                    "numero": 1,
+                    "nombre": "Escalafón",
+                    "fecha_inicio": "2026-01-10",
+                    "fecha_fin": "2026-02-01",
+                    "fecha_matematica": None,
+                    "fecha_espanol": None,
+                    "fecha_historia": None,
+                    "estado": "completada",
+                },
+                "error": None,
+            },
+            response_only=True,
+            status_codes=["200"],
+        ),
+    ],
+)
 class ProvincialCerrarEtapaView(APIView):
     permission_classes = [IsCommissionChief]
 
@@ -555,11 +995,59 @@ class ProvincialCerrarEtapaView(APIView):
         etapa.save(update_fields=["estado"])
         record_audit(request.user, "Cierre de etapa", request.path, request=request, previous={"estado": "en_curso"}, new={"estado": "completada", "etapa": etapa.nombre})
         if etapa.nombre == ETAPAS_NOMBRES[1]:
-            from apps.gestion_escuela.models import Escalafon
-            Escalafon.objects.filter(estado="pendiente").update(estado="enviado")
+            from apps.gestion_escuela.models import Escalafon, EscalafonItem
+
+            escalafones = Escalafon.objects.filter(proceso__etapa=etapa, estado="pendiente")
+            escalafon_ids = list(escalafones.values_list("id", flat=True))
+            escalafones.update(estado="enviado")
+            if escalafon_ids:
+                EscalafonItem.objects.filter(escalafon_id__in=escalafon_ids).update(indices_bloqueados=True)
         return Response(ProvincialEtapaSerializer(etapa).data)
 
 
+@extend_schema(
+    tags=["Gestión"],
+    summary="Reiniciar el ciclo de etapas del proceso de ingreso",
+    description=(
+        "Reinicia todas las etapas del catálogo a estado `no_iniciada`, limpiando sus fechas de inicio y "
+        "fin, para permitir comenzar un nuevo ciclo del proceso de ingreso. Solo puede invocarlo el Jefe "
+        "de Comisión (o superusuario/`superadmin`). Precondiciones: el catálogo de etapas debe estar "
+        "completo (debe existir exactamente una etapa por cada nombre definido en `ETAPAS_NOMBRES`, 400 "
+        "en caso contrario) y todas las etapas deben estar actualmente `completada` (400 en caso "
+        "contrario). No admite parámetros; devuelve la representación de la primera etapa tras el "
+        "reinicio."
+    ),
+    request=None,
+    responses={
+        200: ProvincialEtapaSerializer,
+        400: inline_serializer(
+            name="ProvincialReiniciarEtapasBadRequest",
+            fields={"detail": serializers.CharField()},
+        ),
+    },
+    examples=[
+        OpenApiExample(
+            "Respuesta al reiniciar el ciclo",
+            value={
+                "success": True,
+                "data": {
+                    "id": 1,
+                    "numero": 1,
+                    "nombre": "Escalafón",
+                    "fecha_inicio": None,
+                    "fecha_fin": None,
+                    "fecha_matematica": None,
+                    "fecha_espanol": None,
+                    "fecha_historia": None,
+                    "estado": "no_iniciada",
+                },
+                "error": None,
+            },
+            response_only=True,
+            status_codes=["200"],
+        ),
+    ],
+)
 class ProvincialReiniciarEtapasView(APIView):
     permission_classes = [IsCommissionChief]
 
@@ -624,8 +1112,15 @@ class PlanPlazaViewSet(viewsets.ModelViewSet):
     serializer_class = PlanPlazaSerializer
     permission_classes = [IsCommissionChief]
 
+    def _scoped(self, queryset):
+        user = self.request.user
+        if user.is_superuser or user.rol == "superadmin":
+            return queryset
+        return queryset.filter(provincia_id=user.provincia_id)
+
     def get_queryset(self):
         queryset = PlanPlaza.objects.select_related("proceso", "carrera", "ces", "provincia").order_by("carrera__nombre")
+        queryset = self._scoped(queryset)
         proceso_id = self.request.query_params.get("proceso")
         if proceso_id:
             return queryset.filter(proceso_id=proceso_id)
@@ -634,3 +1129,13 @@ class PlanPlazaViewSet(viewsets.ModelViewSet):
         if current_process is None:
             return queryset.none()
         return queryset.filter(proceso=current_process)
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        if not (user.is_superuser or user.rol == "superadmin"):
+            provincia = serializer.validated_data.get("provincia")
+            if provincia is not None and provincia.id != user.provincia_id:
+                raise serializers.ValidationError("No puedes crear un plan de plazas para otra provincia.")
+            serializer.save(provincia_id=user.provincia_id)
+        else:
+            serializer.save()

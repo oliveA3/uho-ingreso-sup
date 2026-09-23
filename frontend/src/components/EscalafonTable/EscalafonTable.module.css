@@ -14,7 +14,7 @@
 
 .heading {
   font-weight: 600;
-  color: #0f172a;
+  color: var(--gris-900);
 }
 
 .searchInput {
@@ -31,7 +31,7 @@
 .tableWrapper {
   overflow-x: auto;
   border-radius: 1rem;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--gris-200);
 }
 
 .table {
@@ -41,7 +41,7 @@
 }
 
 .thead {
-  background-color: #f1f5f9;
+  background-color: var(--gris-100);
 }
 
 .th {
@@ -53,20 +53,20 @@
 }
 
 .rowNormal {
-  border-top: 1px solid #e2e8f0;
+  border-top: 1px solid var(--gris-200);
 }
 
 .rowNormal:hover {
-  background-color: #f8fafc;
+  background-color: var(--gris-50);
 }
 
 .rowHighlight {
-  border: 1px solid color-mix(in srgb, var(--brand-primary, #1f4e79) 30%, white);
+  border: 1px solid color-mix(in srgb, var(--color-primario, #1f4e79) 30%, var(--blanco));
   background: linear-gradient(
     to right,
-    color-mix(in srgb, var(--brand-primary, #1f4e79) 12%, white),
-    color-mix(in srgb, var(--brand-primary, #1f4e79) 5%, white),
-    white
+    color-mix(in srgb, var(--color-primario, #1f4e79) 12%, var(--blanco)),
+    color-mix(in srgb, var(--color-primario, #1f4e79) 5%, var(--blanco)),
+    var(--blanco)
   );
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
 }
@@ -75,21 +75,21 @@
   display: inline-flex;
   align-items: center;
   border-radius: 9999px;
-  background-color: #f1f5f9;
+  background-color: var(--gris-100);
   padding: 0.25rem 0.625rem;
   font-size: 0.75rem;
   font-weight: 500;
-  color: #334155;
+  color: var(--gris-700);
 }
 
 .positionBadgeActive {
   display: inline-flex;
   align-items: center;
   border-radius: 9999px;
-  background-color: var(--brand-primary, #1f4e79);
+  background-color: var(--color-primario, #1f4e79);
   padding: 0.25rem 0.625rem;
   font-size: 0.75rem;
   font-weight: 700;
-  color: #ffffff;
+  color: var(--color-primario-texto);
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
 }

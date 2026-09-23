@@ -20,13 +20,13 @@
 .colorSwatch {
   display: block;
   border-radius: 1.5rem;
-  border: 1px solid #e2e8f0;
-  background-color: #f8fafc;
+  border: 1px solid var(--gris-200);
+  background-color: var(--gris-50);
   padding: 1.25rem;
   text-align: center;
   font-size: 0.875rem;
   font-weight: 600;
-  color: #0f172a;
+  color: var(--gris-900);
 }
 
 .colorLabel {
@@ -51,13 +51,13 @@
   margin-top: 0.75rem;
   width: 100%;
   border-radius: 1rem;
-  border: 1px solid #e2e8f0;
-  background-color: #ffffff;
+  border: 1px solid var(--gris-200);
+  background-color: var(--blanco);
   padding: 0.5rem 0.75rem;
   text-align: center;
   font-size: 0.75rem;
   font-weight: 400;
-  color: #334155;
+  color: var(--gris-700);
 }
 
 .fieldsGrid {
@@ -75,7 +75,7 @@
 .logoFileName {
   display: block;
   font-size: 0.75rem;
-  color: #64748b;
+  color: var(--gris-500);
 }
 
 .logoPreview {

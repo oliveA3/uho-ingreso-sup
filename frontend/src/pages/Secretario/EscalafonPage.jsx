@@ -14,6 +14,7 @@ import SecondaryButton from "../../components/Buttons/SecondaryButton";
 import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
 import StageStatusNotice from "../../components/StageStatusNotice/StageStatusNotice";
 import { Modal, StatCard, StatsGrid } from "../../components";
+import { useConfirm } from "../../components/ConfirmDialog/ConfirmDialogProvider";
 import styles from "./EscalafonPage.module.css";
 
 const indexFields = ["indice_10", "indice_11", "indice_12", "indice_general"];
@@ -30,36 +31,28 @@ function statusClass(status) {
   return "bg-slate-100 text-slate-600";
 }
 
-function splitStudentName(fullName, originalName) {
-  const words = fullName.trim().split(/\s+/).filter(Boolean);
-  const originalNameWords = originalName.trim().split(/\s+/).filter(Boolean).length;
-  const nameWordCount = Math.max(1, Math.min(originalNameWords, words.length - 1));
-  return {
-    nombre: words.slice(0, nameWordCount).join(" "),
-    apellidos: words.slice(nameWordCount).join(" "),
-  };
-}
-
-function TextInput({ value, onChange, className = "" }) {
+function TextInput({ value, onChange, className = "", ariaLabel }) {
   return (
     <input
       value={value ?? ""}
       onChange={onChange}
+      aria-label={ariaLabel}
       className={`rounded-lg border border-slate-300 px-2 py-1 text-sm ${className}`}
     />
   );
 }
 
-function StudentRow({ entry, position, isEditing, draft, stageActive, saving, showActions, onEdit, onComplaint, onChange, onChangeName, onSave, onCancel }) {
+function StudentRow({ entry, position, isEditing, draft, stageActive, saving, showActions, onEdit, onComplaint, onChange, onSave, onCancel }) {
   const change = (field) => (event) => onChange(field, event.target.value);
   return (
     <tr className="border-t border-slate-200 align-middle hover:bg-slate-50">
       <td className="w-10 px-1 py-2 text-center font-semibold text-slate-700">{position}</td>
       <td className="whitespace-nowrap px-3 py-2 font-medium text-slate-700">{entry.ci}</td>
-      <td className="w-[240px] whitespace-nowrap px-3 py-2">
+      <td className="w-[300px] whitespace-nowrap px-3 py-2">
         {isEditing ? (
           <div className="flex min-w-64 gap-2">
-            <TextInput value={draft.nombreCompleto} onChange={onChangeName} className="w-50" />
+            <TextInput value={draft.nombre} onChange={change("nombre")} className="w-28" ariaLabel={`Nombre de ${entry.ci}`} />
+            <TextInput value={draft.apellidos} onChange={change("apellidos")} className="w-36" ariaLabel={`Apellidos de ${entry.ci}`} />
           </div>
         ) : (
           <span className="whitespace-nowrap text-slate-800">{entry.nombre} {entry.apellidos}</span>
@@ -67,19 +60,19 @@ function StudentRow({ entry, position, isEditing, draft, stageActive, saving, sh
       </td>
       <td className="px-3 py-2">
         {isEditing ? (
-          <select value={draft.sexo} onChange={change("sexo")} className="rounded-lg border border-slate-300 px-2 py-1 text-sm">
+          <select value={draft.sexo} onChange={change("sexo")} aria-label={`Sexo de ${entry.ci}`} className="rounded-lg border border-slate-300 px-2 py-1 text-sm">
             <option value="M">M</option>
             <option value="F">F</option>
           </select>
         ) : entry.sexo}
       </td>
       <td className="px-3 py-2">
-          {isEditing ? <TextInput value={draft.direccion} onChange={change("direccion")} className="w-36" /> : entry.direccion}
+          {isEditing ? <TextInput value={draft.direccion} onChange={change("direccion")} className="w-36" ariaLabel={`Dirección de ${entry.ci}`} /> : entry.direccion}
       </td>
       {indexFields.map((field) => (
         <td key={field} className="w-20 px-2 py-2 text-right">
           {isEditing ? (
-            <TextInput value={draft[field]} onChange={change(field)} className="w-14 text-right" />
+            <TextInput value={draft[field]} onChange={change(field)} className="w-14 text-right" ariaLabel={`${field.replace("_", " ")} de ${entry.ci}`} />
           ) : entry[field]}
         </td>
       ))}
@@ -117,11 +110,10 @@ export default function SecretarioEscalafonPage() {
   const [notice, setNotice] = useState("");
   const [complaintEntry, setComplaintEntry] = useState(null);
   const [reviewing, setReviewing] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [sending, setSending] = useState(false);
   const fileInputRef = useRef(null);
-  const orderedEntries = [...entries].sort((left, right) => {
-    const indexDifference = Number(right.indice_general) - Number(left.indice_general);
-    return indexDifference || String(left.apellidos).localeCompare(String(right.apellidos));
-  });
+  const confirm = useConfirm();
   const escalafonSent = entries[0]?.estado_escalafon === "enviado";
   const showActions = stageActive && !escalafonSent;
   const handleStageStatus = useCallback((status) => {
@@ -147,10 +139,7 @@ export default function SecretarioEscalafonPage() {
   function startEditing(entry) {
     const fields = ["nombre", "apellidos", "sexo", "direccion", ...indexFields];
     setEditingId(entry.id);
-    setDraft({
-      ...Object.fromEntries(fields.map((field) => [field, entry[field] ?? ""])),
-      nombreCompleto: `${entry.nombre} ${entry.apellidos}`.trim(),
-    });
+    setDraft(Object.fromEntries(fields.map((field) => [field, entry[field] ?? ""])));
     setError("");
     setNotice("");
   }
@@ -159,17 +148,10 @@ export default function SecretarioEscalafonPage() {
     setDraft((current) => ({ ...current, [field]: value }));
   }
 
-  function changeFullName(event) {
-    setDraft((current) => ({ ...current, nombreCompleto: event.target.value }));
-  }
-
   async function saveEntry() {
     try {
       setSaving(true);
-      const entry = entries.find((item) => item.id === editingId);
-      const name = splitStudentName(draft.nombreCompleto, entry?.nombre || "");
-      const { nombreCompleto, ...studentFields } = draft;
-      await updateEscalafonEntry(editingId, { ...studentFields, ...name });
+      await updateEscalafonEntry(editingId, draft);
       setEditingId(null);
       setNotice("Registro actualizado.");
       await load();
@@ -183,6 +165,18 @@ export default function SecretarioEscalafonPage() {
   async function handleImport(event) {
     const file = event.target.files?.[0];
     if (!file) return;
+    const shouldImport = await confirm({
+      title: "Importar escalafón",
+      message: `Se reemplazará el escalafón actual con los datos de "${file.name}". Esta acción no se puede deshacer. ¿Deseas continuar?`,
+      confirmLabel: "Importar",
+      tone: "danger",
+    });
+    if (!shouldImport) {
+      event.target.value = "";
+      return;
+    }
+    setError("");
+    setImporting(true);
     try {
       const result = await importEscalafon(file, "", new Date().getFullYear());
       setNotice(`${result.inserted} estudiantes importados.`);
@@ -190,6 +184,7 @@ export default function SecretarioEscalafonPage() {
     } catch (requestError) {
       setError(requestError.message);
     } finally {
+      setImporting(false);
       event.target.value = "";
     }
   }
@@ -199,12 +194,23 @@ export default function SecretarioEscalafonPage() {
   }
 
   async function sendToCommission() {
+    const shouldSend = await confirm({
+      title: "Enviar índices a la Comisión",
+      message: "Una vez enviados, los índices quedarán bloqueados de forma definitiva y no podrás editarlos. ¿Deseas continuar?",
+      confirmLabel: "Enviar definitivamente",
+      tone: "danger",
+    });
+    if (!shouldSend) return;
+    setError("");
+    setSending(true);
     try {
       await sendEscalafonToCommission();
       setNotice("Índices enviados y bloqueados definitivamente.");
       await load();
     } catch (requestError) {
       setError(requestError.message);
+    } finally {
+      setSending(false);
     }
   }
 
@@ -245,10 +251,10 @@ export default function SecretarioEscalafonPage() {
       </StatsGrid>
 
       <div className="mb-4 flex flex-wrap gap-2">
-        <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden" disabled={!stageActive && !import.meta.env.DEV} onChange={handleImport} />
-        <PrimaryButton type="button" onClick={() => fileInputRef.current?.click()} disabled={!stageActive}>Importar Excel</PrimaryButton>
+        <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden" disabled={!stageActive || importing} onChange={handleImport} />
+        <PrimaryButton type="button" onClick={() => fileInputRef.current?.click()} disabled={!stageActive || importing}>{importing ? "Importando..." : "Importar Excel"}</PrimaryButton>
         <SecondaryButton onClick={exportExcel} disabled={!entries.length}>Exportar Excel</SecondaryButton>
-        <PrimaryButton type="button" onClick={sendToCommission} disabled={!entries.length || !stageActive || escalafonSent}>Enviar índices a la Comisión</PrimaryButton>
+        <PrimaryButton type="button" onClick={sendToCommission} disabled={!entries.length || !stageActive || escalafonSent || sending}>{sending ? "Enviando..." : "Enviar índices a la Comisión"}</PrimaryButton>
       </div>
 
 
@@ -278,12 +284,12 @@ export default function SecretarioEscalafonPage() {
           </thead>
           <tbody className="bg-white">
             {loading && <tr><td colSpan={showActions ? 11 : 10} className="px-4 py-8 text-center text-slate-500">Cargando escalafón...</td></tr>}
-            {!loading && !orderedEntries.length && <tr><td colSpan={showActions ? 11 : 10} className="px-2 py-8 text-center text-slate-500">No hay estudiantes cargados.</td></tr>}
-            {!loading && orderedEntries.map((entry, index) => (
+            {!loading && !entries.length && <tr><td colSpan={showActions ? 11 : 10} className="px-2 py-8 text-center text-slate-500">No hay estudiantes cargados.</td></tr>}
+            {!loading && entries.map((entry) => (
               <StudentRow
                 key={entry.id}
                 entry={entry}
-                position={index + 1}
+                position={entry.posicion}
                 isEditing={editingId === entry.id}
                 draft={draft}
                 stageActive={stageActive}
@@ -292,7 +298,6 @@ export default function SecretarioEscalafonPage() {
                 onEdit={() => startEditing(entry)}
                 onComplaint={() => setComplaintEntry(entry)}
                 onChange={changeDraft}
-                onChangeName={changeFullName}
                 onSave={saveEntry}
                 onCancel={() => setEditingId(null)}
               />

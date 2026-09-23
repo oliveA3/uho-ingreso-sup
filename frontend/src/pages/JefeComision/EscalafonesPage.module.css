@@ -17,28 +17,28 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.24em;
-  color: #334155;
+  color: var(--gris-700);
 }
 
 .title {
   margin-top: 0.5rem;
   font-size: 1.875rem;
   font-weight: 600;
-  color: #0f172a;
+  color: var(--gris-900);
 }
 
 .description {
   margin-top: 0.5rem;
   font-size: 0.875rem;
-  color: #475569;
+  color: var(--gris-600);
 }
 
 .darkButton {
-  background-color: #0f172a !important;
+  background-color: var(--color-primario, #1f4e79) !important;
 }
 
 .darkButton:hover {
-  background-color: var(--brand-secondary, #2e75b6) !important;
+  background-color: var(--color-secundario, #2e75b6) !important;
 }
 
 .summaryGrid {
@@ -55,33 +55,33 @@
 
 .summaryCard {
   border-radius: 1rem;
-  border: 1px solid #e2e8f0;
-  background-color: #f8fafc;
+  border: 1px solid var(--gris-200);
+  background-color: var(--gris-50);
   padding: 1.25rem;
 }
 
 .summaryCardSuccess {
   composes: summaryCard;
-  border-color: color-mix(in srgb, var(--brand-success, #1a7a4a) 35%, white);
-  background-color: color-mix(in srgb, var(--brand-success, #1a7a4a) 10%, white);
+  border-color: color-mix(in srgb, var(--color-exito, #1a7a4a) 35%, var(--blanco));
+  background-color: color-mix(in srgb, var(--color-exito, #1a7a4a) 10%, var(--blanco));
 }
 
 .summaryCardWarning {
   composes: summaryCard;
-  border-color: color-mix(in srgb, var(--brand-accent, #5ba3d9) 45%, white);
-  background-color: color-mix(in srgb, var(--brand-accent, #5ba3d9) 14%, white);
+  border-color: color-mix(in srgb, var(--color-acento, #5ba3d9) 45%, var(--blanco));
+  background-color: color-mix(in srgb, var(--color-acento, #5ba3d9) 14%, var(--blanco));
 }
 
 .summaryLabel {
   font-size: 0.875rem;
-  color: #475569;
+  color: var(--gris-600);
 }
 
 .summaryValue {
   margin-top: 0.5rem;
   font-size: 1.875rem;
   font-weight: 600;
-  color: #0f172a;
+  color: var(--gris-900);
 }
 
 .table {
@@ -98,20 +98,20 @@
 
 .statusComplete {
   composes: statusBadge;
-  background-color: color-mix(in srgb, var(--brand-success, #1a7a4a) 14%, white);
-  color: var(--brand-success, #1a7a4a);
+  background-color: color-mix(in srgb, var(--color-exito, #1a7a4a) 14%, var(--blanco));
+  color: var(--color-exito, #1a7a4a);
 }
 
 .statusPartial {
   composes: statusBadge;
-  background-color: color-mix(in srgb, var(--brand-accent, #5ba3d9) 20%, white);
-  color: var(--brand-secondary, #2e75b6);
+  background-color: color-mix(in srgb, var(--color-acento, #5ba3d9) 20%, var(--blanco));
+  color: var(--color-secundario, #2e75b6);
 }
 
 .statusPending {
   composes: statusBadge;
-  background-color: color-mix(in srgb, var(--brand-error, #c0392b) 12%, white);
-  color: var(--brand-error, #c0392b);
+  background-color: color-mix(in srgb, var(--color-error, #c0392b) 12%, var(--blanco));
+  color: var(--color-error, #c0392b);
 }
 
 .detailButton {
@@ -131,18 +131,18 @@
   justify-content: space-between;
   gap: 0.75rem;
   border-radius: 0.75rem;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--gris-200);
   padding: 0.75rem;
 }
 
 .strongCell {
   font-weight: 500;
-  color: #1e293b;
+  color: var(--gris-800);
 }
 
 .schoolStatus {
   font-size: 0.75rem;
-  color: #64748b;
+  color: var(--gris-500);
 }
 
 .schoolButton {

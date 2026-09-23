@@ -9,7 +9,7 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.24em;
-  color: #334155;
+  color: var(--gris-700);
 }
 
 .titleRow {
@@ -23,23 +23,23 @@
   margin-top: 0.5rem;
   font-size: 1.875rem;
   font-weight: 600;
-  color: #0f172a;
+  color: var(--gris-900);
 }
 
 .countBadge {
   margin-top: 0.5rem;
   border-radius: 9999px;
-  background-color: color-mix(in srgb, var(--brand-accent, #5ba3d9) 12%, white);
+  background-color: color-mix(in srgb, var(--color-acento, #5ba3d9) 12%, var(--blanco));
   padding: 0.25rem 0.75rem;
   font-size: 0.875rem;
   font-weight: 600;
-  color: var(--brand-primary, #1f4e79);
+  color: var(--color-primario, #1f4e79);
 }
 
 .description {
   margin-top: 0.75rem;
   font-size: 0.875rem;
-  color: #475569;
+  color: var(--gris-600);
 }
 
 .filtersGrid {
@@ -67,9 +67,9 @@
 }
 
 .darkButton {
-  background-color: #0f172a !important;
+  background-color: var(--color-primario, #1f4e79) !important;
 }
 
 .darkButton:hover {
-  background-color: #1e293b !important;
+  background-color: var(--color-secundario, #2e75b6) !important;
 }

@@ -15,12 +15,19 @@ ETAPAS_NOMBRES = {
 }
 
 
+class EtapaQuerySet(models.QuerySet):
+    def en_curso(self):
+        return self.filter(estado='en_curso')
+
+
 class Etapa(models.Model):
     ESTADOS = [
         ('no_iniciada', 'No iniciada'),
         ('en_curso', 'En curso'),
         ('completada', 'Completada'),
     ]
+
+    objects = EtapaQuerySet.as_manager()
 
     nombre = models.CharField(
         max_length=150,

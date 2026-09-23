@@ -134,3 +134,21 @@ def resolve_school(value):
         return Escuela.objects.get(pk=int(value))
     except (Escuela.DoesNotExist, TypeError, ValueError):
         return Escuela.objects.get(nombre__iexact=str(value).strip())
+
+
+def _text_key(value):
+    return str(value or "").casefold()
+
+
+def rank_escalafon_entries(entries):
+    """Ordena por indice_general desc; desempate apellidos, nombre e id. Devuelve [(posicion, entry)]."""
+    ordered = sorted(
+        entries,
+        key=lambda e: (
+            -(e.indice_general or 0),
+            _text_key(e.estudiante.apellidos),
+            _text_key(e.estudiante.nombre),
+            e.id,
+        ),
+    )
+    return list(enumerate(ordered, start=1))

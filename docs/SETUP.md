@@ -7,7 +7,7 @@ Desde la raíz del repositorio:
 ```cmd
 cd /d C:\Amanda\College\IngresoSup
 .venv\Scripts\activate.bat
-cd backend
+cd backend      
 python -m pip install -r requirements.txt
 python manage.py migrate
 cd ..

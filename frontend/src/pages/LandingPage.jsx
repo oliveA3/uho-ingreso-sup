@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTheme } from "../theme/ThemeContext";
 import HeroSection from "../components/HeroSection/HeroSection";
 import ProcessTimeline from "../components/ProcessTimeline/ProcessTimeline";
 import NewsSection from "../components/NewsSection/NewsSection";
@@ -31,6 +32,7 @@ function toTimelineStep(stage) {
 }
 
 export default function LandingPage({ user }) {
+  const { theme } = useTheme();
   const [processData, setProcessData] = useState(null);
   const [planModalOpen, setPlanModalOpen] = useState(false);
   const [resultadosModalOpen, setResultadosModalOpen] = useState(false);
@@ -88,8 +90,15 @@ export default function LandingPage({ user }) {
   return (
     <div className={styles.page}>
 
-      <main className={styles.main}>
-        <HeroSection onViewPlan={() => setPlanModalOpen(true)} onViewResults={() => setResultadosModalOpen(true)} onViewAwards={() => setOtorgamientosModalOpen(true)} isAuthenticated={Boolean(user)} activeStageNumber={activeStage?.numero} />
+      <div className={styles.main}>
+        <HeroSection
+          onViewPlan={() => setPlanModalOpen(true)}
+          onViewResults={() => setResultadosModalOpen(true)}
+          onViewAwards={() => setOtorgamientosModalOpen(true)}
+          isAuthenticated={Boolean(user)}
+          activeStageNumber={activeStage?.numero}
+          systemName={theme?.nombre_sistema || "IngresoSUP"}
+        />
         {processData?.error && <p className={styles.errorNotice}>No se pudo actualizar el estado del proceso.</p>}
         {stages.length > 0 && <ProcessTimeline steps={stages.map(toTimelineStep)} />}
 
@@ -110,7 +119,7 @@ export default function LandingPage({ user }) {
         {resultadosModalOpen && <ResultadosModal onClose={() => setResultadosModalOpen(false)} />}
         {otorgamientosModalOpen && <OtorgamientosModal onClose={() => setOtorgamientosModalOpen(false)} />}
         {cortesModalOpen && <OtorgamientosModal mode="cortes" onClose={() => setCortesModalOpen(false)} />}
-      </main>
+      </div>
     </div>
   );
 }

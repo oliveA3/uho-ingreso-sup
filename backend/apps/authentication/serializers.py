@@ -1,14 +1,14 @@
 from rest_framework import serializers
 import secrets
 from datetime import timedelta
-from django.core.mail import send_mail
+from apps.core.emailing import send_email_async
 from django.db import transaction
 from django.utils import timezone
 
-from apps.authentication.models import EmailVerificationCode, ROLES, Usuario, Estudiante
+from apps.authentication.models import EmailVerificationCode, PRIVACY_POLICY_VERSION, ROLES, Usuario, Estudiante
 from apps.gestion_escuela.models import EscalafonItem
 from apps.gestion_provincial.models import ETAPAS_NOMBRES
-from apps.superadmin.models import Escuela, Municipio, Provincia
+from apps.superadmin.models import Escuela
 
 
 class LoginSerializer(serializers.Serializer):
@@ -39,9 +39,13 @@ class UserSerializer(serializers.ModelSerializer):
             "first_name",
             "last_name",
             "tutor_nombre", "tutor_email", "tutor_telefono",
+            "politica_privacidad_aceptada",
+            "politica_privacidad_fecha_aceptacion",
+            "politica_privacidad_version",
+            "debe_cambiar_password",
         ]
 
-    def get_rol_label(self, obj):
+    def get_rol_label(self, obj) -> str:
         return dict(ROLES).get(obj.rol, obj.rol)
 
     def _get_student_field(self, obj, field):
@@ -50,13 +54,13 @@ class UserSerializer(serializers.ModelSerializer):
         except Estudiante.DoesNotExist:
             return None
 
-    def get_tutor_nombre(self, obj):
+    def get_tutor_nombre(self, obj) -> str | None:
         return self._get_student_field(obj, "tutor_nombre")
 
-    def get_tutor_email(self, obj):
+    def get_tutor_email(self, obj) -> str | None:
         return self._get_student_field(obj, "tutor_email")
 
-    def get_tutor_telefono(self, obj):
+    def get_tutor_telefono(self, obj) -> str | None:
         return self._get_student_field(obj, "tutor_telefono")
 
 
@@ -75,7 +79,7 @@ class SuperAdminUserSerializer(serializers.ModelSerializer):
             "escuela", "escuela_nombre", "is_active", "password",
         ]
 
-    def get_rol_label(self, obj):
+    def get_rol_label(self, obj) -> str:
         return dict(ROLES).get(obj.rol, obj.rol)
 
     def validate(self, attrs):
@@ -83,6 +87,11 @@ class SuperAdminUserSerializer(serializers.ModelSerializer):
         province = attrs.get("provincia", getattr(self.instance, "provincia", None))
         municipality = attrs.get("municipio", getattr(self.instance, "municipio", None))
         school = attrs.get("escuela", getattr(self.instance, "escuela", None))
+
+        if role == "estudiante":
+            raise serializers.ValidationError({
+                "rol": "El rol de estudiante no está permitido en la gestión de usuarios del superadministrador."
+            })
 
         if role in {"jefe_comision", "ingreso_provincial"} and not province:
             raise serializers.ValidationError(
@@ -128,8 +137,9 @@ class SuperAdminUserSerializer(serializers.ModelSerializer):
         generated_password = password or Usuario.objects.make_random_password()
         user = Usuario(**validated_data)
         user.set_password(generated_password)
+        user.debe_cambiar_password = True
         user.save()
-        send_mail(
+        send_email_async(
             subject="Bienvenido a IngresoSUP",
             message=(
                 f"Hola {user.first_name or user.username},\n\n"
@@ -138,9 +148,7 @@ class SuperAdminUserSerializer(serializers.ModelSerializer):
                 f"Contraseña temporal: {generated_password}\n\n"
                 "Por seguridad, cambia esta contraseña después de iniciar sesión."
             ),
-            from_email=None,
             recipient_list=[user.email],
-            fail_silently=False,
         )
         return user
 
@@ -150,6 +158,7 @@ class SuperAdminUserSerializer(serializers.ModelSerializer):
             setattr(instance, field, value)
         if password:
             instance.set_password(password)
+            instance.debe_cambiar_password = True
         instance.save()
         return instance
 
@@ -165,6 +174,7 @@ class RegisterSerializer(serializers.Serializer):
     tutor_nombre = serializers.CharField(max_length=200, required=False, allow_blank=True)
     tutor_email = serializers.EmailField(required=False, allow_blank=True)
     tutor_telefono = serializers.CharField(max_length=32, required=False, allow_blank=True)
+    politica_privacidad_aceptada = serializers.BooleanField(required=True)
 
     def validate_ci(self, value):
         if not value.isdigit() or len(value) != 11:
@@ -188,6 +198,11 @@ class RegisterSerializer(serializers.Serializer):
         return value
 
     def validate(self, attrs):
+        if not attrs.get("politica_privacidad_aceptada"):
+            raise serializers.ValidationError({
+                "politica_privacidad_aceptada": "Debes aceptar la política de privacidad para continuar."
+            })
+
         school = attrs.get("escuela")
         ci = attrs.get("ci")
         entry = EscalafonItem.objects.filter(
@@ -218,6 +233,7 @@ class RegisterSerializer(serializers.Serializer):
 
     def create(self, validated_data):
         entry = validated_data.pop("escalafon_entry")
+        validated_data.pop("politica_privacidad_aceptada", None)
         escuela = validated_data["escuela"]
         estudiante = entry.estudiante
         with transaction.atomic():
@@ -233,32 +249,58 @@ class RegisterSerializer(serializers.Serializer):
                 user.escuela = escuela
                 user.municipio = escuela.municipio
                 user.provincia = escuela.municipio.provincia
+                user.politica_privacidad_aceptada = True
+                user.politica_privacidad_fecha_aceptacion = timezone.now()
+                user.politica_privacidad_version = PRIVACY_POLICY_VERSION
             else:
                 user = Usuario.objects.create_user(
                     username=validated_data["username"], email=validated_data["email"],
                     password=validated_data["password"], first_name=estudiante.nombre,
                     last_name=estudiante.apellidos, rol="estudiante", escuela=escuela,
                     municipio=escuela.municipio, provincia=escuela.municipio.provincia,
+                    politica_privacidad_aceptada=True,
+                    politica_privacidad_fecha_aceptacion=timezone.now(),
+                    politica_privacidad_version=PRIVACY_POLICY_VERSION,
                 )
             user.is_active = False
             user.email_verificado = False
             user.pending_student = estudiante
-            user.save(update_fields=["email", "password", "first_name", "last_name", "rol", "escuela", "municipio", "provincia", "is_active", "email_verificado", "pending_student"])
+            user.save(update_fields=["email", "password", "first_name", "last_name", "rol", "escuela", "municipio", "provincia", "is_active", "email_verificado", "pending_student", "politica_privacidad_aceptada", "politica_privacidad_fecha_aceptacion", "politica_privacidad_version"])
             code = f"{secrets.randbelow(1000000):06d}"
             EmailVerificationCode.objects.create(
                 user=user,
                 code=code,
                 expires_at=timezone.now() + timedelta(minutes=15),
             )
-            send_mail(
+            send_email_async(
                 subject="Código de verificación de IngresoSUP",
                 message=(
                     f"Tu código de verificación es: {code}\n\n"
                     "Este código vence en 15 minutos."
                 ),
-                from_email=None,
                 recipient_list=[user.email],
-                fail_silently=False,
             )
 
         return user
+
+class ChangePasswordSerializer(serializers.Serializer):
+    current_password = serializers.CharField(max_length=128, write_only=True)
+    new_password = serializers.CharField(max_length=128, write_only=True)
+
+    def validate_current_password(self, value):
+        if not self.context["request"].user.check_password(value):
+            raise serializers.ValidationError("La contraseña actual no es correcta.")
+        return value
+
+    def validate(self, attrs):
+        from django.contrib.auth.password_validation import validate_password
+        from django.core.exceptions import ValidationError as DjangoValidationError
+
+        user = self.context["request"].user
+        if attrs["new_password"] == attrs["current_password"]:
+            raise serializers.ValidationError({"new_password": "La nueva contraseña debe ser distinta de la actual."})
+        try:
+            validate_password(attrs["new_password"], user)
+        except DjangoValidationError as error:
+            raise serializers.ValidationError({"new_password": list(error.messages)})
+        return attrs

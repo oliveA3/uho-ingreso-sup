@@ -8,6 +8,7 @@ import {
   fetchProvincialSchools,
   updateProvincialSchool,
 } from "../../api/provincial.service";
+import { normalizeCatalogList } from "../../api/httpClient";
 import EntityActionButton from "../../components/Buttons/EntityActionButton";
 import StatusToggle from "../../components/Buttons/StatusToggle";
 import PrimaryButton from "../../components/Buttons/PrimaryButton";
@@ -60,9 +61,10 @@ export default function MunicipiosPage({ user }) {
     loadData();
     fetchProvincialProvinces()
       .then((data) => {
-        setProvinces(data);
-        if (data.length === 1) {
-          setForm((current) => ({ ...current, provincia: String(data[0].id) }));
+        const provinces = normalizeCatalogList(data);
+        setProvinces(provinces);
+        if (provinces.length === 1) {
+          setForm((current) => ({ ...current, provincia: String(provinces[0].id) }));
         }
       })
       .catch((requestError) => setError(requestError.message));
@@ -72,7 +74,7 @@ export default function MunicipiosPage({ user }) {
     setMunicipalities([]);
     if (!form.provincia) return;
     fetchProvincialMunicipalities(form.provincia)
-      .then(setMunicipalities)
+      .then((data) => setMunicipalities(normalizeCatalogList(data)))
       .catch((requestError) => setError(requestError.message));
   }, [form.provincia]);
 

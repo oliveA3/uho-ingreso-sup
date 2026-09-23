@@ -5,6 +5,7 @@ import {
   fetchSuperAdminCatalog,
   updateSuperAdminCatalogItem,
 } from "../../api/superadmin.service";
+import { normalizeCatalogList } from "../../api/httpClient";
 import EntityActionButton from "../../components/Buttons/EntityActionButton";
 import StatusToggle from "../../components/Buttons/StatusToggle";
 import PrimaryButton from "../../components/Buttons/PrimaryButton";
@@ -17,7 +18,10 @@ const catalogs = {
   provincias: {
     title: "Provincias",
     icon: "🗺️",
-    fields: [{ name: "nombre", label: "Nombre", type: "text" }],
+    fields: [
+      { name: "nombre", label: "Nombre", type: "text" },
+      { name: "descripcion", label: "Descripción", type: "text" },
+    ],
     activeField: "activa",
   },
   municipios: {
@@ -25,6 +29,7 @@ const catalogs = {
     icon: "🏘️",
     fields: [
       { name: "nombre", label: "Nombre", type: "text" },
+      { name: "descripcion", label: "Descripción", type: "text" },
       { name: "provincia", label: "Provincia", type: "select", optionsKey: "provincias" },
     ],
     activeField: "activo",
@@ -47,6 +52,7 @@ const catalogs = {
     fields: [
       { name: "codigo", label: "Código", type: "text" },
       { name: "nombre", label: "Nombre", type: "text" },
+      { name: "descripcion", label: "Descripción", type: "text" },
       { name: "ces", label: "Universidad / CES", type: "select", optionsKey: "ces" },
       { name: "provincia", label: "Provincia", type: "select", optionsKey: "provincias" },
     ],
@@ -56,20 +62,27 @@ const catalogs = {
     title: "CES / Universidades",
     icon: "🏛️",
     fields: [
-        { name: "nombre", label: "Nombre", type: "text" },
+      { name: "nombre", label: "Nombre", type: "text" },
+      { name: "descripcion", label: "Descripción", type: "text" },
     ],
     activeField: "activa",
   },
   asignaturas: {
     title: "Asignaturas",
     icon: "📐",
-    fields: [{ name: "nombre", label: "Nombre", type: "text" }],
+    fields: [
+      { name: "nombre", label: "Nombre", type: "text" },
+      { name: "descripcion", label: "Descripción", type: "text" },
+    ],
     activeField: "activa",
   },
   "tipos-otorgamiento": {
     title: "Tipos de Otorgamiento",
     icon: "🏷️",
-    fields: [{ name: "nombre", label: "Nombre", type: "text" }],
+    fields: [
+      { name: "nombre", label: "Nombre", type: "text" },
+      { name: "descripcion", label: "Descripción", type: "text" },
+    ],
     activeField: "activa",
   },
 };
@@ -91,21 +104,39 @@ export default function NomencladoresPage() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("todos");
+  const [page, setPage] = useState(1);
+  const [pageSize] = useState(10);
+  const [pageCount, setPageCount] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
   const [referenceOptions, setReferenceOptions] = useState({ ces: [], provincias: [], municipios: [] });
+  const [exporting, setExporting] = useState(false);
   const config = catalogs[resource];
   const filteredItems = items.filter((item) => {
     const query = search.trim().toLowerCase();
-    if (!query) return true;
-    return [item.nombre, item.codigo]
+    const matchesSearch = !query || [item.nombre, item.codigo, item.descripcion]
       .filter(Boolean)
       .some((value) => String(value).toLowerCase().includes(query));
+    const matchesStatus = statusFilter === "todos"
+      || (statusFilter === "activos" ? Boolean(item[config.activeField]) : !Boolean(item[config.activeField]));
+    return matchesSearch && matchesStatus;
   });
   const activeItems = filteredItems.filter((item) => item[config.activeField]).length;
 
-  async function loadItems() {
+  async function loadItems(requestPage = page) {
     try {
       setError("");
-      setItems(await fetchSuperAdminCatalog(resource));
+      const response = await fetchSuperAdminCatalog(resource, {
+        page: requestPage,
+        page_size: pageSize,
+        search: search.trim() || undefined,
+      });
+      const list = normalizeCatalogList(response);
+      const total = Number(response?.count || list.length || 0);
+      setItems(list);
+      setTotalItems(total);
+      setPageCount(Math.max(1, Math.ceil(total / pageSize)));
+      setPage(requestPage);
     } catch (requestError) {
       setError(requestError.message);
       setNotice("");
@@ -119,25 +150,36 @@ export default function NomencladoresPage() {
         fetchSuperAdminCatalog("provincias"),
         fetchSuperAdminCatalog("municipios"),
       ]);
-      setReferenceOptions({ ces, provincias, municipios });
+      setReferenceOptions({
+        ces: normalizeCatalogList(ces),
+        provincias: normalizeCatalogList(provincias),
+        municipios: normalizeCatalogList(municipios),
+      });
     } catch (requestError) {
       setError(requestError.message);
     }
   }
 
   useEffect(() => {
-    loadItems();
-    if (["municipios", "escuelas", "carreras"].includes(resource)) loadReferenceOptions();
+    setPage(1);
+    setStatusFilter("todos");
     setSearch("");
     setNotice("");
     setEditing(null);
     setForm(emptyForm(catalogs[resource]));
+    loadItems(1);
+    if (["municipios", "escuelas", "carreras"].includes(resource)) loadReferenceOptions();
   }, [resource]);
+
+  useEffect(() => {
+    if (!resource) return;
+    loadItems(1);
+  }, [search, resource]);
 
   useEffect(() => {
     if (resource !== "escuelas" || !form.provincia) return;
     fetchSuperAdminCatalog("municipios", { provincia: form.provincia })
-      .then((municipios) => setReferenceOptions((current) => ({ ...current, municipios })))
+      .then((municipios) => setReferenceOptions((current) => ({ ...current, municipios: normalizeCatalogList(municipios) })))
       .catch((requestError) => setError(requestError.message));
   }, [resource, form.provincia]);
 
@@ -212,8 +254,50 @@ export default function NomencladoresPage() {
     }
   }
 
+  async function handleExport() {
+    try {
+      setError("");
+      setExporting(true);
+      const response = await fetch(`/api/v1/import-export/export/${resource}/`, {
+        credentials: "include",
+      });
+      if (!response.ok) {
+        throw new Error("No se pudo exportar el catálogo a Excel.");
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${resource}.xlsx`;
+      link.click();
+      URL.revokeObjectURL(url);
+      setNotice("Se exportó el catálogo a Excel correctamente.");
+    } catch (requestError) {
+      setError(requestError.message || "No se pudo exportar el catálogo.");
+      setNotice("");
+    } finally {
+      setExporting(false);
+    }
+  }
+
   const columns = [
     { key: "registro", header: "Registro", className: "font-medium text-slate-900", render: (item) => item.nombre || item.codigo },
+    {
+      key: "descripcion",
+      header: "Descripción",
+      render: (item) => item.descripcion || "—",
+    },
+    {
+      key: "ultima_modificacion",
+      header: "Últ. modificación",
+      render: (item) => item.fecha_ultima_modificacion ? new Date(item.fecha_ultima_modificacion).toLocaleString("es-ES", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      }) : "—",
+    },
     {
       key: "estado",
       header: "Estado",
@@ -243,7 +327,14 @@ export default function NomencladoresPage() {
         <PageHeader
           title="📚 Nomencladores"
           subtitle="Administra los catálogos."
-          actions={<PrimaryButton onClick={openCreate}>+ Nuevo registro</PrimaryButton>}
+          actions={
+            <>
+              <SecondaryButton onClick={handleExport} disabled={exporting}>
+                {exporting ? "Exportando..." : "Exportar Excel"}
+              </SecondaryButton>
+              <PrimaryButton onClick={openCreate}>+ Nuevo registro</PrimaryButton>
+            </>
+          }
         />
 
         <div className={styles.catalogGrid}>
@@ -278,12 +369,31 @@ export default function NomencladoresPage() {
             className="!mt-0"
           />
         </div>
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <label className="text-sm font-medium text-slate-700">Filtrar por estado</label>
+          <select
+            value={statusFilter}
+            onChange={(event) => setStatusFilter(event.target.value)}
+            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm focus:border-sky-500 focus:outline-none"
+          >
+            <option value="todos">Todos</option>
+            <option value="activos">Activos</option>
+            <option value="inactivos">Inactivos</option>
+          </select>
+          <span className="ml-auto text-sm text-slate-600">
+            Página {page} de {pageCount} · {totalItems} registros
+          </span>
+        </div>
         <DataTable
           className="table-scroll mt-5"
           columns={columns}
           data={filteredItems}
           emptyMessage={items.length ? "No se encontraron registros." : "No hay registros."}
         />
+        <div className="mt-4 flex items-center justify-end gap-2">
+          <SecondaryButton type="button" onClick={() => loadItems(Math.max(1, page - 1))} disabled={page <= 1}>Anterior</SecondaryButton>
+          <SecondaryButton type="button" onClick={() => loadItems(Math.min(pageCount, page + 1))} disabled={page >= pageCount}>Siguiente</SecondaryButton>
+        </div>
       </Card>
 
       <Modal
@@ -299,7 +409,10 @@ export default function NomencladoresPage() {
       >
         <form id="nomenclador-form" onSubmit={handleSubmit} className="space-y-4">
           {config.fields.map((field) => (
-            <FormField key={field.name} label={field.label}>
+            <FormField
+              key={field.name}
+              label={field.name === "descripcion" ? `${field.label} (opcional)` : field.label}
+            >
               {field.type === "select" ? (
                 <Select
                   required

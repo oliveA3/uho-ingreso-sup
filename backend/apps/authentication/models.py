@@ -15,11 +15,18 @@ ROLES = [
     ('estudiante', 'Estudiante')
 ]
 
+PRIVACY_POLICY_VERSION = "2025.1"
+
 
 class Usuario(AbstractUser):
     username = models.CharField(max_length=150, unique=True)
     email = models.EmailField(unique=True)
     email_verificado = models.BooleanField(default=False)
+    debe_cambiar_password = models.BooleanField(
+        default=False, help_text="La contraseña la fijó un administrador: debe cambiarla en el primer inicio de sesión.")
+    politica_privacidad_aceptada = models.BooleanField(default=False)
+    politica_privacidad_fecha_aceptacion = models.DateTimeField(null=True, blank=True)
+    politica_privacidad_version = models.CharField(max_length=20, default=PRIVACY_POLICY_VERSION)
     rol = models.CharField(max_length=150, choices=ROLES, default='estudiante')
 
     provincia = models.ForeignKey(

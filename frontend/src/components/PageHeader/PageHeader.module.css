@@ -9,13 +9,13 @@
 .title {
   font-size: 1.5rem;
   font-weight: 600;
-  color: #0f172a;
+  color: var(--gris-900);
 }
 
 .subtitle {
   margin-top: 0.5rem;
   font-size: 0.875rem;
-  color: #475569;
+  color: var(--gris-600);
 }
 
 .actions {

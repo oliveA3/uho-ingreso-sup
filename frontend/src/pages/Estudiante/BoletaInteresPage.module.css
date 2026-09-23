@@ -12,32 +12,38 @@
   }
 }
 
+.exportActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
 .eyebrow {
   font-size: 0.875rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.24em;
-  color: #334155;
+  color: var(--gris-700);
 }
 
 .title {
   margin-top: 0.5rem;
   font-size: 1.875rem;
   font-weight: 600;
-  color: #0f172a;
+  color: var(--gris-900);
 }
 
 .subtitle {
   margin-top: 0.75rem;
   font-size: 0.875rem;
-  color: #475569;
+  color: var(--gris-600);
 }
 
 .preferencesBox {
   margin-top: 1.5rem;
   border-radius: 1.5rem;
-  border: 1px solid var(--border-color, #e2e8f0);
-  background-color: #f8fafc;
+  border: 1px solid var(--border-color, var(--gris-200));
+  background-color: var(--gris-50);
   padding: 1.5rem;
 }
 
@@ -52,16 +58,16 @@
 .preferencesTitle {
   font-size: 1.125rem;
   font-weight: 600;
-  color: #0f172a;
+  color: var(--gris-900);
 }
 
 .preferencesCount {
   margin-left: 0.5rem;
   border-radius: 9999px;
-  background-color: color-mix(in srgb, var(--brand-primary, #0284c7) 15%, white);
+  background-color: color-mix(in srgb, var(--color-primario, #1f4e79) 15%, var(--blanco));
   padding: 0.25rem 0.75rem;
   font-size: 0.875rem;
-  color: var(--brand-primary, #0369a1);
+  color: var(--color-primario, #1f4e79);
 }
 
 .addRow {
@@ -90,13 +96,13 @@
 .warningHint {
   margin-top: 0.75rem;
   font-size: 0.875rem;
-  color: var(--brand-accent, #b45309);
+  color: var(--color-acento, #5ba3d9);
 }
 
 .infoHint {
   margin-top: 0.75rem;
   font-size: 0.875rem;
-  color: #64748b;
+  color: var(--gris-500);
 }
 
 .listWrapper {
@@ -107,7 +113,7 @@
   padding: 1.25rem 0;
   text-align: center;
   font-size: 0.875rem;
-  color: #64748b;
+  color: var(--gris-500);
 }
 
 .itemActions {
@@ -121,14 +127,14 @@
   border-radius: 0.75rem;
   padding: 0.5rem;
   font-size: 1.125rem;
-  color: #64748b;
+  color: var(--gris-500);
   background: none;
   border: none;
   cursor: pointer;
 }
 
 .iconButton:hover:not(:disabled) {
-  background-color: #f1f5f9;
+  background-color: var(--gris-100);
 }
 
 .iconButton:disabled {
@@ -141,14 +147,14 @@
   padding: 0.5rem 0.75rem;
   font-size: 0.875rem;
   font-weight: 600;
-  color: var(--brand-error, #dc2626);
+  color: var(--color-error, #c0392b);
   background: none;
   border: none;
   cursor: pointer;
 }
 
 .removeButton:hover {
-  background-color: color-mix(in srgb, var(--brand-error, #dc2626) 10%, white);
+  background-color: color-mix(in srgb, var(--color-error, #c0392b) 10%, var(--blanco));
 }
 
 .footerRow {
@@ -157,19 +163,19 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 0.75rem;
-  border-top: 1px solid var(--border-color, #e2e8f0);
+  border-top: 1px solid var(--border-color, var(--gris-200));
   padding-top: 1.25rem;
 }
 
 .sentNote {
   font-size: 0.875rem;
   font-weight: 600;
-  color: var(--brand-success, #047857);
+  color: var(--color-exito, #1a7a4a);
 }
 
 .pendingNote {
   font-size: 0.875rem;
-  color: #64748b;
+  color: var(--gris-500);
 }
 
 @media (max-width: 639px) {

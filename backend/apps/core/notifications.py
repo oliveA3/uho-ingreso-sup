@@ -1,7 +1,10 @@
-from .models import Notificacion
-from django.conf import settings
-from django.core.mail import send_mail
+from .models import NotificationOutbox
+from django.db import transaction
 from django.utils import timezone
+import logging
+
+
+logger = logging.getLogger(__name__)
 
 
 def notify_users(users, title, content, filter_students=True):
@@ -22,16 +25,26 @@ def notify_users(users, title, content, filter_students=True):
         valid_users.append(user)
 
     user_ids = {user.id for user in valid_users}
-    Notificacion.objects.bulk_create([
-        Notificacion(usuario_id=user_id, titulo=title, contenido=content)
+    if not user_ids:
+        return 0
+
+    entries = NotificationOutbox.objects.bulk_create([
+        NotificationOutbox(
+            usuario_id=user_id,
+            titulo=title,
+            contenido=content,
+            disponible_en=timezone.now(),
+        )
         for user_id in user_ids
     ])
-    for user in valid_users:
-        if user.email:
-            send_mail(
-                subject=title,
-                message=content,
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[user.email],
-                fail_silently=True,
-            )
+    entry_ids = [entry.id for entry in entries]
+
+    def enqueue_notifications():
+        from .tasks import process_notification_batch
+        try:
+            process_notification_batch.delay(entry_ids)
+        except Exception:
+            logger.exception("No se pudo encolar el lote de notificaciones %s", entry_ids)
+
+    transaction.on_commit(enqueue_notifications)
+    return len(entry_ids)

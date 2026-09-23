@@ -44,3 +44,7 @@ export async function fetchRegisterSchema() {
 export function fetchCurrentUser() {
   return request("/authentication/me/");
 }
+
+export function changePassword(payload) {
+  return request("/authentication/change-password/", { method: "POST", body: payload });
+}

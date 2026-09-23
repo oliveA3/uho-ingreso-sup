@@ -5,6 +5,7 @@ from django.utils import timezone
 from rest_framework.test import APITestCase
 
 from apps.authentication.models import Estudiante, Usuario
+from apps.gestion_escuela.models import Escalafon, EscalafonItem
 from apps.gestion_personal.models import BoletaInteres, BoletaInteresItem, BoletaSolicitud, BoletaSolicitudItem
 from apps.superadmin.models import Carrera, Ces, Escuela, Municipio, Provincia, TipoOtorgamiento
 
@@ -108,6 +109,53 @@ class EtapaActivationTests(APITestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["estado"], "completada")
         self.assertEqual(response.data["fecha_fin"], planned_end.isoformat())
+
+    def test_closing_stage_auto_sends_pending_escalafones(self):
+        stage = Etapa.objects.get(nombre=ETAPAS_NOMBRES[1])
+        today = date.today()
+        self.client.post(
+            reverse("provincial-etapa-activar", args=[stage.pk]),
+            {"fecha_inicio": today.isoformat(), "fecha_fin": (today + timedelta(days=10)).isoformat()},
+            format="json",
+        )
+
+        provincia = Provincia.objects.create(nombre="Provincia cerrada")
+        municipio = Municipio.objects.create(nombre="Municipio cerrado", provincia=provincia)
+        escuela_pending = Escuela.objects.create(nombre="Escuela pendiente", municipio=municipio)
+        escuela_sent = Escuela.objects.create(nombre="Escuela enviada", municipio=municipio)
+
+        escalafon_pending = Escalafon.objects.create(proceso=self.proceso, escuela=escuela_pending, estado="pendiente")
+        escalafon_sent = Escalafon.objects.create(proceso=self.proceso, escuela=escuela_sent, estado="enviado")
+
+        estudiante_pending = Estudiante.objects.create(
+            ci="10000000001", nombre="Ana", apellidos="Pendiente", sexo="F",
+            direccion="Calle 1", escuela=escuela_pending,
+        )
+        estudiante_sent = Estudiante.objects.create(
+            ci="10000000002", nombre="Luis", apellidos="Enviado", sexo="M",
+            direccion="Calle 2", escuela=escuela_sent,
+        )
+
+        item_pending = EscalafonItem.objects.create(
+            escalafon=escalafon_pending, estudiante=estudiante_pending,
+            indice_10=80, indice_11=82, indice_12=84, indice_general=82,
+        )
+        item_sent = EscalafonItem.objects.create(
+            escalafon=escalafon_sent, estudiante=estudiante_sent,
+            indice_10=90, indice_11=92, indice_12=93, indice_general=92,
+        )
+
+        response = self.client.post(reverse("provincial-etapa-cerrar", args=[stage.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        escalafon_pending.refresh_from_db()
+        escalafon_sent.refresh_from_db()
+        item_pending.refresh_from_db()
+        item_sent.refresh_from_db()
+        self.assertEqual(escalafon_pending.estado, "enviado")
+        self.assertEqual(escalafon_sent.estado, "enviado")
+        self.assertTrue(item_pending.indices_bloqueados)
+        self.assertFalse(item_sent.indices_bloqueados)
 
     def test_rejects_end_date_before_start_date(self):
         stage = Etapa.objects.get(nombre=ETAPAS_NOMBRES[1])
@@ -345,6 +393,21 @@ class PlanPlazaImportTests(APITestCase):
             activa=True,
         )
 
+    def _import_plan_plaza(self, file):
+        """Encola la importación (202) y devuelve la respuesta de /tareas/<id>/ ya resuelta (modo eager)."""
+        accepted = self.client.post(reverse("import-plan-plaza"), {"file": file}, format="multipart")
+        self.assertEqual(accepted.status_code, 202, accepted.content)
+        task_id = accepted.data["task_id"]
+        status_response = self.client.get(reverse("import-task-status", args=[task_id]))
+        self.assertEqual(status_response.status_code, 200)
+        data = status_response.data
+        self.assertIn(data["estado"], {"completada", "fallida"})
+        response = type("R", (), {})()
+        response.status_code = data["http_status"]
+        response.data = data["resultado"]
+        response.content = str(data).encode()
+        return response
+
     def test_imports_plan_plaza_using_career_pk_and_active_process(self):
         from io import BytesIO
         from openpyxl import Workbook
@@ -366,7 +429,7 @@ class PlanPlazaImportTests(APITestCase):
         workbook.save(buffer)
         file = SimpleUploadedFile("plan-plazas.xlsx", buffer.getvalue(), content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
-        response = self.client.post(reverse("import-plan-plaza"), {"file": file}, format="multipart")
+        response = self._import_plan_plaza(file)
 
         self.assertEqual(response.status_code, 201, response.content)
         self.assertEqual(response.data["inserted"], 1)
@@ -375,7 +438,8 @@ class PlanPlazaImportTests(APITestCase):
         self.assertIsNotNone(plan)
         self.assertEqual(plan.carrera_id, self.carrera.id)
         self.assertEqual(plan.otorgamiento_tipo.nombre, "Municipal")
-        self.assertEqual(plan.proceso.etapa_id, self.active_stage.id)
+        plan_stage = Etapa.objects.get(nombre=ETAPAS_NOMBRES[3])
+        self.assertEqual(plan.proceso.etapa_id, plan_stage.id)
         self.assertEqual(plan.cantidad_plazas, 12)
         self.assertEqual(plan.sexo, "A")
 
@@ -402,7 +466,7 @@ class PlanPlazaImportTests(APITestCase):
         workbook.save(buffer)
         file = SimpleUploadedFile("plan-plazas-province.xlsx", buffer.getvalue(), content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
-        response = self.client.post(reverse("import-plan-plaza"), {"file": file}, format="multipart")
+        response = self._import_plan_plaza(file)
 
         self.assertEqual(response.status_code, 201, response.content)
         plan = self.carrera.plan_plaza.order_by("-id").first()
@@ -426,7 +490,7 @@ class PlanPlazaImportTests(APITestCase):
         workbook.save(buffer)
         file = SimpleUploadedFile("plan-plazas-invalid.xlsx", buffer.getvalue(), content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
-        response = self.client.post(reverse("import-plan-plaza"), {"file": file}, format="multipart")
+        response = self._import_plan_plaza(file)
 
         self.assertEqual(response.status_code, 400)
         self.assertIn("Tipo_Otorgamiento", str(response.data))

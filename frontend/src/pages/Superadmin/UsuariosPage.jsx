@@ -25,6 +25,8 @@ const roles = [
   ["estudiante", "Estudiante"],
 ];
 
+const createUserRoles = roles.filter(([value]) => value !== "estudiante");
+
 const fieldLabels = {
   username: "Usuario",
   email: "Correo",
@@ -44,6 +46,30 @@ const emptyForm = {
   password: "",
   is_active: true,
 };
+
+function normalizeListResponse(response) {
+  const raw = Array.isArray(response)
+    ? response
+    : Array.isArray(response?.results)
+      ? response.results
+      : Array.isArray(response?.data)
+        ? response.data
+        : [];
+
+  const seen = new Set();
+  return raw.filter((item) => {
+    if (!item || typeof item !== "object") return true;
+    const key = item.id != null ? `id:${item.id}` : JSON.stringify({
+      nombre: item.nombre,
+      codigo: item.codigo,
+      username: item.username,
+      email: item.email,
+    });
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
 
 export default function UsuariosPage() {
   const confirm = useConfirm();
@@ -68,7 +94,8 @@ export default function UsuariosPage() {
     try {
       setLoading(true);
       setError("");
-      setUsers(await fetchSuperAdminUsers(filters));
+      const response = await fetchSuperAdminUsers(filters);
+      setUsers(normalizeListResponse(response));
     } catch (requestError) {
       setError(requestError.message);
     } finally {
@@ -78,7 +105,7 @@ export default function UsuariosPage() {
 
   useEffect(() => {
     fetchSuperAdminCatalog("provincias")
-      .then(setProvinces)
+      .then((response) => setProvinces(normalizeListResponse(response)))
       .catch((requestError) => setError(requestError.message));
   }, []);
 
@@ -87,7 +114,7 @@ export default function UsuariosPage() {
     setSchools([]);
     if (!form.provincia) return;
     fetchSuperAdminCatalog("municipios", { provincia: form.provincia })
-      .then(setMunicipalities)
+      .then((response) => setMunicipalities(normalizeListResponse(response)))
       .catch((requestError) => setError(requestError.message));
   }, [form.provincia]);
 
@@ -95,7 +122,7 @@ export default function UsuariosPage() {
     setSchools([]);
     if (!form.municipio) return;
     fetchSuperAdminCatalog("escuelas", { municipio: form.municipio })
-      .then(setSchools)
+      .then((response) => setSchools(normalizeListResponse(response)))
       .catch((requestError) => setError(requestError.message));
   }, [form.municipio]);
 
@@ -111,7 +138,7 @@ export default function UsuariosPage() {
     async function loadStudents() {
       try {
         setStudentsLoading(true);
-        const data = await fetchSuperAdminStudents(studentFilters);
+        const data = normalizeListResponse(await fetchSuperAdminStudents(studentFilters));
         setStudents(data);
         if (!studentFilters.anio) {
           setStudentYears([...new Set(data.flatMap((student) => student.anios))].sort((a, b) => b - a));
@@ -274,13 +301,6 @@ export default function UsuariosPage() {
         ? <StatusToggle active={student.is_active} onClick={() => toggleStudentActive(student)} />
         : <span className={styles.noAccount}>Sin cuenta</span>,
     },
-    {
-      key: "acciones",
-      header: "Acciones",
-      render: (student) => student.has_account
-        ? <EntityActionButton variant="edit" onClick={() => openStudentEdit(student)}>Editar</EntityActionButton>
-        : <span className={styles.mutedAction}>Pendiente de registro</span>,
-    },
   ];
 
   return (
@@ -289,10 +309,13 @@ export default function UsuariosPage() {
         <PageHeader
           title="👥 Usuarios"
           subtitle="Gestión global de usuarios en todo el sistema."
-          actions={<PrimaryButton onClick={openCreate}>+ Nuevo usuario</PrimaryButton>}
+          actions={(
+            <div className={styles.headerActions}>
+              <SecondaryButton onClick={openStudents}>Ver estudiantes</SecondaryButton>
+              <PrimaryButton onClick={openCreate}>+ Nuevo usuario</PrimaryButton>
+            </div>
+          )}
         />
-
-        <SecondaryButton onClick={openStudents}>Ver estudiantes</SecondaryButton>
 
         <div className={styles.filtersGrid}>
           <FormField label="Rol">
@@ -350,11 +373,12 @@ export default function UsuariosPage() {
           </FormField>
         </div>
         <DataTable
-          className="table-scroll"
+          className={`${styles.studentTable} mt-2`}
           columns={studentColumns}
           data={students}
           loading={studentsLoading}
           emptyMessage="No hay estudiantes para estos filtros."
+          maxHeight="18rem"
         />
       </Modal>
 
@@ -391,7 +415,7 @@ export default function UsuariosPage() {
                 setForm({ ...form, rol: role, provincia: "", municipio: "", escuela: "" });
               }}
             >
-              {roles.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+              {createUserRoles.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
             </Select>
           </FormField>
           {form.rol !== "superadmin" && (

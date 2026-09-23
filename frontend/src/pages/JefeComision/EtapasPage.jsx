@@ -86,6 +86,13 @@ export default function EtapasPage() {
   }
 
   async function handleClose(stage) {
+    const ok = await confirm({
+      title: "Cerrar etapa",
+      message: `¿Deseas cerrar la etapa "${stage.nombre}"? Una vez cerrada no podrás reabrirla ni modificar sus datos.`,
+      confirmLabel: "Cerrar etapa",
+      tone: "danger",
+    });
+    if (!ok) return;
     setSaving(true);
     try {
       await closeProvincialEtapa(stage.id);

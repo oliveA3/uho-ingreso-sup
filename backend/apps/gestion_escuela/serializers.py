@@ -11,7 +11,7 @@ class StudentsWithoutAccountSerializer(serializers.ModelSerializer):
         model = Estudiante
         fields = ["id", "ci", "nombre", "apellidos", "indice_general"]
 
-    def get_indice_general(self, student):
+    def get_indice_general(self, student) -> float | None:
         entry = student.escalafones.order_by("-escalafon__proceso__anio", "-id").first()
         return float(entry.indice_general) if entry else student.indice_general
 
@@ -50,10 +50,10 @@ class EscalafonItemSerializer(serializers.ModelSerializer):
         })
         return data
 
-    def get_estado_revision(self, instance):
+    def get_estado_revision(self, instance) -> str:
         return "pendiente" if instance.estado == "por_revisar" else "revisada"
 
-    def get_aceptado(self, instance):
+    def get_aceptado(self, instance) -> bool | None:
         if instance.estado == "sin_respuesta":
             return None
         return instance.estado == "aceptado"

@@ -1,6 +1,6 @@
 import styles from "./HeroSection.module.css";
 
-export default function HeroSection({ onViewPlan, onViewResults, onViewAwards, isAuthenticated, activeStageNumber }) {
+export default function HeroSection({ onViewPlan, onViewResults, onViewAwards, isAuthenticated, activeStageNumber, systemName = "IngresoSUP" }) {
   const currentYear = new Date().getFullYear();
   const closestStage = [3, 5, 6].reduce((closest, stage) => {
     if (activeStageNumber == null) return closest;
@@ -11,7 +11,7 @@ export default function HeroSection({ onViewPlan, onViewResults, onViewAwards, i
     <section className={styles.section}>
       <div className={styles.inner}>
         <p className={styles.eyebrow}>Proceso de Ingreso {currentYear}</p>
-        <h1 className={styles.title}>IngresoSUP</h1>
+        <h1 className={styles.title}>{systemName}</h1>
         <p className={styles.description}>
           Información oficial sobre el proceso de solicitud y otorgamiento de carreras del Curso Diurno. Accede a noticias, planes de plazas, índices de corte y oferta de carreras.
         </p>

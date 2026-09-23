@@ -1,9 +1,9 @@
 .section {
   margin-bottom: 0.5rem;
   border-radius: 2rem;
-  background: linear-gradient(to right, var(--brand-primary, #1f4e79), var(--brand-secondary, #2e75b6), var(--brand-accent, #5ba3d9));
+  background: linear-gradient(to right, var(--color-primario, #1f4e79), var(--color-secundario, #2e75b6), var(--color-acento, #5ba3d9));
   padding: 3rem 1.5rem;
-  color: #ffffff;
+  color: var(--color-primario-texto);
   box-shadow: 0 10px 15px -3px rgba(15, 23, 42, 0.2);
 }
 
@@ -22,7 +22,7 @@
   font-size: 0.875rem;
   text-transform: uppercase;
   letter-spacing: 0.3em;
-  color: #cffafe;
+  color: color-mix(in srgb, var(--color-primario-texto) 88%, var(--color-primario));
 }
 
 .title {
@@ -43,7 +43,7 @@
   max-width: 48rem;
   font-size: 1rem;
   line-height: 1.75rem;
-  color: #cffafe;
+  color: color-mix(in srgb, var(--color-primario-texto) 88%, var(--color-primario));
 }
 
 @media (min-width: 640px) {
@@ -80,18 +80,18 @@
 }
 
 .actionButtonActive {
-  background-color: #ffffff;
-  color: var(--brand-primary, #1f4e79);
+  background-color: var(--blanco);
+  color: var(--color-primario, #1f4e79);
 }
 
 .actionButtonActive:hover {
-  background-color: #f1f5f9;
+  background-color: var(--gris-100);
 }
 
 .actionButtonInactive {
   border: 1px solid rgba(255, 255, 255, 0.3);
   background-color: rgba(255, 255, 255, 0.1);
-  color: #ffffff;
+  color: var(--blanco);
 }
 
 .actionButtonInactive:hover {

@@ -6,7 +6,7 @@
 
 .card {
   border-radius: 1.5rem;
-  border: 1px solid var(--border-color, #e2e8f0);
+  border: 1px solid var(--border-color, var(--gris-200));
   padding: 1.25rem;
 }
 
@@ -15,60 +15,60 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.18em;
-  color: #64748b;
+  color: var(--gris-500);
 }
 
 .value {
   margin-top: 0.5rem;
   font-size: 1.875rem;
   font-weight: 600;
-  color: #0f172a;
+  color: var(--gris-900);
 }
 
 .caption {
   margin-top: 0.25rem;
   font-size: 0.8125rem;
-  color: #64748b;
+  color: var(--gris-500);
 }
 
 .toneNeutral {
-  background-color: #f8fafc;
+  background-color: var(--gris-50);
 }
 
 .tonePrimary {
-  background-color: color-mix(in srgb, var(--brand-primary, #1f4e79) 8%, white);
-  border-color: color-mix(in srgb, var(--brand-primary, #1f4e79) 25%, white);
+  background-color: color-mix(in srgb, var(--color-primario, #1f4e79) 8%, var(--blanco));
+  border-color: color-mix(in srgb, var(--color-primario, #1f4e79) 25%, var(--blanco));
 }
 
 .tonePrimary .value {
-  color: var(--brand-primary, #1f4e79);
+  color: var(--color-primario, #1f4e79);
 }
 
 .toneSuccess {
-  background-color: color-mix(in srgb, var(--brand-success, #1a7a4a) 8%, white);
-  border-color: color-mix(in srgb, var(--brand-success, #1a7a4a) 25%, white);
+  background-color: color-mix(in srgb, var(--color-exito, #1a7a4a) 8%, var(--blanco));
+  border-color: color-mix(in srgb, var(--color-exito, #1a7a4a) 25%, var(--blanco));
 }
 
 .toneSuccess .value {
-  color: var(--brand-success, #1a7a4a);
+  color: var(--color-exito, #1a7a4a);
 }
 
 .toneError {
-  background-color: color-mix(in srgb, var(--brand-error, #c0392b) 8%, white);
-  border-color: color-mix(in srgb, var(--brand-error, #c0392b) 25%, white);
+  background-color: color-mix(in srgb, var(--color-error, #c0392b) 8%, var(--blanco));
+  border-color: color-mix(in srgb, var(--color-error, #c0392b) 25%, var(--blanco));
 }
 
 .toneError .value {
-  color: var(--brand-error, #c0392b);
+  color: var(--color-error, #c0392b);
 }
 
 .toneWarning {
-  background-color: #fef3c7;
-  border-color: #fde68a;
+  background-color: var(--advertencia-100);
+  border-color: var(--advertencia-200);
 }
 
 .toneWarning .value {
-  color: #92400e;
+  color: var(--advertencia-800);
 }
 
 @media (max-width: 639px) {

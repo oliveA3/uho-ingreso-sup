@@ -9,14 +9,14 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.24em;
-  color: #334155;
+  color: var(--gris-700);
 }
 
 .title {
   margin-top: 0.5rem;
   font-size: 1.875rem;
   font-weight: 600;
-  color: #0f172a;
+  color: var(--gris-900);
 }
 
 .actionsCell {
@@ -34,5 +34,5 @@
 .modificationsTitle {
   font-size: 0.875rem;
   font-weight: 600;
-  color: #0f172a;
+  color: var(--gris-900);
 }

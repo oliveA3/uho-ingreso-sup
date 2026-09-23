@@ -14,8 +14,9 @@
   width: 100%;
   max-height: 90vh;
   flex-direction: column;
+  overflow: hidden;
   border-radius: 1.5rem;
-  background-color: #ffffff;
+  background-color: var(--blanco);
   padding: 1.5rem;
   box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.4);
 }
@@ -47,13 +48,13 @@
 .title {
   font-size: 1.125rem;
   font-weight: 600;
-  color: #0f172a;
+  color: var(--gris-900);
 }
 
 .description {
   margin-top: 0.25rem;
   font-size: 0.875rem;
-  color: #475569;
+  color: var(--gris-600);
 }
 
 .closeButton {
@@ -66,7 +67,7 @@
   margin: -0.75rem -0.75rem 0 0;
   font-size: 1.25rem;
   line-height: 1;
-  color: #64748b;
+  color: var(--gris-500);
   background: none;
   border: none;
   border-radius: 9999px;
@@ -74,19 +75,23 @@
 }
 
 .closeButton:hover {
-  color: #334155;
+  color: var(--gris-700);
 }
 
 .body {
   margin-top: 0;
   min-height: 0;
+  max-height: calc(90vh - 8.5rem);
   overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .bodyWithHeader {
   margin-top: 1.25rem;
   min-height: 0;
+  max-height: calc(90vh - 10.5rem);
   overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .footer {

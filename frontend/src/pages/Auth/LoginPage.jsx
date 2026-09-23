@@ -6,23 +6,66 @@ import PrimaryButton from "../../components/Buttons/PrimaryButton";
 import { Card, FormField, Input } from "../../components";
 import styles from "./LoginPage.module.css";
 
+const validateField = (field, value) => {
+  const trimmed = value.trim();
+
+  if (field === "username") {
+    if (!trimmed) return "Escribe tu usuario para continuar.";
+    if (trimmed.length < 4) return "El usuario debe tener al menos 4 caracteres.";
+    return "";
+  }
+
+  if (field === "password") {
+    if (!trimmed) return "Escribe tu contraseña.";
+    if (trimmed.length < 6) return "La contraseña debe tener al menos 6 caracteres.";
+    return "";
+  }
+
+  return "";
+};
+
 export default function LoginPage({ onLogin }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState(null);
+  const [usernameError, setUsernameError] = useState("");
+  const [passwordError, setPasswordError] = useState("");
   const navigate = useNavigate();
+
+  const handleUsernameChange = (event) => {
+    const value = event.target.value;
+    setUsername(value);
+    setUsernameError(validateField("username", value));
+    setError(null);
+  };
+
+  const handlePasswordChange = (event) => {
+    const value = event.target.value;
+    setPassword(value);
+    setPasswordError(validateField("password", value));
+    setError(null);
+  };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError(null);
 
+    const nextUsernameError = validateField("username", username);
+    const nextPasswordError = validateField("password", password);
+    setUsernameError(nextUsernameError);
+    setPasswordError(nextPasswordError);
+
+    if (nextUsernameError || nextPasswordError) {
+      return;
+    }
+
     try {
-      const data = await login({ username, password });
+      const data = await login({ username: username.trim(), password: password.trim() });
       onLogin(data.user);
       navigate("/");
     } catch (err) {
-      setError(err.message || "No se pudo iniciar sesión.");
+      setError(err.message || "No se pudo iniciar sesión. Verifica los datos e intenta otra vez.");
     }
   };
 
@@ -37,30 +80,50 @@ export default function LoginPage({ onLogin }) {
 
         <h1 className={styles.title}>Iniciar sesión</h1>
         <p className={styles.subtitle}>
-          Accede con el usuario y contraseña de tu cuenta IngresoSUP.
+          Accede con tu usuario y contraseña para entrar al sistema IngresoSUP.
         </p>
 
         {error && <FeedbackMessage type="error" className="mt-6 rounded-2xl">{error}</FeedbackMessage>}
 
-        <form className={styles.form} onSubmit={handleSubmit}>
-          <FormField label="Usuario">
+        <form className={styles.form} onSubmit={handleSubmit} noValidate>
+          <FormField
+            htmlFor="login-username"
+            label="Usuario"
+            required
+            error={usernameError}
+            errorId="login-username-error"
+          >
             <Input
+              id="login-username"
+              name="username"
               value={username}
-              onChange={(event) => setUsername(event.target.value)}
+              onChange={handleUsernameChange}
               placeholder="ej: maria.gonzalez25"
               required
+              invalid={Boolean(usernameError)}
+              aria-describedby={usernameError ? "login-username-error" : undefined}
             />
           </FormField>
 
-          <FormField label="Contraseña">
+          <FormField
+            htmlFor="login-password"
+            label="Contraseña"
+            required
+            error={passwordError}
+            errorId="login-password-error"
+          >
             <div className={styles.passwordField}>
               <Input
+                id="login-password"
+                name="password"
                 type={showPassword ? "text" : "password"}
                 value={password}
-                onChange={(event) => setPassword(event.target.value)}
+                onChange={handlePasswordChange}
                 className={styles.passwordInput}
                 placeholder="••••••••"
                 required
+                invalid={Boolean(passwordError)}
+                aria-describedby={passwordError ? "login-password-error" : undefined}
               />
               <button
                 type="button"

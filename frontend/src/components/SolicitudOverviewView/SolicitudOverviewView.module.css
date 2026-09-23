@@ -6,16 +6,16 @@
 
 .section {
   border-radius: 1.5rem;
-  border: 1px solid #e2e8f0;
-  background-color: #ffffff;
+  border: 1px solid var(--gris-200);
+  background-color: var(--blanco);
   padding: 2rem;
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
 }
 
 .sectionFlat {
   border-radius: 1.5rem;
-  border: 1px solid #e2e8f0;
-  background-color: #ffffff;
+  border: 1px solid var(--gris-200);
+  background-color: var(--blanco);
   padding: 2rem;
 }
 
@@ -24,20 +24,20 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.24em;
-  color: #334155;
+  color: var(--gris-700);
 }
 
 .title {
   margin-top: 0.5rem;
   font-size: 1.875rem;
   font-weight: 600;
-  color: #0f172a;
+  color: var(--gris-900);
 }
 
 .subtitle {
   margin-top: 0.75rem;
   font-size: 0.875rem;
-  color: #475569;
+  color: var(--gris-600);
 }
 
 .metrics {
@@ -55,62 +55,29 @@
 .tableTitle {
   font-size: 1.25rem;
   font-weight: 600;
-  color: #0f172a;
+  color: var(--gris-900);
 }
 
 .tableCount {
   margin-top: 0.25rem;
   font-size: 0.875rem;
-  color: #64748b;
+  color: var(--gris-500);
 }
 
 .tableWrapper {
   margin-top: 1.25rem;
   overflow-x: auto;
   border-radius: 1rem;
-  border: 1px solid #e2e8f0;
-}
-
-.table {
-  min-width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
-  text-align: left;
-  font-size: 0.875rem;
-}
-
-.thead {
-  background-color: #f1f5f9;
-  color: #64748b;
-}
-
-.thead th {
-  padding: 0.75rem 1rem;
-}
-
-.tbody tr {
-  border-top: 1px solid #e2e8f0;
-  background-color: #ffffff;
-}
-
-.tbody td {
-  padding: 1rem;
+  border: 1px solid var(--gris-200);
 }
 
 .studentCell {
   font-weight: 500;
-  color: #0f172a;
+  color: var(--gris-900);
 }
 
 .indexCell {
-  color: #475569;
-}
-
-.emptyRow {
-  padding: 2.5rem 1rem;
-  text-align: center;
-  font-size: 0.875rem;
-  color: #64748b;
+  color: var(--gris-600);
 }
 
 .actions {
@@ -121,17 +88,17 @@
 
 .actionButton {
   border-radius: 0.75rem;
-  border: 1px solid #e2e8f0;
-  background-color: #f8fafc;
+  border: 1px solid var(--gris-200);
+  background-color: var(--gris-50);
   padding: 0.5rem 0.75rem;
   font-size: 0.75rem;
   font-weight: 600;
-  color: #334155;
+  color: var(--gris-700);
   cursor: pointer;
 }
 
 .actionButton:hover:not(:disabled) {
-  background-color: #f1f5f9;
+  background-color: var(--gris-100);
 }
 
 .actionButton:disabled {
@@ -148,56 +115,27 @@
 }
 
 .statusPendiente {
-  background-color: #fef3c7;
-  color: #b45309;
+  background-color: color-mix(in srgb, var(--color-acento, #5ba3d9) 15%, var(--blanco));
+  color: var(--color-acento, #5ba3d9);
 }
 
 .statusPorEnviar {
-  background-color: #f1f5f9;
-  color: #334155;
+  background-color: var(--gris-100);
+  color: var(--gris-700);
 }
 
 .statusAprobada {
-  background-color: color-mix(in srgb, var(--brand-success, #1a7a4a) 15%, white);
-  color: var(--brand-success, #1a7a4a);
+  background-color: color-mix(in srgb, var(--color-exito, #1a7a4a) 15%, var(--blanco));
+  color: var(--color-exito, #1a7a4a);
 }
 
 .statusModificada {
-  background-color: color-mix(in srgb, var(--brand-error, #c0392b) 15%, white);
-  color: var(--brand-error, #c0392b);
+  background-color: color-mix(in srgb, var(--color-error, #c0392b) 15%, var(--blanco));
+  color: var(--color-error, #c0392b);
 }
 
 .rankingSection {
   margin-top: 1.25rem;
-}
-
-@media (max-width: 639px) {
-  .wrapper {
-    gap: 1rem;
-  }
-
-  .section,
-  .sectionFlat {
-    padding: 1rem;
-    border-radius: 1rem;
-  }
-
-  .title {
-    font-size: 1.5rem;
-  }
-
-  .metrics {
-    margin-top: 1rem;
-  }
-
-  .tableWrapper,
-  .rankingSection {
-    margin-top: 1rem;
-  }
-
-  .tbody td {
-    padding: 0.75rem;
-  }
 }
 
 .rankingItem + .rankingItem {
@@ -218,35 +156,35 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   font-weight: 500;
-  color: #334155;
+  color: var(--gris-700);
 }
 
 .rankingValue {
   flex-shrink: 0;
   font-weight: 600;
-  color: #0f172a;
+  color: var(--gris-900);
 }
 
 .barTrack {
   height: 0.75rem;
   overflow: hidden;
   border-radius: 9999px;
-  background-color: #f1f5f9;
+  background-color: var(--gris-100);
 }
 
 .barFill {
   height: 100%;
   border-radius: 9999px;
-  background-color: var(--brand-accent, #5ba3d9);
+  background-color: var(--color-acento, #5ba3d9);
 }
 
 .emptyText {
   margin-top: 1.25rem;
   border-radius: 1rem;
-  background-color: #f8fafc;
+  background-color: var(--gris-50);
   padding: 1.25rem;
   font-size: 0.875rem;
-  color: #64748b;
+  color: var(--gris-500);
 }
 
 .distributionGrid {
@@ -272,22 +210,47 @@
   align-items: center;
   justify-content: space-between;
   border-radius: 1rem;
-  background-color: #f8fafc;
+  background-color: var(--gris-50);
   padding: 1rem;
 }
 
 .distributionLabel {
   font-weight: 500;
-  color: #334155;
+  color: var(--gris-700);
 }
 
 .distributionValue {
   font-weight: 600;
-  color: #0f172a;
+  color: var(--gris-900);
 }
 
 .distributionPercent {
   font-size: 0.75rem;
   font-weight: 400;
-  color: #64748b;
+  color: var(--gris-500);
+}
+
+@media (max-width: 639px) {
+  .wrapper {
+    gap: 1rem;
+  }
+
+  .section,
+  .sectionFlat {
+    padding: 1rem;
+    border-radius: 1rem;
+  }
+
+  .title {
+    font-size: 1.5rem;
+  }
+
+  .metrics {
+    margin-top: 1rem;
+  }
+
+  .tableWrapper,
+  .rankingSection {
+    margin-top: 1rem;
+  }
 }

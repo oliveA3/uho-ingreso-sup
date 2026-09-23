@@ -15,6 +15,7 @@ import PrimaryButton from "../../components/Buttons/PrimaryButton";
 import SecondaryButton from "../../components/Buttons/SecondaryButton";
 import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
 import { Card, DataTable, FormField, Input, Modal, Select, useConfirm } from "../../components";
+import { normalizeCatalogList } from "../../api/httpClient";
 import styles from "./CarrerasPage.module.css";
 
 const emptyForm = { codigo: "", nombre: "", ces: "", provincia: "" };
@@ -54,8 +55,8 @@ export default function CarrerasPage() {
         loadCareers();
         Promise.all([fetchProvincialProvinces(), fetchProvincialCes()])
             .then(([provinceData, cesData]) => {
-                setProvinces(provinceData);
-                setCes(cesData);
+                setProvinces(normalizeCatalogList(provinceData));
+                setCes(normalizeCatalogList(cesData));
             })
             .catch((requestError) => setError(requestError.message));
     }, []);
@@ -121,6 +122,16 @@ export default function CarrerasPage() {
     async function handleImport(event) {
         const file = event.target.files?.[0];
         if (!file) return;
+        const shouldImport = await confirm({
+            title: "Reemplazar catálogo de carreras",
+            message: `El catálogo actual será reemplazado por las filas de "${file.name}". Esta acción no se puede deshacer. ¿Deseas continuar?`,
+            confirmLabel: "Reemplazar",
+            tone: "danger",
+        });
+        if (!shouldImport) {
+            event.target.value = "";
+            return;
+        }
         try {
             setBusy(true);
             setError("");
@@ -235,7 +246,8 @@ export default function CarrerasPage() {
             >
                 <p className={styles.importText}>El catálogo actual será reemplazado por las filas del Excel.</p>
                 <p className={styles.importHint}>Columnas: Código, Nombre, CES, Provincia.</p>
-                <Input type="file" accept=".xlsx,.xls" onChange={handleImport} className={styles.importInput} />
+                <Input type="file" accept=".xlsx,.xls" onChange={handleImport} disabled={busy} className={styles.importInput} />
+                {busy && <p className={styles.importHint}>Importando...</p>}
             </Modal>
         </div>
     );

@@ -6,6 +6,7 @@ import {
   fetchProvincialUsers,
   updateProvincialUser,
 } from "../../api/provincial.service";
+import { normalizeCatalogList } from "../../api/httpClient";
 import EntityActionButton from "../../components/Buttons/EntityActionButton";
 import StatusToggle from "../../components/Buttons/StatusToggle";
 import PrimaryButton from "../../components/Buttons/PrimaryButton";
@@ -60,7 +61,7 @@ export default function UsuariosPage() {
   useEffect(() => {
     loadUsers();
     fetchProvincialMunicipalities()
-      .then(setMunicipios)
+      .then((data) => setMunicipios(normalizeCatalogList(data)))
       .catch((requestError) => setError(requestError.message));
   }, []);
 

@@ -1,9 +1,9 @@
 .error {
   border-radius: 0.75rem;
-  background-color: color-mix(in srgb, var(--brand-error, #c0392b) 10%, white);
+  background-color: color-mix(in srgb, var(--color-error, #c0392b) 10%, var(--blanco));
   padding: 0.5rem;
   font-size: 0.75rem;
-  color: var(--brand-error, #c0392b);
+  color: var(--color-error, #c0392b);
 }
 
 .list {
@@ -17,15 +17,15 @@
 
 .status {
   font-size: 0.875rem;
-  color: #64748b;
+  color: var(--gris-500);
 }
 
 .item {
   display: block;
   width: 100%;
   border-radius: 0.75rem;
-  border: 1px solid #e2e8f0;
-  background-color: #ffffff;
+  border: 1px solid var(--gris-200);
+  background-color: var(--blanco);
   padding: 0.75rem;
   text-align: left;
   cursor: pointer;
@@ -33,28 +33,28 @@
 }
 
 .item:hover {
-  background-color: #f8fafc;
+  background-color: var(--gris-50);
 }
 
 .itemUnread {
-  border-color: color-mix(in srgb, var(--brand-accent, #5ba3d9) 40%, white);
-  background-color: color-mix(in srgb, var(--brand-accent, #5ba3d9) 8%, white);
+  border-color: color-mix(in srgb, var(--color-acento, #5ba3d9) 40%, var(--blanco));
+  background-color: color-mix(in srgb, var(--color-acento, #5ba3d9) 8%, var(--blanco));
 }
 
 .itemTitle {
   font-size: 0.875rem;
   font-weight: 600;
-  color: #1e293b;
+  color: var(--gris-800);
 }
 
 .itemBody {
   margin-top: 0.25rem;
   font-size: 0.75rem;
-  color: #475569;
+  color: var(--gris-600);
 }
 
 .itemDate {
   margin-top: 0.5rem;
   font-size: 0.6875rem;
-  color: #64748b;
+  color: var(--gris-500);
 }

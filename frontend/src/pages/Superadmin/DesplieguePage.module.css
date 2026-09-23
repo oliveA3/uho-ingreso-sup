@@ -1,9 +1,9 @@
 .referenceBox {
   border-radius: 1.5rem;
-  background-color: #f8fafc;
+  background-color: var(--gris-50);
   padding: 1rem 1.25rem;
   font-size: 0.875rem;
-  color: #334155;
+  color: var(--gris-700);
 }
 
 .referenceLabel {
@@ -13,10 +13,10 @@
 .terminal {
   margin-top: 1.5rem;
   border-radius: 1.5rem;
-  background-color: #020617;
+  background-color: var(--gris-950);
   padding: 1.5rem;
   font-size: 0.875rem;
-  color: #e2e8f0;
+  color: var(--gris-200);
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
 }
 
@@ -29,11 +29,11 @@
 }
 
 .comment {
-  color: #94a3b8;
+  color: var(--gris-400);
 }
 
 .command {
-  color: #f1f5f9;
+  color: var(--gris-100);
 }
 
 .successGroup {
@@ -41,5 +41,5 @@
 }
 
 .success {
-  color: #34d399;
+  color: var(--verde-400);
 }

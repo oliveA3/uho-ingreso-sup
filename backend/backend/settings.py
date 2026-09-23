@@ -1,4 +1,5 @@
 import os
+import sys
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -7,16 +8,40 @@ SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "django-insecure-change-this-for-pro
 DEBUG = os.getenv("DJANGO_DEBUG", "true").lower() == "true"
 ALLOWED_HOSTS = [host.strip() for host in os.getenv("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if host.strip()]
 
+# Correo de notificaciones. EMAIL_PROVIDER: mailtrap (desarrollo), sendgrid (producción),
+# smtp (SMTP institucional) o console (imprime en consola).
+EMAIL_PROVIDER = os.getenv("EMAIL_PROVIDER", "console" if DEBUG else "smtp").lower()
+_EMAIL_PRESETS = {
+    "mailtrap": {"host": "sandbox.smtp.mailtrap.io", "port": "2525", "user": os.getenv("MAILTRAP_USER", ""), "password": os.getenv("MAILTRAP_PASSWORD", ""), "tls": "true"},
+    "sendgrid": {"host": "smtp.sendgrid.net", "port": "587", "user": "apikey", "password": os.getenv("SENDGRID_API_KEY", ""), "tls": "true"},
+}
+_preset = _EMAIL_PRESETS.get(EMAIL_PROVIDER, {})
 EMAIL_BACKEND = os.getenv(
     "EMAIL_BACKEND",
-    "django.core.mail.backends.console.EmailBackend" if DEBUG else "django.core.mail.backends.smtp.EmailBackend",
+    "django.core.mail.backends.console.EmailBackend" if EMAIL_PROVIDER == "console" else "django.core.mail.backends.smtp.EmailBackend",
 )
-EMAIL_HOST = os.getenv("EMAIL_HOST", "localhost")
-EMAIL_PORT = int(os.getenv("EMAIL_PORT", "25"))
-EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
-EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
-EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "false").lower() == "true"
+EMAIL_HOST = os.getenv("EMAIL_HOST", _preset.get("host", "localhost"))
+EMAIL_PORT = int(os.getenv("EMAIL_PORT", _preset.get("port", "25")))
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", _preset.get("user", ""))
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", _preset.get("password", ""))
+EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", _preset.get("tls", "false")).lower() == "true"
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "no-reply@ingresosup.local")
+
+# Redis 7+: caché compartida (rate limiting, sesiones de throttling) y broker de Celery.
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
+# En desarrollo (DEBUG) sin REDIS_URL definido se usa caché local para poder arrancar sin Redis;
+# en producción Redis es obligatorio.
+if "test" in sys.argv or os.getenv("CACHE_BACKEND", "").lower() == "locmem" or (DEBUG and "REDIS_URL" not in os.environ):
+    CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
+else:
+    CACHES = {"default": {"BACKEND": "django.core.cache.backends.redis.RedisCache", "LOCATION": f"{REDIS_URL}/1"}}
+
+CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", f"{REDIS_URL}/0")
+CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", CELERY_BROKER_URL)
+CELERY_TASK_ALWAYS_EAGER = os.getenv("CELERY_TASK_ALWAYS_EAGER", "true" if "test" in sys.argv else "false").lower() == "true"
+CELERY_TASK_EAGER_PROPAGATES = True
+CELERY_TASK_DEFAULT_RETRY_DELAY = 60
+CELERY_TASK_TRACK_STARTED = True
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -71,12 +96,26 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "backend.wsgi.application"
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+# Base de datos: SQLite por defecto en desarrollo; PostgreSQL con DB_ENGINE=postgresql (+ DB_NAME, DB_USER, DB_PASSWORD, DB_HOST, DB_PORT).
+if os.getenv("DB_ENGINE", "sqlite").lower() in {"postgres", "postgresql"}:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": os.getenv("DB_NAME", "ingresosup"),
+            "USER": os.getenv("DB_USER", "ingresosup"),
+            "PASSWORD": os.getenv("DB_PASSWORD", ""),
+            "HOST": os.getenv("DB_HOST", "localhost"),
+            "PORT": os.getenv("DB_PORT", "5432"),
+            "CONN_MAX_AGE": int(os.getenv("DB_CONN_MAX_AGE", "60")),
+        }
     }
-}
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
+    }
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -105,6 +144,9 @@ USE_L10N = True
 USE_TZ = True
 
 STATIC_URL = "/static/"
+STATIC_ROOT = Path(os.getenv("STATIC_ROOT", BASE_DIR / "staticfiles"))
+MEDIA_URL = "/media/"
+MEDIA_ROOT = Path(os.getenv("MEDIA_ROOT", BASE_DIR / "media"))
 MAX_EXCEL_UPLOAD_BYTES = int(os.getenv("MAX_EXCEL_UPLOAD_BYTES", str(10 * 1024 * 1024)))
 
 LOG_DIR = BASE_DIR / "logs"
@@ -159,11 +201,27 @@ SPECTACULAR_SETTINGS = {
     "DESCRIPTION": "API REST para la interoperabilidad del sistema de ingreso a la Educación Superior.",
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
+    "SECURITY": [{"BearerAuth": []}],
+    "COMPONENTS": {
+        "securitySchemes": {
+            "BearerAuth": {
+                "type": "http",
+                "scheme": "bearer",
+                "bearerFormat": "JWT",
+                "description": "Token JWT obtenido al iniciar sesión en la API.",
+            }
+        }
+    },
     "TAGS": [
-        {"name": "Autenticación", "description": "Registro, inicio y cierre de sesión."},
-        {"name": "Core", "description": "Salud, notificaciones y auditoría."},
-        {"name": "Gestión", "description": "Operaciones de admisión y nomencladores."},
-        {"name": "Importación y exportación", "description": "Carga y consulta de datos institucionales."},
+        {"name": "Autenticación", "description": "Registro, verificación de correo, inicio y cierre de sesión, y tokens JWT."},
+        {"name": "Core", "description": "Salud del servicio y notificaciones del usuario."},
+        {"name": "Auditoría", "description": "Consulta y exportación de la traza de auditoría del sistema."},
+        {"name": "Superadministración", "description": "CRUD de catálogos institucionales (nomencladores) y usuarios administrativos globales."},
+        {"name": "Gestión", "description": "Operaciones de admisión, nomencladores y flujo de estudiantes/escuelas/provincias."},
+        {"name": "Importación y exportación", "description": "Carga masiva desde Excel, plantillas y exportación de datos institucionales."},
+        {"name": "Escalafón", "description": "Publicación, revisión y envío del escalafón estudiantil."},
+        {"name": "Resultados", "description": "Publicación de resultados de exámenes de ingreso y reclamaciones."},
+        {"name": "Otorgamiento", "description": "Otorgamiento de carreras y consultas públicas asociadas."},
     ],
 }
 

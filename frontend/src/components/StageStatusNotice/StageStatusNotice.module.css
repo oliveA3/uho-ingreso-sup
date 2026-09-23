@@ -10,20 +10,20 @@
 }
 
 .toneActive {
-  background-color: color-mix(in srgb, var(--brand-success, #1a7a4a) 15%, white);
-  color: var(--brand-success, #1a7a4a);
+  background-color: color-mix(in srgb, var(--color-exito, #1a7a4a) 15%, var(--blanco));
+  color: var(--color-exito, #1a7a4a);
 }
 
 .toneCompleted {
-  background-color: color-mix(in srgb, var(--brand-primary, #1f4e79) 12%, white);
-  color: var(--brand-primary, #1f4e79);
+  background-color: color-mix(in srgb, var(--color-primario, #1f4e79) 12%, var(--blanco));
+  color: var(--color-primario, #1f4e79);
 }
 
 .toneMuted {
-  background-color: #f1f5f9;
-  color: #475569;
+  background-color: var(--gris-100);
+  color: var(--gris-600);
 }
 
 .deadlineActive {
-  color: var(--brand-success, #1a7a4a);
+  color: var(--color-exito, #1a7a4a);
 }

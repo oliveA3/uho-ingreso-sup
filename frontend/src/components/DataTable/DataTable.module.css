@@ -1,7 +1,7 @@
 .wrapper {
   overflow-x: auto;
   border-radius: 1.5rem;
-  border: 1px solid var(--border-color, #e2e8f0);
+  border: 1px solid var(--border-color, var(--gris-200));
 }
 
 .table {
@@ -12,8 +12,8 @@
 }
 
 .thead {
-  background-color: #f1f5f9;
-  color: #64748b;
+  background-color: var(--gris-100);
+  color: var(--gris-500);
 }
 
 .th {
@@ -21,26 +21,26 @@
 }
 
 .tbody {
-  background-color: #ffffff;
+  background-color: var(--blanco);
 }
 
 .tbody tr + tr {
-  border-top: 1px solid var(--border-color, #e2e8f0);
+  border-top: 1px solid var(--border-color, var(--gris-200));
 }
 
 .tbody tr:hover {
-  background-color: #f8fafc;
+  background-color: var(--gris-50);
 }
 
 .td {
   padding: 1rem;
-  color: #475569;
+  color: var(--gris-600);
 }
 
 .statusCell {
   padding: 2rem 1rem;
   text-align: center;
-  color: #64748b;
+  color: var(--gris-500);
 }
 
 @media (max-width: 639px) {
@@ -76,12 +76,12 @@
 
   .tr {
     display: block;
-    border: 1px solid var(--border-color, #e2e8f0);
+    border: 1px solid var(--border-color, var(--gris-200));
     border-radius: 0.75rem;
   }
 
   .tbody tr + tr {
-    border-top: 1px solid var(--border-color, #e2e8f0);
+    border-top: 1px solid var(--border-color, var(--gris-200));
   }
 
   .td {
@@ -95,7 +95,7 @@
   }
 
   .td + .td {
-    border-top: 1px solid #f1f5f9;
+    border-top: 1px solid var(--gris-100);
   }
 
   .td::before {
@@ -104,7 +104,7 @@
     font-size: 0.75rem;
     font-weight: 600;
     text-align: left;
-    color: #334155;
+    color: var(--gris-700);
   }
 
   .statusRow {

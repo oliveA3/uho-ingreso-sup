@@ -6,12 +6,55 @@ import {
     verifyEmail,
 } from "../../api/auth.service";
 import { fetchRegistrationAvailability } from "../../api/landing.service";
+import { normalizeCatalogList } from "../../api/httpClient";
 import { fetchSuperAdminCatalog } from "../../api/superadmin.service";
 import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
 import PrimaryButton from "../../components/Buttons/PrimaryButton";
 import SecondaryButton from "../../components/Buttons/SecondaryButton";
 import { Card, FormField, Input, Select } from "../../components";
 import styles from "./RegisterPage.module.css";
+
+const validateRegistrationField = (field, value, passwordValue = "") => {
+    const trimmed = value.trim();
+
+    if (field === "username") {
+        if (!trimmed) return "Escribe un nombre de usuario.";
+        if (trimmed.length < 4) return "El usuario debe tener al menos 4 caracteres.";
+        return "";
+    }
+
+    if (field === "ci") {
+        if (!trimmed) return "Escribe tu número de carnet de identidad.";
+        if (!/^\d{11}$/.test(trimmed)) return "La CI debe tener 11 dígitos, sin letras ni espacios.";
+        return "";
+    }
+
+    if (field === "email") {
+        if (!trimmed) return "Escribe tu correo electrónico.";
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) return "El correo no tiene un formato válido.";
+        return "";
+    }
+
+    if (field === "password") {
+        if (!trimmed) return "Crea una contraseña.";
+        if (trimmed.length < 8) return "La contraseña debe tener al menos 8 caracteres.";
+        return "";
+    }
+
+    if (field === "confirmPassword") {
+        if (!trimmed) return "Confirma la contraseña.";
+        if (trimmed !== passwordValue) return "Las contraseñas no coinciden.";
+        return "";
+    }
+
+    if (field === "whatsapp") {
+        if (!trimmed) return "";
+        if (!/^\+?[0-9\s()-]{8,20}$/.test(trimmed)) return "El número de WhatsApp solo puede contener números y signos básicos.";
+        return "";
+    }
+
+    return "";
+};
 
 export default function RegisterPage() {
     const [form, setForm] = useState({
@@ -21,6 +64,7 @@ export default function RegisterPage() {
         whatsapp: "",
         password: "",
         confirmPassword: "",
+        politicaPrivacidadAceptada: false,
     });
 
     const [provincias, setProvincias] = useState([]);
@@ -30,6 +74,15 @@ export default function RegisterPage() {
     const [escuelas, setEscuelas] = useState([]);
     const [escuelaId, setEscuelaId] = useState("");
 
+    const [errors, setErrors] = useState({
+        username: "",
+        ci: "",
+        email: "",
+        whatsapp: "",
+        password: "",
+        confirmPassword: "",
+        politicaPrivacidadAceptada: "",
+    });
     const [error, setError] = useState(null);
     const [success, setSuccess] = useState(null);
     const [registrationOpen, setRegistrationOpen] = useState(null);
@@ -43,7 +96,7 @@ export default function RegisterPage() {
 
     useEffect(() => {
         fetchSuperAdminCatalog("provincias")
-            .then(setProvincias)
+            .then((data) => setProvincias(normalizeCatalogList(data)))
             .catch(() => setError("No se pudieron cargar las provincias."));
         fetchRegistrationAvailability()
             .then((data) => setRegistrationOpen(data.registro_estudiantil))
@@ -61,7 +114,7 @@ export default function RegisterPage() {
 
         fetchSuperAdminCatalog("municipios", { provincia: provinciaId })
             .then((data) => {
-                setMunicipios(data);
+                setMunicipios(normalizeCatalogList(data));
                 setMunicipioId("");
                 setEscuelas([]);
                 setEscuelaId("");
@@ -78,23 +131,58 @@ export default function RegisterPage() {
 
         fetchSuperAdminCatalog("escuelas", { municipio: municipioId })
             .then((data) => {
-                setEscuelas(data);
+                setEscuelas(normalizeCatalogList(data));
                 setEscuelaId("");
             })
             .catch(() => setError("No se pudieron cargar las escuelas."));
     }, [municipioId]);
 
     const updateField = (field) => (event) => {
-        setForm((prev) => ({ ...prev, [field]: event.target.value }));
+        const value = event.target.value;
+        setForm((prev) => ({ ...prev, [field]: value }));
+        setErrors((prev) => ({
+            ...prev,
+            [field]: validateRegistrationField(
+                field,
+                value,
+                field === "confirmPassword" ? form.password : form.confirmPassword,
+            ),
+        }));
+        if (field === "password" && form.confirmPassword) {
+            setErrors((prev) => ({
+                ...prev,
+                confirmPassword: validateRegistrationField("confirmPassword", form.confirmPassword, value),
+            }));
+        }
+        if (field === "confirmPassword") {
+            setErrors((prev) => ({
+                ...prev,
+                confirmPassword: validateRegistrationField("confirmPassword", value, form.password),
+            }));
+        }
+        setError(null);
     };
+
+    const getFormErrors = () => ({
+        username: validateRegistrationField("username", form.username),
+        ci: validateRegistrationField("ci", form.ci),
+        email: validateRegistrationField("email", form.email),
+        whatsapp: validateRegistrationField("whatsapp", form.whatsapp),
+        password: validateRegistrationField("password", form.password),
+        confirmPassword: validateRegistrationField("confirmPassword", form.confirmPassword, form.password),
+        politicaPrivacidadAceptada: form.politicaPrivacidadAceptada ? "" : "Debes aceptar la política de privacidad.",
+    });
 
     const handleSubmit = async (event) => {
         event.preventDefault();
         setError(null);
         setSuccess(null);
 
-        if (form.password !== form.confirmPassword) {
-            setError("Las contraseñas no coinciden.");
+        const nextErrors = getFormErrors();
+        setErrors(nextErrors);
+
+        if (nextErrors.username || nextErrors.ci || nextErrors.email || nextErrors.whatsapp || nextErrors.password || nextErrors.confirmPassword || nextErrors.politicaPrivacidadAceptada) {
+            setError("Revisa los campos marcados antes de continuar.");
             return;
         }
 
@@ -111,6 +199,7 @@ export default function RegisterPage() {
                 password: form.password,
                 whatsapp: form.whatsapp,
                 escuela: Number(escuelaId),
+                politica_privacidad_aceptada: form.politicaPrivacidadAceptada,
             });
             setPendingVerification(true);
             setSuccess("Te enviamos un código de verificación a tu correo.");
@@ -163,13 +252,20 @@ export default function RegisterPage() {
                 Registro estudiantil
             </h1>
             <p className={styles.subtitle}>
-                Solo estudiantes de 12grado pueden registrarse.
+                Solo estudiantes de 12.º grado pueden registrarse en el sistema.
             </p>
+            {!pendingVerification && <div className={styles.registrationNotice} role="note">
+                <strong>Antes de registrarte</strong>
+                <p>
+                    Recopilaremos los datos necesarios para gestionar tu ingreso y te enviaremos un código al correo indicado.
+                    La cuenta permanecerá inactiva hasta que confirmes ese código y aceptes la política de privacidad.
+                </p>
+            </div>}
             {registrationDisabled && <FeedbackMessage type="warning" className="mt-6 rounded-2xl">El registro estudiantil solo está disponible durante la Etapa 1 del proceso de ingreso.</FeedbackMessage>}
             {error && <FeedbackMessage type="error" className="mt-6 rounded-2xl">{error}</FeedbackMessage>}
             {success && <FeedbackMessage type="success" className="mt-6 rounded-2xl">{success}</FeedbackMessage>}
             {pendingVerification ? (
-                <form onSubmit={handleVerification} className={styles.verificationForm}>
+                <form onSubmit={handleVerification} className={styles.verificationForm} noValidate>
                     <p className={styles.verificationHint}>
                         Revisa tu correo e introduce el código de 6 dígitos. La cuenta permanecerá inactiva hasta verificarla.
                     </p>
@@ -180,14 +276,15 @@ export default function RegisterPage() {
                         </div>
                         {editingPendingEmail ? (
                             <div className={styles.pendingEmailEditRow}>
-                                <Input type="email" value={form.email} onChange={updateField("email")} className={styles.pendingEmailInput} required />
+                                <Input type="email" value={form.email} onChange={updateField("email")} className={styles.pendingEmailInput} required invalid={Boolean(errors.email)} aria-describedby={errors.email ? "register-email-error" : undefined} />
                                 <PrimaryButton type="button" onClick={handlePendingEmailChange} disabled={changingPendingEmail}>{changingPendingEmail ? "Actualizando..." : "Guardar correo"}</PrimaryButton>
                                 <SecondaryButton onClick={() => setEditingPendingEmail(false)}>Cancelar</SecondaryButton>
                             </div>
                         ) : <p className={styles.pendingEmailValue}>{form.email}</p>}
                     </div>
-                    <FormField label="Código de verificación">
+                    <FormField label="Código de verificación" htmlFor="verification-code">
                         <Input
+                            id="verification-code"
                             value={verificationCode}
                             onChange={(event) => setVerificationCode(event.target.value)}
                             inputMode="numeric"
@@ -204,26 +301,50 @@ export default function RegisterPage() {
                 onSubmit={handleSubmit}
                 inert={registrationDisabled ? "" : undefined}
                 className={`${styles.registerForm} ${registrationDisabled ? styles.registerFormDisabled : ""}`}
+                noValidate
             >
-                <FormField label="Usuario">
+                <FormField
+                    htmlFor="register-username"
+                    label="Usuario"
+                    required
+                    error={errors.username}
+                    errorId="register-username-error"
+                >
                     <Input
+                        id="register-username"
                         value={form.username}
                         onChange={updateField("username")}
                         placeholder="maria.gonzalez25"
                         required
+                        invalid={Boolean(errors.username)}
+                        aria-describedby={errors.username ? "register-username-error" : undefined}
                     />
                 </FormField>
-                <FormField label="CI">
+                <FormField
+                    htmlFor="register-ci"
+                    label="CI"
+                    required
+                    error={errors.ci}
+                    errorId="register-ci-error"
+                >
                     <Input
+                        id="register-ci"
                         value={form.ci}
                         onChange={updateField("ci")}
                         placeholder="06120000184"
                         maxLength={11}
                         required
+                        invalid={Boolean(errors.ci)}
+                        aria-describedby={errors.ci ? "register-ci-error" : undefined}
                     />
                 </FormField>
-                <FormField label="Provincia">
+                <FormField
+                    htmlFor="register-provincia"
+                    label="Provincia"
+                    required
+                >
                     <Select
+                        id="register-provincia"
                         value={provinciaId}
                         onChange={(event) => setProvinciaId(event.target.value)}
                         required
@@ -236,8 +357,13 @@ export default function RegisterPage() {
                         ))}
                     </Select>
                 </FormField>
-                <FormField label="Municipio">
+                <FormField
+                    htmlFor="register-municipio"
+                    label="Municipio"
+                    required
+                >
                     <Select
+                        id="register-municipio"
                         value={municipioId}
                         onChange={(event) => setMunicipioId(event.target.value)}
                         required
@@ -251,8 +377,14 @@ export default function RegisterPage() {
                         ))}
                     </Select>
                 </FormField>
-                <FormField label="Escuela" className={styles.fieldSpan2}>
+                <FormField
+                    htmlFor="register-escuela"
+                    label="Escuela"
+                    className={styles.fieldSpan2}
+                    required
+                >
                     <Select
+                        id="register-escuela"
                         value={escuelaId}
                         onChange={(event) => setEscuelaId(event.target.value)}
                         required
@@ -266,32 +398,58 @@ export default function RegisterPage() {
                         ))}
                     </Select>
                 </FormField>
-                <FormField label="Correo electrónico">
+                <FormField
+                    htmlFor="register-email"
+                    label="Correo electrónico"
+                    required
+                    error={errors.email}
+                    errorId="register-email-error"
+                >
                     <Input
+                        id="register-email"
                         type="email"
                         value={form.email}
                         onChange={updateField("email")}
                         placeholder="maria.gonzalez@correo.com"
                         required
+                        invalid={Boolean(errors.email)}
+                        aria-describedby={errors.email ? "register-email-error" : undefined}
                     />
                 </FormField>
-                <FormField label={<>WhatsApp <span className={styles.optionalHint}>(opcional)</span></>}>
+                <FormField
+                    htmlFor="register-whatsapp"
+                    label={<>WhatsApp <span className={styles.optionalHint}>(opcional)</span></>}
+                    error={errors.whatsapp}
+                    errorId="register-whatsapp-error"
+                >
                     <Input
+                        id="register-whatsapp"
                         type="tel"
                         value={form.whatsapp}
                         onChange={updateField("whatsapp")}
                         placeholder="+53 5 5555 5555"
+                        invalid={Boolean(errors.whatsapp)}
+                        aria-describedby={errors.whatsapp ? "register-whatsapp-error" : undefined}
                     />
                 </FormField>
-                <FormField label="Contraseña">
+                <FormField
+                    htmlFor="register-password"
+                    label="Contraseña"
+                    required
+                    error={errors.password}
+                    errorId="register-password-error"
+                >
                     <div className={styles.passwordField}>
                         <Input
+                            id="register-password"
                             type={showPassword ? "text" : "password"}
                             value={form.password}
                             onChange={updateField("password")}
                             className={styles.passwordInput}
                             placeholder="Crea una contraseña"
                             required
+                            invalid={Boolean(errors.password)}
+                            aria-describedby={errors.password ? "register-password-error" : undefined}
                         />
                         <button type="button" onClick={() => setShowPassword((visible) => !visible)} className={styles.toggleButton} aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"} title={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}>
                             <svg viewBox="0 0 24 24" className={styles.toggleIcon} fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
@@ -300,15 +458,24 @@ export default function RegisterPage() {
                         </button>
                     </div>
                 </FormField>
-                <FormField label="Repetir contraseña">
+                <FormField
+                    htmlFor="register-confirm-password"
+                    label="Repetir contraseña"
+                    required
+                    error={errors.confirmPassword}
+                    errorId="register-confirm-password-error"
+                >
                     <div className={styles.passwordField}>
                         <Input
+                            id="register-confirm-password"
                             type={showConfirmPassword ? "text" : "password"}
                             value={form.confirmPassword}
                             onChange={updateField("confirmPassword")}
                             className={styles.passwordInput}
                             placeholder="Repite la contraseña"
                             required
+                            invalid={Boolean(errors.confirmPassword)}
+                            aria-describedby={errors.confirmPassword ? "register-confirm-password-error" : undefined}
                         />
                         <button type="button" onClick={() => setShowConfirmPassword((visible) => !visible)} className={styles.toggleButton} aria-label={showConfirmPassword ? "Ocultar confirmación de contraseña" : "Mostrar confirmación de contraseña"} title={showConfirmPassword ? "Ocultar confirmación de contraseña" : "Mostrar confirmación de contraseña"}>
                             <svg viewBox="0 0 24 24" className={styles.toggleIcon} fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
@@ -317,6 +484,28 @@ export default function RegisterPage() {
                         </button>
                     </div>
                 </FormField>
+                <div className={styles.privacyConsentRow}>
+                    <label className={styles.privacyConsentLabel} htmlFor="register-privacy-policy">
+                        <input
+                            id="register-privacy-policy"
+                            type="checkbox"
+                            checked={form.politicaPrivacidadAceptada}
+                            onChange={(event) => {
+                                const value = event.target.checked;
+                                setForm((prev) => ({ ...prev, politicaPrivacidadAceptada: value }));
+                                setErrors((prev) => ({
+                                    ...prev,
+                                    politicaPrivacidadAceptada: value ? "" : "Debes aceptar la política de privacidad.",
+                                }));
+                                setError(null);
+                            }}
+                        />
+                        <span>
+                            He leído y acepto la <a href="/politica-privacidad" target="_blank" rel="noreferrer">política de privacidad</a> del sistema.
+                        </span>
+                    </label>
+                    {errors.politicaPrivacidadAceptada && <span className={styles.errorText}>{errors.politicaPrivacidadAceptada}</span>}
+                </div>
                 <PrimaryButton
                     type="submit"
                     className={styles.submitButton}

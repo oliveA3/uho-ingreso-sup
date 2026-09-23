@@ -8,7 +8,7 @@
 .userName {
   display: none;
   font-size: 0.875rem;
-  color: #334155;
+  color: var(--gris-700);
 }
 
 @media (min-width: 640px) {
@@ -19,31 +19,31 @@
 
 .logoutButton {
   border-radius: 9999px;
-  background-color: #e2e8f0;
+  background-color: var(--gris-200);
   padding: 0.5rem 1rem;
   font-size: 0.875rem;
   font-weight: 600;
-  color: #334155;
+  color: var(--gris-700);
   border: none;
   cursor: pointer;
   transition: background-color 0.15s ease;
 }
 
 .logoutButton:hover {
-  background-color: #cbd5e1;
+  background-color: var(--gris-300);
 }
 
 .registerLink {
   border-radius: 9999px;
-  border: 1px solid var(--brand-primary, #1f4e79);
-  background-color: #ffffff;
+  border: 1px solid var(--color-primario, #1f4e79);
+  background-color: var(--blanco);
   padding: 0.625rem 1.25rem;
   font-size: 0.875rem;
   font-weight: 600;
-  color: var(--brand-primary, #1f4e79);
+  color: var(--color-primario, #1f4e79);
   transition: background-color 0.15s ease;
 }
 
 .registerLink:hover {
-  background-color: color-mix(in srgb, var(--brand-primary, #1f4e79) 8%, white);
+  background-color: color-mix(in srgb, var(--color-primario, #1f4e79) 8%, var(--blanco));
 }

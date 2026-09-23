@@ -101,3 +101,42 @@ class SuperAdminStudentListTests(APITestCase):
         response = self.client.get("/api/v1/superadmin/estudiantes/")
 
         self.assertEqual(response.status_code, 401)
+
+
+class SuperAdminCatalogContractTests(APITestCase):
+    def test_province_catalog_exposes_required_metadata_fields(self):
+        self.client.force_authenticate(Usuario.objects.create_user(
+            username="catalog-admin",
+            email="catalog-admin@example.com",
+            password="secret1234",
+            rol="superadmin",
+        ))
+
+        Provincia.objects.create(nombre="La Habana", descripcion="Provincia principal", activa=True)
+
+        response = self.client.get("/api/v1/superadmin/provincias/")
+
+        self.assertEqual(response.status_code, 200)
+        first_result = response.data["results"][0]
+        self.assertIn("descripcion", first_result)
+        self.assertIn("fecha_ultima_modificacion", first_result)
+        self.assertEqual(first_result["descripcion"], "Provincia principal")
+        self.assertIn("id", first_result)
+        self.assertIn("nombre", first_result)
+        self.assertIn("activa", first_result)
+
+    def test_catalog_excel_export_is_available(self):
+        self.client.force_authenticate(Usuario.objects.create_user(
+            username="catalog-export-admin",
+            email="catalog-export-admin@example.com",
+            password="secret1234",
+            rol="superadmin",
+        ))
+
+        Provincia.objects.create(nombre="Santiago de Cuba", descripcion="Provincia oriental", activa=True)
+
+        response = self.client.get("/api/v1/import-export/export/provincias/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", response["Content-Type"])
+        self.assertIn("provincias.xlsx", response["Content-Disposition"])

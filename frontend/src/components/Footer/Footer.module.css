@@ -1,6 +1,6 @@
 .footer {
-  border-top: 1px solid #e2e8f0;
-  background-color: #ffffff;
+  border-top: 1px solid var(--color-acento, #5ba3d9);
+  background-color: var(--color-primario, #1f4e79);
   padding: 2rem 0;
 }
 
@@ -9,7 +9,7 @@
   max-width: 80rem;
   padding: 0 1rem;
   font-size: 0.875rem;
-  color: #475569;
+  color: var(--color-primario-texto);
 }
 
 @media (min-width: 640px) {

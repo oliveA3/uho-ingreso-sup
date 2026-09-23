@@ -3,8 +3,8 @@
   display: flex;
   min-height: 100vh;
   flex-direction: column;
-  background-color: #f8fafc;
-  color: #0f172a;
+  background-color: var(--color-fondo, #d6e4f0);
+  color: var(--gris-900);
 }
 
 @media (min-width: 640px) {
@@ -62,30 +62,24 @@
   z-index: 20;
 }
 
-@media (min-width: 1024px) {
-  .sidebarWrapperCollapsed {
-    position: absolute;
-    left: 0;
-    top: 0;
-  }
-}
-
 .sidebarWrapperOpen {
   position: fixed;
   left: 0;
   top: var(--nav-height);
   z-index: 40;
+  width: 236px;
   height: calc(100vh - var(--nav-height));
 }
 
 @media (min-width: 1024px) {
   .sidebarWrapperOpen {
-    position: fixed;
-    left: 0;
+    position: sticky;
+    left: auto;
     top: var(--nav-height);
+    width: 236px;
     height: calc(100vh - var(--nav-height));
     max-height: calc(100vh - var(--nav-height));
-    z-index: 35;
+    z-index: 5;
   }
 }
 
@@ -93,13 +87,13 @@
   display: flex;
   height: calc(100vh - var(--nav-height));
   min-height: 0;
-  width: 250px;
+  width: 236px;
   max-width: 85vw;
   flex-direction: column;
   align-self: stretch;
-  border-right: 1px solid #e2e8f0;
-  background-color: #ffffff;
-  box-shadow: 0 10px 15px -3px rgba(15, 23, 42, 0.1);
+  border-right: 1px solid var(--color-acento, #5ba3d9);
+  background-color: var(--color-primario, #1f4e79);
+  box-shadow: 0 8px 12px -3px rgba(15, 23, 42, 0.08);
 }
 
 @media (min-width: 1024px) {
@@ -125,23 +119,23 @@
   position: relative;
   z-index: 10;
   display: flex;
-  height: 2.5rem;
-  width: 2.5rem;
+  height: 2.2rem;
+  width: 2.2rem;
   flex-shrink: 0;
   cursor: pointer;
   align-items: center;
   justify-content: center;
-  border: 1px solid #e2e8f0;
+  border: 1px solid color-mix(in srgb, var(--color-acento, #5ba3d9) 35%, var(--blanco));
   border-radius: 9999px;
-  background-color: #0f172a;
+  background-color: var(--color-primario, #1f4e79);
   padding: 0;
-  color: #ffffff;
-  box-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.1);
+  color: var(--color-primario-texto);
+  box-shadow: 0 3px 5px -1px rgba(15, 23, 42, 0.08);
   transition: background-color 0.15s ease;
 }
 
 .toggleButton:hover {
-  background-color: #334155;
+  background-color: var(--color-secundario, #2e75b6);
 }
 
 @media (min-width: 1024px) {
@@ -154,8 +148,10 @@
 @media (min-width: 1024px) {
   .toggleButtonOpen {
     position: absolute;
-    left: calc(250px + 0.5rem);
-    top: 0.5rem;
+    right: -1.6rem;
+    top: 0.75rem;
+    z-index: 60;
+    box-shadow: 0 8px 18px -6px rgba(15, 23, 42, 0.35);
   }
 }
 
@@ -187,7 +183,7 @@
 
   .toggleButtonOpen {
     position: absolute;
-    left: calc(100% - 0.75rem);
+    left: calc(100% - 1.4rem);
     top: 0.75rem;
   }
 
@@ -202,7 +198,7 @@
   }
 
   .contentShifted {
-    margin-left: 250px;
+    margin-left: 0;
     padding-left: 0;
   }
 }

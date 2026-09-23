@@ -34,5 +34,5 @@ pnpm-debug.log*
 .vscode/
 .idea/
 .DS_Store
-guideline/
 github_scripts.md
+to-do.txt

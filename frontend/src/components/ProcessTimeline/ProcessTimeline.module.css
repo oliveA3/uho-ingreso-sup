@@ -1,8 +1,8 @@
 .section {
   margin-bottom: 1.5rem;
   border-radius: 1.5rem;
-  border: 1px solid #e2e8f0;
-  background-color: #ffffff;
+  border: 1px solid var(--gris-200);
+  background-color: var(--blanco);
   padding: 1.5rem;
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
 }
@@ -20,14 +20,14 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.24em;
-  color: var(--brand-primary, #1f4e79);
+  color: var(--color-primario, #1f4e79);
 }
 
 .title {
   margin-top: 0.5rem;
   font-size: 1.5rem;
   font-weight: 600;
-  color: #0f172a;
+  color: var(--gris-900);
 }
 
 .grid {
@@ -43,31 +43,31 @@
 
 .step {
   border-radius: 1.5rem;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--gris-200);
   padding: 1.25rem;
 }
 
 .stepDone {
-  border-color: var(--brand-success, #1a7a4a);
-  background-color: color-mix(in srgb, var(--brand-success, #1a7a4a) 8%, white);
+  border-color: var(--color-exito, #1a7a4a);
+  background-color: color-mix(in srgb, var(--color-exito, #1a7a4a) 8%, var(--blanco));
 }
 
 .stepActive {
-  border-color: var(--brand-primary, #1f4e79);
-  background-color: color-mix(in srgb, var(--brand-primary, #1f4e79) 6%, white);
+  border-color: var(--color-primario, #1f4e79);
+  background-color: color-mix(in srgb, var(--color-primario, #1f4e79) 6%, var(--blanco));
   box-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.1);
-  outline: 2px solid color-mix(in srgb, var(--brand-primary, #1f4e79) 40%, transparent);
+  outline: 2px solid color-mix(in srgb, var(--color-primario, #1f4e79) 40%, transparent);
   outline-offset: 0;
 }
 
 .stepBlocked {
-  border-color: #e2e8f0;
-  background-color: #f1f5f9;
+  border-color: var(--gris-200);
+  background-color: var(--gris-100);
 }
 
 .stepDefault {
-  border-color: #e2e8f0;
-  background-color: #f8fafc;
+  border-color: var(--gris-200);
+  background-color: var(--gris-50);
 }
 
 .stepContent {
@@ -85,22 +85,22 @@
   border-radius: 9999px;
   font-size: 0.875rem;
   font-weight: 700;
-  background-color: #e2e8f0;
-  color: #334155;
+  background-color: var(--gris-200);
+  color: var(--gris-700);
 }
 
 .stepNumberActive {
-  background-color: var(--brand-primary, #1f4e79);
-  color: #ffffff;
+  background-color: var(--color-primario, #1f4e79);
+  color: var(--color-primario-texto);
 }
 
 .stepTitle {
   font-size: 0.875rem;
   font-weight: 600;
-  color: #0f172a;
+  color: var(--gris-900);
 }
 
 .stepDate {
   font-size: 0.75rem;
-  color: #64748b;
+  color: var(--gris-500);
 }

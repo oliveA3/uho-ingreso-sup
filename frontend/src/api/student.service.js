@@ -35,14 +35,21 @@ export function downloadStudentInterestPdf() {
   });
 }
 
+export function downloadStudentInterestExcel() {
+  return request("/import-export/export/boleta-interes/excel/", {
+    blob: true,
+    blobErrorMessage: "No se pudo descargar la boleta de interés en Excel.",
+  });
+}
+
 export function fetchStudentSolicitud() {
   return request("/gestion-personal/estudiante/boleta-solicitud/");
 }
 
-export function submitStudentSolicitud(planPlazas, confirmar = false) {
+export function submitStudentSolicitud(planPlazas, confirmar = false, modificacion = false) {
   return request("/gestion-personal/estudiante/boleta-solicitud/", {
     method: "POST",
-    body: { plan_plazas: planPlazas, confirmar },
+    body: { plan_plazas: planPlazas, confirmar, ...(modificacion ? { modificacion: true } : {}) },
   });
 }
 
@@ -54,6 +61,13 @@ export function downloadStudentSolicitudPdf() {
   return request("/import-export/export/boleta-solicitud/", {
     blob: true,
     blobErrorMessage: "No se pudo descargar la boleta de solicitud.",
+  });
+}
+
+export function downloadStudentSolicitudExcel() {
+  return request("/import-export/export/boleta-solicitud/excel/", {
+    blob: true,
+    blobErrorMessage: "No se pudo descargar la boleta de solicitud en Excel.",
   });
 }
 

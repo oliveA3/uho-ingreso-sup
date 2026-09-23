@@ -1,36 +1,36 @@
 .pendingBox {
   margin-top: 1.5rem;
   border-radius: 1.5rem;
-  border: 1px solid var(--border-color, #e2e8f0);
-  background-color: #f8fafc;
+  border: 1px solid var(--border-color, var(--gris-200));
+  background-color: var(--gris-50);
   padding: 1.5rem;
 }
 
 .pendingLabel {
   font-size: 0.875rem;
-  color: #475569;
+  color: var(--gris-600);
 }
 
 .pendingValue {
   margin-top: 0.5rem;
   font-size: 1.5rem;
   font-weight: 600;
-  color: #0f172a;
+  color: var(--gris-900);
 }
 
 .pendingHint {
   margin-top: 0.5rem;
   font-size: 0.875rem;
-  color: #475569;
+  color: var(--gris-600);
 }
 
 .awardBox {
   margin-top: 1.5rem;
   border-radius: 1.5rem;
-  background-color: var(--brand-success, #059669);
+  background-color: var(--color-exito, #1a7a4a);
   padding: 1.5rem;
   text-align: center;
-  color: #ffffff;
+  color: var(--color-exito-texto);
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
 }
 
@@ -48,7 +48,7 @@
 .awardCes {
   margin-top: 0.25rem;
   font-size: 1rem;
-  color: #d1fae5;
+  color: color-mix(in srgb, var(--color-exito-texto) 88%, var(--color-exito));
 }
 
 .awardIndex {
@@ -60,15 +60,15 @@
 .summaryBox {
   margin-top: 1.5rem;
   border-radius: 1.5rem;
-  border: 1px solid var(--border-color, #e2e8f0);
-  background-color: #f8fafc;
+  border: 1px solid var(--border-color, var(--gris-200));
+  background-color: var(--gris-50);
   padding: 1.25rem;
 }
 
 .summaryTitle {
   font-size: 1rem;
   font-weight: 600;
-  color: #0f172a;
+  color: var(--gris-900);
 }
 
 .summaryGrid {
@@ -89,15 +89,15 @@
 }
 
 .summaryTileGeneral {
-  background-color: color-mix(in srgb, var(--brand-primary, #0284c7) 15%, white);
+  background-color: color-mix(in srgb, var(--color-primario, #1f4e79) 15%, var(--blanco));
 }
 
 .summaryTileAward {
-  background-color: color-mix(in srgb, var(--brand-success, #059669) 15%, white);
+  background-color: color-mix(in srgb, var(--color-exito, #1a7a4a) 15%, var(--blanco));
 }
 
 .summaryTileCut {
-  background-color: color-mix(in srgb, var(--brand-accent, #d97706) 15%, white);
+  background-color: color-mix(in srgb, var(--color-acento, #5ba3d9) 15%, var(--blanco));
 }
 
 .summaryTileLabel {
@@ -107,22 +107,22 @@
 }
 
 .summaryTileLabelGeneral {
-  color: var(--brand-primary, #0369a1);
+  color: var(--color-primario, #1f4e79);
 }
 
 .summaryTileLabelAward {
-  color: var(--brand-success, #047857);
+  color: var(--color-exito, #1a7a4a);
 }
 
 .summaryTileLabelCut {
-  color: var(--brand-accent, #b45309);
+  color: var(--color-acento, #5ba3d9);
 }
 
 .summaryTileValue {
   margin-top: 0.25rem;
   font-size: 1.25rem;
   font-weight: 600;
-  color: #0f172a;
+  color: var(--gris-900);
 }
 
 .priorityNotice {
@@ -133,13 +133,13 @@
 }
 
 .priorityNoticeQualified {
-  border: 1px solid var(--brand-primary, #0284c7);
-  background-color: color-mix(in srgb, var(--brand-primary, #0284c7) 8%, white);
-  color: var(--brand-primary, #0369a1);
+  border: 1px solid var(--color-primario, #1f4e79);
+  background-color: color-mix(in srgb, var(--color-primario, #1f4e79) 8%, var(--blanco));
+  color: var(--color-primario, #1f4e79);
 }
 
 .priorityNoticeUnqualified {
-  border: 1px solid var(--brand-accent, #d97706);
-  background-color: color-mix(in srgb, var(--brand-accent, #d97706) 8%, white);
-  color: var(--brand-accent, #b45309);
+  border: 1px solid var(--color-acento, #5ba3d9);
+  background-color: color-mix(in srgb, var(--color-acento, #5ba3d9) 8%, var(--blanco));
+  color: var(--color-acento, #5ba3d9);
 }

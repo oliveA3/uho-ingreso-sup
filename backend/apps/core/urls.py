@@ -3,8 +3,6 @@ from django.urls import path
 from .views import (
     AuditLogListView,
     HealthCheckView,
-    RoleAdminView,
-    RoleListView,
     AuditLogExportView,
     AuditLogPdfView,
     NotificationListView,

@@ -22,17 +22,18 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.24em;
-  color: #0f172a;
+  color: var(--color-primario-texto);
 }
 
 .scope {
   font-size: 0.75rem;
-  color: #64748b;
+  color: color-mix(in srgb, var(--color-primario-texto) 68%, var(--color-primario, #1f4e79));
 }
 
 .scopeBadge {
   border-radius: 9999px;
-  background-color: #e2e8f0;
+  background-color: color-mix(in srgb, var(--color-primario-texto) 16%, transparent);
+  color: var(--color-primario-texto);
   padding: 0.125rem 0.625rem;
 }
 
@@ -49,7 +50,7 @@
   text-transform: uppercase;
   letter-spacing: 0.18em;
   font-size: 0.75rem;
-  color: #64748b;
+  color: color-mix(in srgb, var(--color-primario-texto) 68%, var(--color-primario, #1f4e79));
 }
 
 .nav {
@@ -58,7 +59,7 @@
   flex-direction: column;
   gap: 0.5rem;
   font-size: 0.875rem;
-  color: #475569;
+  color: var(--color-primario-texto);
 }
 
 .navButton {
@@ -78,8 +79,8 @@
 }
 
 .navButton:hover {
-  background-color: #f1f5f9;
-  color: #0f172a;
+  background-color: color-mix(in srgb, var(--color-secundario, #2e75b6) 55%, var(--color-primario, #1f4e79));
+  color: var(--color-primario-texto);
 }
 
 .unreadDot {
@@ -88,7 +89,7 @@
   height: 0.625rem;
   width: 0.625rem;
   border-radius: 9999px;
-  background-color: var(--brand-error, #c0392b);
+  background-color: var(--color-error, #c0392b);
   vertical-align: middle;
 }
 
@@ -101,14 +102,14 @@
 }
 
 .navLink:hover {
-  background-color: #f1f5f9;
-  color: #0f172a;
+  background-color: color-mix(in srgb, var(--color-secundario, #2e75b6) 55%, var(--color-primario, #1f4e79));
+  color: var(--color-primario-texto);
 }
 
 .navLinkActive {
-  background-color: color-mix(in srgb, var(--brand-accent, #5ba3d9) 18%, white);
+  background-color: var(--color-secundario, #2e75b6);
   font-weight: 600;
-  color: var(--brand-primary, #1f4e79);
+  color: var(--color-secundario-texto);
 }
 
 .navDisabled {
@@ -116,8 +117,8 @@
   border-radius: 1rem;
   padding: 0.75rem 1rem;
   cursor: not-allowed;
-  color: #94a3b8;
-  opacity: 0.7;
+  color: color-mix(in srgb, var(--color-primario-texto) 68%, var(--color-primario, #1f4e79));
+  opacity: 0.6;
 }
 
 @media (max-width: 639px) {

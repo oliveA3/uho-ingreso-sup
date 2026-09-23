@@ -7,13 +7,13 @@
 .title {
   font-size: 1.875rem;
   font-weight: 600;
-  color: #0f172a;
+  color: var(--gris-900);
 }
 
 .subtitle {
   margin-top: 0.5rem;
   font-size: 0.875rem;
-  color: #475569;
+  color: var(--gris-600);
 }
 
 .grid {
@@ -30,8 +30,8 @@
 
 .subjectCard {
   border-radius: 1.5rem;
-  border: 1px solid #e2e8f0;
-  background-color: #f8fafc;
+  border: 1px solid var(--gris-200);
+  background-color: var(--gris-50);
   padding: 1.25rem;
 }
 
@@ -39,7 +39,7 @@
   font-size: 0.875rem;
   text-transform: uppercase;
   letter-spacing: 0.24em;
-  color: #64748b;
+  color: var(--gris-500);
 }
 
 .statsGrid {
@@ -53,23 +53,23 @@
 
 .statPending {
   border-radius: 0.75rem;
-  background-color: #fef3c7;
+  background-color: color-mix(in srgb, var(--color-acento, #5ba3d9) 15%, var(--blanco));
   padding: 0.5rem;
-  color: #b45309;
+  color: var(--color-acento, #5ba3d9);
 }
 
 .statConfirmed {
   border-radius: 0.75rem;
-  background-color: color-mix(in srgb, var(--brand-success, #1a7a4a) 15%, white);
+  background-color: color-mix(in srgb, var(--color-exito, #1a7a4a) 15%, var(--blanco));
   padding: 0.5rem;
-  color: var(--brand-success, #1a7a4a);
+  color: var(--color-exito, #1a7a4a);
 }
 
 .statRejected {
   border-radius: 0.75rem;
-  background-color: color-mix(in srgb, var(--brand-error, #c0392b) 15%, white);
+  background-color: color-mix(in srgb, var(--color-error, #c0392b) 15%, var(--blanco));
   padding: 0.5rem;
-  color: var(--brand-error, #c0392b);
+  color: var(--color-error, #c0392b);
 }
 
 .statValue {
@@ -85,8 +85,8 @@
 .emptyMessage {
   margin-top: 1.5rem;
   border-radius: 1rem;
-  background-color: #f8fafc;
+  background-color: var(--gris-50);
   padding: 1.25rem;
   font-size: 0.875rem;
-  color: #64748b;
+  color: var(--gris-500);
 }

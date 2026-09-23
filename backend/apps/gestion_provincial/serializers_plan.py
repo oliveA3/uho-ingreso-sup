@@ -1,6 +1,5 @@
 from rest_framework import serializers
 
-from apps.superadmin.models import Carrera, Ces, Provincia
 
 from .models import PlanPlaza
 

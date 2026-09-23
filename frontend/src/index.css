@@ -4,23 +4,101 @@
 
 :root {
   color-scheme: light;
+  /* Valores por defecto de la paleta; ThemeProvider los sobrescribe con los de la BD. */
+  --color-primario: #1f4e79;
+  --color-secundario: #2e75b6;
+  --color-acento: #5ba3d9;
+  --color-fondo: #d6e4f0;
+  --color-exito: #1a7a4a;
+  --color-error: #c0392b;
+
+  /* Texto legible sobre cada color de la paleta (ThemeProvider lo recalcula según la luminosidad). */
+  --color-primario-texto: #ffffff;
+  --color-secundario-texto: #ffffff;
+  --color-acento-texto: #0f172a;
+  --color-fondo-texto: #0f172a;
+  --color-exito-texto: #ffffff;
+  --color-error-texto: #ffffff;
+
+  /* Colores fijos de apoyo que no vienen de la BD: neutros, advertencia y otros. */
+  --blanco: #ffffff;
+  --gris-50: #f8fafc;
+  --gris-100: #f1f5f9;
+  --gris-200: #e2e8f0;
+  --gris-300: #cbd5e1;
+  --gris-400: #94a3b8;
+  --gris-500: #64748b;
+  --gris-600: #475569;
+  --gris-700: #334155;
+  --gris-800: #1e293b;
+  --gris-900: #0f172a;
+  --gris-950: #020617;
+  --advertencia-50: #fffbeb;
+  --advertencia-100: #fef3c7;
+  --advertencia-200: #fde68a;
+  --advertencia-400: #fbbf24;
+  --advertencia-600: #d97706;
+  --advertencia-800: #92400e;
+  --advertencia-900: #78350f;
+  --naranja-700: #c2410c;
+  --verde-400: #34d399;
 }
 
 html {
   scroll-behavior: smooth;
+  font-size: 15px;
 }
 
 body {
   margin: 0;
   font-family: var(--brand-font, "Segoe UI"), ui-sans-serif, system-ui, sans-serif;
-  background: var(--brand-background, #d6e4f0);
-  color: #0f172a;
+  font-size: 0.95rem;
+  line-height: 1.45;
+  background: var(--color-fondo, #d6e4f0);
+  color: var(--gris-900);
+}
+
+h1, h2, h3, h4, h5, h6 {
+  line-height: 1.2;
+  margin: 0;
+}
+
+h1 {
+  font-size: clamp(1.5rem, 2vw, 1.9rem);
+}
+
+h2 {
+  font-size: clamp(1.2rem, 1.7vw, 1.45rem);
+}
+
+h3 {
+  font-size: 1.1rem;
+}
+
+p,
+label,
+button,
+input,
+select,
+textarea,
+li,
+span {
+  font-size: 0.9rem;
 }
 
 button,
 input,
 select {
   font: inherit;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+[tabindex]:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--color-acento, #5ba3d9) 55%, transparent);
+  outline-offset: 2px;
 }
 
 input[type="password"]::-ms-reveal,
@@ -32,9 +110,14 @@ button {
   cursor: pointer;
 }
 
+input[aria-invalid="true"],
+select[aria-invalid="true"] {
+  border-color: var(--color-error, #c0392b);
+}
+
 .sidebar-sections-scroll {
   scrollbar-width: thin;
-  scrollbar-color: color-mix(in srgb, var(--brand-primary, #1f4e79) 45%, transparent) transparent;
+  scrollbar-color: color-mix(in srgb, var(--color-primario, #1f4e79) 45%, transparent) transparent;
 }
 
 .sidebar-sections-scroll::-webkit-scrollbar {
@@ -47,26 +130,26 @@ button {
 
 .sidebar-sections-scroll::-webkit-scrollbar-thumb {
   border-radius: 9999px;
-  background: color-mix(in srgb, var(--brand-primary, #1f4e79) 45%, transparent);
+  background: color-mix(in srgb, var(--color-primario, #1f4e79) 45%, transparent);
 }
 
 .sidebar-sections-scroll::-webkit-scrollbar-thumb:hover {
-  background: var(--brand-primary, #1f4e79);
+  background: var(--color-primario, #1f4e79);
 }
 
 button.rounded-full.border-slate-200.px-3.py-1.text-xs.font-semibold {
   border-radius: 0.75rem;
-  border-color: color-mix(in srgb, var(--brand-primary, #1f4e79) 35%, white);
-  background-color: color-mix(in srgb, var(--brand-primary, #1f4e79) 10%, white);
-  color: var(--brand-primary, #1f4e79);
+  border-color: color-mix(in srgb, var(--color-primario, #1f4e79) 35%, white);
+  background-color: color-mix(in srgb, var(--color-primario, #1f4e79) 10%, white);
+  color: var(--color-primario, #1f4e79);
   padding: 0.5rem 0.75rem;
 }
 
 button.rounded-full.border-rose-200.bg-rose-50.px-3.py-1.text-xs.font-semibold {
   border-radius: 0.75rem;
-  border-color: color-mix(in srgb, var(--brand-error, #c0392b) 35%, white);
-  background-color: color-mix(in srgb, var(--brand-error, #c0392b) 10%, white);
-  color: var(--brand-error, #c0392b);
+  border-color: color-mix(in srgb, var(--color-error, #c0392b) 35%, white);
+  background-color: color-mix(in srgb, var(--color-error, #c0392b) 10%, white);
+  color: var(--color-error, #c0392b);
   padding: 0.5rem 0.75rem;
 }
 
@@ -104,129 +187,129 @@ img {
 .text-sky-600,
 .text-sky-700,
 .text-sky-800 {
-  color: var(--brand-primary, #1f4e79) !important;
+  color: var(--color-primario, #1f4e79) !important;
 }
 
 .bg-sky-600,
 .bg-sky-700,
 .bg-sky-800 {
-  background-color: var(--brand-primary, #1f4e79) !important;
+  background-color: var(--color-primario, #1f4e79) !important;
   border-radius: 1rem;
   font-weight: 600;
 }
 
 .hover\:bg-sky-700:hover,
 .hover\:bg-sky-800:hover {
-  background-color: var(--brand-secondary, #2e75b6) !important;
+  background-color: var(--color-secundario, #2e75b6) !important;
 }
 
 .border-sky-400,
 .border-sky-500,
 .border-sky-600,
 .focus\:border-sky-500:focus {
-  border-color: var(--brand-accent, #5ba3d9) !important;
+  border-color: var(--color-acento, #5ba3d9) !important;
 }
 
 .bg-sky-50,
 .focus\:bg-sky-50:focus {
-  background-color: color-mix(in srgb, var(--brand-accent, #5ba3d9) 12%, white) !important;
+  background-color: color-mix(in srgb, var(--color-acento, #5ba3d9) 12%, white) !important;
 }
 
 .bg-slate-50,
 .hover\:bg-slate-50:hover {
-  background-color: color-mix(in srgb, var(--brand-background, #d6e4f0) 42%, white) !important;
+  background-color: color-mix(in srgb, var(--color-fondo, #d6e4f0) 42%, white) !important;
 }
 
 .bg-slate-900,
 .bg-slate-950 {
-  background-color: var(--brand-primary, #1f4e79) !important;
+  background-color: var(--color-primario, #1f4e79) !important;
 }
 
 .hover\:bg-slate-700:hover,
 .hover\:bg-slate-800:hover,
 .hover\:bg-slate-900:hover {
-  background-color: var(--brand-secondary, #2e75b6) !important;
+  background-color: var(--color-secundario, #2e75b6) !important;
 }
 
 .text-slate-900 {
-  color: color-mix(in srgb, var(--brand-primary, #1f4e79) 78%, #0f172a) !important;
+  color: color-mix(in srgb, var(--color-primario, #1f4e79) 78%, var(--gris-900)) !important;
 }
 
 .border-slate-200,
 .border-slate-300 {
-  border-color: color-mix(in srgb, var(--brand-accent, #5ba3d9) 28%, #e2e8f0) !important;
+  border-color: color-mix(in srgb, var(--color-acento, #5ba3d9) 28%, var(--gris-200)) !important;
 }
 
 .bg-white\/95 {
-  background-color: color-mix(in srgb, var(--brand-background, #d6e4f0) 18%, white) !important;
+  background-color: color-mix(in srgb, var(--color-fondo, #d6e4f0) 18%, white) !important;
 }
 
 .hover\:bg-slate-100:hover {
-  background-color: color-mix(in srgb, var(--brand-accent, #5ba3d9) 14%, white) !important;
+  background-color: color-mix(in srgb, var(--color-acento, #5ba3d9) 14%, white) !important;
 }
 
 .bg-emerald-500,
 .bg-emerald-600 {
-  background-color: var(--brand-success, #1a7a4a) !important;
+  background-color: var(--color-exito, #1a7a4a) !important;
 }
 
 .text-emerald-600,
 .text-emerald-700 {
-  color: var(--brand-success, #1a7a4a) !important;
+  color: var(--color-exito, #1a7a4a) !important;
 }
 
 .bg-emerald-50,
 .bg-emerald-100 {
-  background-color: color-mix(in srgb, var(--brand-success, #1a7a4a) 12%, white) !important;
+  background-color: color-mix(in srgb, var(--color-exito, #1a7a4a) 12%, white) !important;
 }
 
 .text-rose-700,
 .text-rose-800 {
-  color: var(--brand-error, #c0392b) !important;
+  color: var(--color-error, #c0392b) !important;
 }
 
 .bg-rose-50,
 .bg-rose-100 {
-  background-color: color-mix(in srgb, var(--brand-error, #c0392b) 10%, white) !important;
+  background-color: color-mix(in srgb, var(--color-error, #c0392b) 10%, white) !important;
 }
 
 .border-rose-200,
 .border-rose-300 {
-  border-color: color-mix(in srgb, var(--brand-error, #c0392b) 35%, white) !important;
+  border-color: color-mix(in srgb, var(--color-error, #c0392b) 35%, white) !important;
 }
 
 .bg-amber-50,
 .bg-amber-100 {
-  background-color: color-mix(in srgb, var(--brand-accent, #5ba3d9) 14%, white) !important;
+  background-color: color-mix(in srgb, var(--color-acento, #5ba3d9) 14%, white) !important;
 }
 
 .text-amber-600,
 .text-amber-700 {
-  color: var(--brand-accent, #5ba3d9) !important;
+  color: var(--color-acento, #5ba3d9) !important;
 }
 
 .border-amber-200,
 .border-amber-300 {
-  border-color: color-mix(in srgb, var(--brand-accent, #5ba3d9) 40%, white) !important;
+  border-color: color-mix(in srgb, var(--color-acento, #5ba3d9) 40%, white) !important;
 }
 
 .from-sky-700 {
-  --tw-gradient-from: var(--brand-primary, #1f4e79) var(--tw-gradient-from-position) !important;
-  --tw-gradient-to: color-mix(in srgb, var(--brand-primary, #1f4e79) 0%, transparent) var(--tw-gradient-to-position) !important;
+  --tw-gradient-from: var(--color-primario, #1f4e79) var(--tw-gradient-from-position) !important;
+  --tw-gradient-to: color-mix(in srgb, var(--color-primario, #1f4e79) 0%, transparent) var(--tw-gradient-to-position) !important;
 }
 
 .via-cyan-600 {
-  --tw-gradient-to: color-mix(in srgb, var(--brand-secondary, #2e75b6) 0%, transparent) var(--tw-gradient-to-position) !important;
-  --tw-gradient-stops: var(--tw-gradient-from), var(--brand-secondary, #2e75b6) var(--tw-gradient-via-position), var(--tw-gradient-to) !important;
+  --tw-gradient-to: color-mix(in srgb, var(--color-secundario, #2e75b6) 0%, transparent) var(--tw-gradient-to-position) !important;
+  --tw-gradient-stops: var(--tw-gradient-from), var(--color-secundario, #2e75b6) var(--tw-gradient-via-position), var(--tw-gradient-to) !important;
 }
 
 .to-teal-500 {
-  --tw-gradient-to: var(--brand-accent, #5ba3d9) var(--tw-gradient-to-position) !important;
+  --tw-gradient-to: var(--color-acento, #5ba3d9) var(--tw-gradient-to-position) !important;
 }
 
 .focus\:ring-sky-500:focus,
 .focus\:border-sky-500:focus {
-  --tw-ring-color: var(--brand-accent, #5ba3d9) !important;
+  --tw-ring-color: var(--color-acento, #5ba3d9) !important;
 }
 
 @media (max-width: 639px) {

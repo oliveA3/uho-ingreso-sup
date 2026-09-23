@@ -10,15 +10,15 @@
 }
 
 .notification:hover {
-  background-color: #f8fafc;
+  background-color: var(--gris-50);
 }
 
 .notificationRead {
-  border-color: var(--border-color, #e2e8f0);
-  background-color: #ffffff;
+  border-color: var(--border-color, var(--gris-200));
+  background-color: var(--blanco);
 }
 
 .notificationUnread {
-  border-color: color-mix(in srgb, var(--brand-accent, #5ba3d9) 45%, white);
-  background-color: color-mix(in srgb, var(--brand-accent, #5ba3d9) 12%, white);
+  border-color: color-mix(in srgb, var(--color-acento, #5ba3d9) 45%, var(--blanco));
+  background-color: color-mix(in srgb, var(--color-acento, #5ba3d9) 12%, var(--blanco));
 }

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
 import StageStatusNotice from "../../components/StageStatusNotice/StageStatusNotice";
-import { downloadStudentSolicitudPdf, editStudentSolicitud, fetchStudentSolicitud, submitStudentSolicitud } from "../../api/student.service";
+import { downloadStudentSolicitudExcel, downloadStudentSolicitudPdf, fetchStudentSolicitud, submitStudentSolicitud } from "../../api/student.service";
 import { Card, Select, useConfirm } from "../../components";
 import PrimaryButton from "../../components/Buttons/PrimaryButton";
 import SecondaryButton from "../../components/Buttons/SecondaryButton";
@@ -49,14 +49,14 @@ export default function BoletaPage() {
 
   const stage = data?.stage || { active: data?.stage_active };
   const available = data?.available_plans || [];
-  const canRequestModification = stage?.permite_modificacion && data?.estado === "aprobada";
-  const isEditingMode = editingMode !== null;
-  const editing = Boolean(stage?.active) && (["por_enviar", "pendiente", "modificada"].includes(data?.estado) || isEditingMode);
+  const maxItems = data?.max_items;
+  const canRequestModification = Boolean(data?.puede_solicitar_modificacion);
+  const editing = Boolean(data?.puede_editar) || (editingMode !== null && Boolean(stage?.active));
   const modificationPending = data?.estado === "modificada";
   const plansToAdd = available.filter((plan) => !selected.includes(plan.id));
 
   const addPlan = () => {
-    if (!selectedPlan || selected.length >= 10) return;
+    if (!selectedPlan || selected.length >= maxItems) return;
     setSelected((current) => [...current, Number(selectedPlan)]);
     setSelectedPlan("");
   };
@@ -73,25 +73,21 @@ export default function BoletaPage() {
     setError(null);
     setMessage(null);
     try {
-      // If requesting modification, first transition ballot state from aprobada -> modificada
-      if (editingMode === 'request-modification') {
-        await editStudentSolicitud();
-      }
-
-      const preview = await submitStudentSolicitud(selected);
+      const modification = editingMode === 'request-modification';
+      const preview = await submitStudentSolicitud(selected, false, modification);
       const summary = selected.map((planId, index) => {
         const plan = available.find((item) => item.id === planId);
         return `${index + 1}. ${plan?.carrera_nombre || "Carrera no disponible"} (${plan?.ces_nombre || ""})`;
       }).join("\n");
-      const confirmed = preview.confirmacion_requerida && (await confirm({
+      const confirmed = !preview.confirmacion_requerida || (await confirm({
         title: "Confirma tu boleta de solicitud",
-        message: `Confirma las 10 carreras y su orden de prioridad:\n\n${summary}`,
+        message: `Confirma las ${data.max_items} carreras y su orden de prioridad:\n\n${summary}`,
         confirmLabel: "Confirmar",
       }));
       if (confirmed) {
-        await submitStudentSolicitud(selected, true);
+        await submitStudentSolicitud(selected, true, modification);
         await refresh();
-        if (editingMode === 'request-modification') {
+        if (modification) {
           setMessage("Solicitud de modificación enviada.");
         } else {
           setMessage("Boleta enviada y pendiente de aprobación del Secretario.");
@@ -107,6 +103,18 @@ export default function BoletaPage() {
       const link = document.createElement("a");
       link.href = url;
       link.download = "boleta-solicitud.pdf";
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (requestError) { setError(requestError.message); }
+  };
+
+  const downloadExcel = async () => {
+    try {
+      const blob = await downloadStudentSolicitudExcel();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "boleta-solicitud.xlsx";
       link.click();
       URL.revokeObjectURL(url);
     } catch (requestError) { setError(requestError.message); }
@@ -131,9 +139,12 @@ export default function BoletaPage() {
           <div>
             <p className={styles.eyebrow}>Boleta de Solicitud</p>
             <h1 className={styles.title}>Preferencias de ingreso</h1>
-            <p className={styles.subtitle}>Selecciona exactamente 10 plazas de tu provincia y ordénalas por prioridad.</p>
+            <p className={styles.subtitle}>Selecciona exactamente {data.max_items} plazas de tu provincia y ordénalas por prioridad.</p>
           </div>
-          <PrimaryButton onClick={download} disabled={!data.id}>Descargar boleta PDF</PrimaryButton>
+          <div className={styles.exportActions}>
+            <PrimaryButton onClick={download} disabled={!data.id}>Descargar PDF</PrimaryButton>
+            <SecondaryButton onClick={downloadExcel} disabled={!data.id}>Descargar Excel</SecondaryButton>
+          </div>
         </div>
         {error && <FeedbackMessage type="error" className="mt-6 rounded-2xl">{error}</FeedbackMessage>}
         {message && <FeedbackMessage type="success" className="mt-6 rounded-2xl">{message}</FeedbackMessage>}
@@ -148,13 +159,13 @@ export default function BoletaPage() {
         </div>
         <div className={styles.selectionBox}>
           <div className={styles.addRow}>
-            <Select value={selectedPlan} onChange={(event) => setSelectedPlan(event.target.value)} disabled={!editing || selected.length === 10} className={styles.addSelect}>
+            <Select value={selectedPlan} onChange={(event) => setSelectedPlan(event.target.value)} disabled={!editing || selected.length === data.max_items} className={styles.addSelect}>
               <option value="">Selecciona una plaza de tu provincia</option>
               {plansToAdd.map((plan) => <option key={plan.id} value={plan.id}>{plan.carrera_nombre} · {plan.ces_nombre}</option>)}
             </Select>
             <PrimaryButton onClick={addPlan} disabled={!selectedPlan || !editing}>+ Agregar</PrimaryButton>
           </div>
-          <p className={styles.countHint}>Carreras seleccionadas: {selected.length}/10 · Catálogo provincial: {available.length}</p>
+          <p className={styles.countHint}>Carreras seleccionadas: {selected.length}/{data.max_items} · Catálogo provincial: {available.length}</p>
           <div className={styles.planList}>
             {selected.map((planId, index) => {
               const plan = available.find((item) => item.id === planId);
@@ -186,7 +197,7 @@ export default function BoletaPage() {
               </>
             ) : data.estado === "pendiente" && editingMode === 'edit-pending' ? (
               <>
-                <PrimaryButton className="!bg-emerald-600 hover:!bg-emerald-700" onClick={send} disabled={!editing || selected.length !== 10}>Enviar boleta</PrimaryButton>
+                <PrimaryButton className="!bg-brand-success hover:!brightness-90" onClick={send} disabled={!editing || selected.length !== data.max_items}>Enviar boleta</PrimaryButton>
                 <SecondaryButton onClick={() => setEditingMode(null)}>Cancelar</SecondaryButton>
               </>
             ) : canRequestModification && editingMode === null ? (
@@ -196,15 +207,15 @@ export default function BoletaPage() {
               </>
             ) : editingMode === 'request-modification' ? (
               <>
-                <PrimaryButton className="!bg-emerald-600 hover:!bg-emerald-700" onClick={send} disabled={!editing || selected.length !== 10}>Enviar solicitud de modificación</PrimaryButton>
+                <PrimaryButton className="!bg-brand-success hover:!brightness-90" onClick={send} disabled={!editing || selected.length !== data.max_items}>Enviar solicitud de modificación</PrimaryButton>
                 <SecondaryButton onClick={() => setEditingMode(null)}>Cancelar</SecondaryButton>
               </>
             ) : modificationPending ? (
               <span className={styles.noteError}>Modificada y pendiente de aprobación del Jefe de Comisión.</span>
             ) : data.estado === "aprobada" ? null : (
               <>
-                <PrimaryButton className="!bg-emerald-600 hover:!bg-emerald-700" onClick={send} disabled={!editing || selected.length !== 10}>Enviar boleta</PrimaryButton>
-                <span className={styles.noteMuted}>Debes seleccionar las 10 carreras para enviarla.</span>
+                <PrimaryButton className="!bg-brand-success hover:!brightness-90" onClick={send} disabled={!editing || selected.length !== data.max_items}>Enviar boleta</PrimaryButton>
+                <span className={styles.noteMuted}>Debes seleccionar las {data.max_items} carreras para enviarla.</span>
               </>
             )}
           </div>

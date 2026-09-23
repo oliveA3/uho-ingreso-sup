@@ -9,20 +9,20 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.24em;
-  color: #334155;
+  color: var(--gris-700);
 }
 
 .title {
   margin-top: 0.5rem;
   font-size: 1.875rem;
   font-weight: 600;
-  color: #0f172a;
+  color: var(--gris-900);
 }
 
 .description {
   margin-top: 0.75rem;
   font-size: 0.875rem;
-  color: #475569;
+  color: var(--gris-600);
 }
 
 .notice {
@@ -43,21 +43,21 @@
 
 .importCard {
   border-radius: 1.5rem;
-  border: 1px solid #e2e8f0;
-  background-color: #f8fafc;
+  border: 1px solid var(--gris-200);
+  background-color: var(--gris-50);
   padding: 1.5rem;
 }
 
 .importTitle {
   font-size: 0.875rem;
   font-weight: 600;
-  color: #0f172a;
+  color: var(--gris-900);
 }
 
 .importDescription {
   margin-top: 0.5rem;
   font-size: 0.875rem;
-  color: #475569;
+  color: var(--gris-600);
 }
 
 .hiddenInput {
@@ -77,13 +77,13 @@
 }
 
 .importButton {
-  background-color: #0f172a !important;
+  background-color: var(--color-primario, #1f4e79) !important;
   padding: 0.75rem !important;
   font-size: 0.75rem !important;
 }
 
 .importButton:hover {
-  background-color: #1e293b !important;
+  background-color: var(--color-secundario, #2e75b6) !important;
 }
 
 .exportButton {
@@ -108,12 +108,12 @@
 .summaryTitle {
   font-size: 0.875rem;
   font-weight: 600;
-  color: #0f172a;
+  color: var(--gris-900);
 }
 
 .summarySubtitle {
   font-size: 0.875rem;
-  color: #475569;
+  color: var(--gris-600);
 }
 
 .summaryGrid {
@@ -136,34 +136,34 @@
 
 .summaryCard {
   border-radius: 1.5rem;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--gris-200);
   padding: 1.5rem;
   text-align: center;
 }
 
 .summaryCardSuccess {
   composes: summaryCard;
-  background-color: color-mix(in srgb, var(--brand-success, #1a7a4a) 10%, white);
+  background-color: color-mix(in srgb, var(--color-exito, #1a7a4a) 10%, var(--blanco));
 }
 
 .summaryCardWarning {
   composes: summaryCard;
-  background-color: color-mix(in srgb, var(--brand-accent, #5ba3d9) 14%, white);
+  background-color: color-mix(in srgb, var(--color-acento, #5ba3d9) 14%, var(--blanco));
 }
 
 .summaryCardInfo {
   composes: summaryCard;
-  background-color: color-mix(in srgb, var(--brand-primary, #1f4e79) 8%, white);
+  background-color: color-mix(in srgb, var(--color-primario, #1f4e79) 8%, var(--blanco));
 }
 
 .summaryLabel {
   font-size: 0.875rem;
-  color: #475569;
+  color: var(--gris-600);
 }
 
 .summaryValue {
   margin-top: 0.5rem;
   font-size: 1.875rem;
   font-weight: 600;
-  color: #0f172a;
+  color: var(--gris-900);
 }

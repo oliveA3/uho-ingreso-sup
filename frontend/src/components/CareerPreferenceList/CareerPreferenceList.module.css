@@ -8,8 +8,8 @@
   display: flex;
   gap: 0.75rem;
   border-radius: 1rem;
-  border: 1px solid #e2e8f0;
-  background-color: #ffffff;
+  border: 1px solid var(--gris-200);
+  background-color: var(--blanco);
   padding: 0.75rem;
 }
 
@@ -21,8 +21,8 @@
   align-items: center;
   justify-content: center;
   border-radius: 9999px;
-  background-color: color-mix(in srgb, var(--brand-primary, #1f4e79) 12%, white);
-  color: var(--brand-primary, #1f4e79);
+  background-color: color-mix(in srgb, var(--color-primario, #1f4e79) 12%, var(--blanco));
+  color: var(--color-primario, #1f4e79);
   font-size: 0.875rem;
   font-weight: 600;
 }
@@ -35,10 +35,10 @@
 .name {
   font-size: 0.875rem;
   font-weight: 600;
-  color: #0f172a;
+  color: var(--gris-900);
 }
 
 .meta {
   font-size: 0.75rem;
-  color: #64748b;
+  color: var(--gris-500);
 }

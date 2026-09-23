@@ -67,7 +67,7 @@ export default function EstudianteEscalafonPage() {
             {current.estado === "sin_respuesta" && <>
               <p className={styles.reviewHint}>¿Aceptas tus índices o deseas solicitar una revisión?</p>
               <div className={styles.reviewActions}>
-                <PrimaryButton className="!bg-emerald-600 hover:!bg-emerald-700" onClick={() => act("aceptar")} disabled={current.estado_escalafon === "enviado"}>Aceptar</PrimaryButton>
+                <PrimaryButton className="!bg-brand-success hover:!brightness-90" onClick={() => act("aceptar")} disabled={current.estado_escalafon === "enviado"}>Aceptar</PrimaryButton>
                 <PrimaryButton className="!bg-amber-500 hover:!bg-amber-600" onClick={() => setReviewModalOpen(true)} disabled={current.estado_escalafon === "enviado"}>Solicitar revisión</PrimaryButton>
                 {current.estado_escalafon === "enviado" && <p className={styles.reviewSentNote}>El escalafón fue enviado a la Comisión y solo está disponible para consulta.</p>}
               </div>

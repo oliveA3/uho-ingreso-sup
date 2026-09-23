@@ -2,9 +2,35 @@
   display: block;
   font-size: 0.875rem;
   font-weight: 600;
-  color: #334155;
+  color: var(--gris-700);
+}
+
+.labelRow {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-bottom: 0.5rem;
+}
+
+.label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--gris-700);
+}
+
+.requiredMark {
+  color: var(--color-error, #c0392b);
 }
 
 .field > * + * {
   margin-top: 0.5rem;
+}
+
+.error {
+  display: block;
+  margin-top: 0.5rem;
+  color: var(--color-error, #c0392b);
+  font-size: 0.75rem;
+  font-weight: 600;
 }

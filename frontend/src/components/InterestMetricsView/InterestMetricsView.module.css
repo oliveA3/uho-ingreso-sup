@@ -6,16 +6,16 @@
 
 .section {
   border-radius: 1.5rem;
-  border: 1px solid #e2e8f0;
-  background-color: #ffffff;
+  border: 1px solid var(--gris-200);
+  background-color: var(--blanco);
   padding: 2rem;
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
 }
 
 .sectionFlat {
   border-radius: 1.5rem;
-  border: 1px solid #e2e8f0;
-  background-color: #ffffff;
+  border: 1px solid var(--gris-200);
+  background-color: var(--blanco);
   padding: 2rem;
 }
 
@@ -24,7 +24,7 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.24em;
-  color: #334155;
+  color: var(--gris-700);
 }
 
 .titleRow {
@@ -38,22 +38,22 @@
   margin-top: 0.5rem;
   font-size: 1.875rem;
   font-weight: 600;
-  color: #0f172a;
+  color: var(--gris-900);
 }
 
 .schoolBadge {
   border-radius: 9999px;
-  background-color: #f1f5f9;
+  background-color: var(--gris-100);
   padding: 0.25rem 0.75rem;
   font-size: 0.75rem;
   font-weight: 600;
-  color: #334155;
+  color: var(--gris-700);
 }
 
 .subtitle {
   margin-top: 0.75rem;
   font-size: 0.875rem;
-  color: #475569;
+  color: var(--gris-600);
 }
 
 .metricsGrid {
@@ -70,8 +70,8 @@
 
 .metricCard {
   border-radius: 1.5rem;
-  border: 1px solid #e2e8f0;
-  background-color: #f8fafc;
+  border: 1px solid var(--gris-200);
+  background-color: var(--gris-50);
   padding: 1.5rem;
 }
 
@@ -79,7 +79,7 @@
   font-size: 0.875rem;
   text-transform: uppercase;
   letter-spacing: 0.18em;
-  color: #64748b;
+  color: var(--gris-500);
 }
 
 .metricValue {
@@ -89,15 +89,15 @@
 }
 
 .toneSuccess {
-  color: var(--brand-success, #1a7a4a);
+  color: var(--color-exito, #1a7a4a);
 }
 
 .toneWarning {
-  color: #b45309;
+  color: var(--color-acento, #5ba3d9);
 }
 
 .toneDefault {
-  color: #0f172a;
+  color: var(--gris-900);
 }
 
 .rankingSectionHeader {
@@ -113,19 +113,19 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.18em;
-  color: #64748b;
+  color: var(--gris-500);
 }
 
 .sectionTitle {
   margin-top: 0.25rem;
   font-size: 1.25rem;
   font-weight: 600;
-  color: #0f172a;
+  color: var(--gris-900);
 }
 
 .countText {
   font-size: 0.875rem;
-  color: #64748b;
+  color: var(--gris-500);
 }
 
 .rankingList {
@@ -149,35 +149,35 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   font-weight: 500;
-  color: #334155;
+  color: var(--gris-700);
 }
 
 .rankingValue {
   flex-shrink: 0;
   font-weight: 600;
-  color: #0f172a;
+  color: var(--gris-900);
 }
 
 .barTrack {
   height: 0.75rem;
   overflow: hidden;
   border-radius: 9999px;
-  background-color: #f1f5f9;
+  background-color: var(--gris-100);
 }
 
 .barFill {
   height: 100%;
   border-radius: 9999px;
-  background-color: var(--brand-accent, #5ba3d9);
+  background-color: var(--color-acento, #5ba3d9);
 }
 
 .emptyText {
   margin-top: 1.5rem;
   border-radius: 1rem;
-  background-color: #f8fafc;
+  background-color: var(--gris-50);
   padding: 1.25rem;
   font-size: 0.875rem;
-  color: #64748b;
+  color: var(--gris-500);
 }
 
 @media (max-width: 639px) {
@@ -232,22 +232,22 @@
   align-items: center;
   justify-content: space-between;
   border-radius: 1rem;
-  background-color: #f8fafc;
+  background-color: var(--gris-50);
   padding: 1rem;
 }
 
 .distributionLabel {
   font-weight: 500;
-  color: #334155;
+  color: var(--gris-700);
 }
 
 .distributionValue {
   font-weight: 600;
-  color: #0f172a;
+  color: var(--gris-900);
 }
 
 .distributionPercent {
   font-size: 0.75rem;
   font-weight: 400;
-  color: #64748b;
+  color: var(--gris-500);
 }

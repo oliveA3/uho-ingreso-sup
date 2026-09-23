@@ -14,19 +14,47 @@ const DEFAULT_THEME = {
 };
 
 const CSS_VARIABLE_MAP = {
-  color_primario: "--brand-primary",
-  color_secundario: "--brand-secondary",
-  color_acento: "--brand-accent",
-  color_fondo: "--brand-background",
-  color_exito: "--brand-success",
-  color_error: "--brand-error",
+  color_primario: "--color-primario",
+  color_secundario: "--color-secundario",
+  color_acento: "--color-acento",
+  color_fondo: "--color-fondo",
+  color_exito: "--color-exito",
+  color_error: "--color-error",
   tipografia: "--brand-font",
 };
+
+const DARK_TEXT = "#0F172A";
+const LIGHT_TEXT = "#FFFFFF";
+
+function channelToLinear(value) {
+  const channel = value / 255;
+  return channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+}
+
+function relativeLuminance(hex) {
+  const normalized = hex.replace("#", "");
+  const full = normalized.length === 3 ? normalized.replace(/./g, "$&$&") : normalized;
+  const [r, g, b] = [0, 2, 4].map((index) => parseInt(full.slice(index, index + 2), 16));
+  return 0.2126 * channelToLinear(r) + 0.7152 * channelToLinear(g) + 0.0722 * channelToLinear(b);
+}
+
+function contrastRatio(first, second) {
+  const [lighter, darker] = [relativeLuminance(first), relativeLuminance(second)].sort((a, b) => b - a);
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
+/** Elige texto claro u oscuro, el que dé mayor contraste (WCAG) sobre el color de fondo dado. */
+export function readableTextColor(background) {
+  if (!/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(background || "")) return LIGHT_TEXT;
+  return contrastRatio(background, LIGHT_TEXT) >= contrastRatio(background, DARK_TEXT) ? LIGHT_TEXT : DARK_TEXT;
+}
 
 function applyThemeToDocument(theme) {
   const root = document.documentElement.style;
   Object.entries(CSS_VARIABLE_MAP).forEach(([field, cssVariable]) => {
-    root.setProperty(cssVariable, theme[field] || DEFAULT_THEME[field]);
+    const value = theme[field] || DEFAULT_THEME[field];
+    root.setProperty(cssVariable, value);
+    if (field.startsWith("color_")) root.setProperty(`${cssVariable}-texto`, readableTextColor(value));
   });
 
   let favicon = document.querySelector('link[rel="icon"]');

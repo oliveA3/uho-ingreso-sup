@@ -29,7 +29,7 @@ class ProvincialEtapaSerializer(serializers.ModelSerializer):
         fields = ["id", "numero", "nombre", "fecha_inicio", "fecha_fin", "fecha_matematica", "fecha_espanol", "fecha_historia", "estado"]
         read_only_fields = ["estado"]
 
-    def get_numero(self, obj):
+    def get_numero(self, obj) -> int:
         return next(numero for numero, nombre in ETAPAS_NOMBRES.items() if nombre == obj.nombre)
 
 
@@ -86,7 +86,7 @@ class ProvincialMunicipioSerializer(serializers.ModelSerializer):
         model = Municipio
         fields = ["id", "nombre", "provincia", "activo", "escuelas_count", "representante"]
 
-    def get_representante(self, obj):
+    def get_representante(self, obj) -> dict | None:
         user = obj.usuarios.filter(rol="ingreso_municipal").first()
         if not user:
             return None
@@ -120,7 +120,7 @@ class ProvincialUserSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["rol", "provincia", "provincia_nombre", "municipio_nombre"]
 
-    def get_rol_label(self, obj):
+    def get_rol_label(self, obj) -> str:
         return dict(ROLES).get(obj.rol, obj.rol)
 
     def validate_municipio(self, value):
@@ -134,6 +134,7 @@ class ProvincialUserSerializer(serializers.ModelSerializer):
         password = validated_data.pop("password", None)
         user = Usuario(**validated_data)
         user.set_password(password or Usuario.objects.make_random_password())
+        user.debe_cambiar_password = True
         user.save()
         return user
 
@@ -143,5 +144,6 @@ class ProvincialUserSerializer(serializers.ModelSerializer):
             setattr(instance, field, value)
         if password:
             instance.set_password(password)
+            instance.debe_cambiar_password = True
         instance.save()
         return instance

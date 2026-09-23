@@ -1,4 +1,4 @@
-import { request, resourceUrl } from "./httpClient";
+import { request, requestImport, resourceUrl } from "./httpClient";
 
 export function fetchEscalafon() {
   return request("/import-export/escalafon/");
@@ -9,7 +9,7 @@ export function importEscalafon(file, escuela, anio) {
   form.append("file", file);
   form.append("escuela", escuela);
   form.append("anio", anio);
-  return request("/import-export/import/escalafon/", { method: "POST", body: form });
+  return requestImport("/import-export/import/escalafon/", form);
 }
 
 export function getEscalafonTemplateUrl() {

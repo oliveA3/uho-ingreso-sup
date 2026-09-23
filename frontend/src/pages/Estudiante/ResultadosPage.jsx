@@ -7,15 +7,6 @@ import { Card, FormField, Modal, StatCard, StatsGrid, TextArea } from "../../com
 import { fetchResults, submitStudentResultClaim } from "../../api/results.service";
 import styles from "./ResultadosPage.module.css";
 
-function isClaimDeadlineExpired(deadline) {
-  if (!deadline) return false;
-  const today = new Date();
-  const todayValue = [today.getFullYear(), today.getMonth() + 1, today.getDate()]
-    .map((value, index) => index === 0 ? value : String(value).padStart(2, "0"))
-    .join("-");
-  return deadline < todayValue;
-}
-
 export default function ResultadosPage() {
   const [resultados, setResultados] = useState([]);
   const [stage, setStage] = useState(null);
@@ -95,9 +86,9 @@ export default function ResultadosPage() {
                 <PrimaryButton
                   className="!bg-orange-500 hover:!bg-orange-600"
                   onClick={() => { setClaimModal(item); setClaimDescription(""); }}
-                  disabled={isClaimDeadlineExpired(item.fecha_limite_reclamo)}
+                  disabled={!item.puede_reclamar}
                 >
-                  {isClaimDeadlineExpired(item.fecha_limite_reclamo) ? "Plazo vencido" : "Reclamar"}
+                  {item.puede_reclamar ? "Reclamar" : "Plazo vencido"}
                 </PrimaryButton>
               )}
             </div>

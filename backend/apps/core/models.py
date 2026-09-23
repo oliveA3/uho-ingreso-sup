@@ -25,3 +25,29 @@ class Notificacion(models.Model):
     contenido = models.TextField()
     fecha = models.DateTimeField(auto_now_add=True)
     leida = models.BooleanField(default=False)
+
+
+class NotificationOutbox(models.Model):
+    PENDING = "pending"
+    PROCESSING = "processing"
+    SENT = "sent"
+    FAILED = "failed"
+    STATUS_CHOICES = [
+        (PENDING, "Pendiente"),
+        (PROCESSING, "Procesando"),
+        (SENT, "Enviada"),
+        (FAILED, "Fallida"),
+    ]
+
+    usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE, related_name="notification_outbox")
+    titulo = models.CharField(max_length=200)
+    contenido = models.TextField()
+    estado = models.CharField(max_length=20, choices=STATUS_CHOICES, default=PENDING)
+    intentos = models.PositiveSmallIntegerField(default=0)
+    ultimo_error = models.TextField(blank=True, default="")
+    disponible_en = models.DateTimeField()
+    notificacion = models.OneToOneField(
+        Notificacion, on_delete=models.SET_NULL, null=True, blank=True, related_name="outbox_entry"
+    )
+    creado_en = models.DateTimeField(auto_now_add=True)
+    enviado_en = models.DateTimeField(null=True, blank=True)

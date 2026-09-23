@@ -1,23 +1,23 @@
 .progressTrack {
   height: 0.5rem;
   border-radius: 9999px;
-  background-color: #e2e8f0;
+  background-color: var(--gris-200);
 }
 
 .progressFillSuccess {
   height: 0.5rem;
   border-radius: 9999px;
-  background-color: var(--brand-success, #1a7a4a);
+  background-color: var(--color-exito, #1a7a4a);
 }
 
 .progressFillWarning {
   height: 0.5rem;
   border-radius: 9999px;
-  background-color: #f59e0b;
+  background-color: var(--color-acento, #5ba3d9);
 }
 
 .progressFillNeutral {
   height: 0.5rem;
   border-radius: 9999px;
-  background-color: #0f172a;
+  background-color: var(--color-primario, #1f4e79);
 }

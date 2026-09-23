@@ -24,7 +24,7 @@ class MunicipalUserSerializer(serializers.ModelSerializer):
         fields = ["id", "username", "email", "first_name", "last_name", "rol", "rol_label", "municipio", "municipio_nombre", "escuela", "escuela_nombre", "is_active", "password"]
         read_only_fields = ["municipio", "municipio_nombre", "escuela_nombre"]
 
-    def get_rol_label(self, obj):
+    def get_rol_label(self, obj) -> str:
         return dict(ROLES).get(obj.rol, obj.rol)
 
     def validate_rol(self, value):
@@ -52,6 +52,7 @@ class MunicipalUserSerializer(serializers.ModelSerializer):
         password = validated_data.pop("password", None)
         user = Usuario(**validated_data)
         user.set_password(password or Usuario.objects.make_random_password())
+        user.debe_cambiar_password = True
         user.save()
         return user
 
@@ -64,5 +65,6 @@ class MunicipalUserSerializer(serializers.ModelSerializer):
             instance.provincia = instance.escuela.municipio.provincia
         if password:
             instance.set_password(password)
+            instance.debe_cambiar_password = True
         instance.save()
         return instance

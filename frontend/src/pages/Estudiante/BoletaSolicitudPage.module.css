@@ -12,25 +12,31 @@
   }
 }
 
+.exportActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
 .eyebrow {
   font-size: 0.875rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.24em;
-  color: #334155;
+  color: var(--gris-700);
 }
 
 .title {
   margin-top: 0.5rem;
   font-size: 1.875rem;
   font-weight: 600;
-  color: #0f172a;
+  color: var(--gris-900);
 }
 
 .subtitle {
   margin-top: 0.5rem;
   font-size: 0.875rem;
-  color: #475569;
+  color: var(--gris-600);
 }
 
 .studentInfoGrid {
@@ -53,8 +59,8 @@
 
 .infoTile {
   border-radius: 1.5rem;
-  border: 1px solid var(--border-color, #e2e8f0);
-  background-color: #f8fafc;
+  border: 1px solid var(--border-color, var(--gris-200));
+  background-color: var(--gris-50);
   padding: 1.25rem;
 }
 
@@ -62,24 +68,24 @@
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.2em;
-  color: #64748b;
+  color: var(--gris-500);
 }
 
 .infoValue {
   margin-top: 0.5rem;
   font-size: 0.875rem;
   font-weight: 600;
-  color: #0f172a;
+  color: var(--gris-900);
 }
 
 .selectionBox {
   margin-top: 1.5rem;
   border-radius: 1.5rem;
-  border: 1px solid var(--border-color, #e2e8f0);
-  background-color: #f8fafc;
+  border: 1px solid var(--border-color, var(--gris-200));
+  background-color: var(--gris-50);
   padding: 1.5rem;
   font-size: 0.875rem;
-  color: #334155;
+  color: var(--gris-700);
 }
 
 .addRow {
@@ -102,7 +108,7 @@
 .countHint {
   margin-top: 1rem;
   font-size: 0.75rem;
-  color: #64748b;
+  color: var(--gris-500);
 }
 
 .planList {
@@ -117,8 +123,8 @@
   align-items: center;
   gap: 0.75rem;
   border-radius: 1.5rem;
-  border: 1px solid var(--border-color, #e2e8f0);
-  background-color: #ffffff;
+  border: 1px solid var(--border-color, var(--gris-200));
+  background-color: var(--blanco);
   padding: 1rem;
 }
 
@@ -130,9 +136,9 @@
   align-items: center;
   justify-content: center;
   border-radius: 9999px;
-  background-color: color-mix(in srgb, var(--brand-primary, #0284c7) 15%, white);
+  background-color: color-mix(in srgb, var(--color-primario, #1f4e79) 15%, var(--blanco));
   font-weight: 600;
-  color: var(--brand-primary, #0369a1);
+  color: var(--color-primario, #1f4e79);
 }
 
 .planDetails {
@@ -142,12 +148,12 @@
 
 .planCareer {
   font-weight: 600;
-  color: #0f172a;
+  color: var(--gris-900);
 }
 
 .planMeta {
   font-size: 0.75rem;
-  color: #64748b;
+  color: var(--gris-500);
 }
 
 .planActions {
@@ -161,7 +167,7 @@
   border-radius: 0.75rem;
   padding: 0.5rem;
   font-size: 1.125rem;
-  color: #64748b;
+  color: var(--gris-500);
   background: none;
   border: none;
   cursor: pointer;
@@ -175,7 +181,7 @@
   border-radius: 0.75rem;
   padding: 0.5rem 0.75rem;
   font-weight: 600;
-  color: var(--brand-error, #dc2626);
+  color: var(--color-error, #c0392b);
   background: none;
   border: none;
   cursor: pointer;
@@ -184,7 +190,7 @@
 .emptyNotice {
   padding: 1.25rem 0;
   text-align: center;
-  color: #64748b;
+  color: var(--gris-500);
 }
 
 .statusRow {
@@ -193,7 +199,7 @@
   align-items: center;
   gap: 0.5rem;
   font-size: 0.75rem;
-  color: #64748b;
+  color: var(--gris-500);
 }
 
 .statusBadge {
@@ -205,8 +211,8 @@
 }
 
 .statusPorEnviar {
-  background-color: #f1f5f9;
-  color: #334155;
+  background-color: var(--gris-100);
+  color: var(--gris-700);
 }
 
 @media (max-width: 639px) {
@@ -231,18 +237,18 @@
 }
 
 .statusPendiente {
-  background-color: color-mix(in srgb, var(--brand-accent, #d97706) 15%, white);
-  color: var(--brand-accent, #b45309);
+  background-color: color-mix(in srgb, var(--color-acento, #5ba3d9) 15%, var(--blanco));
+  color: var(--color-acento, #5ba3d9);
 }
 
 .statusAprobada {
-  background-color: color-mix(in srgb, var(--brand-success, #059669) 15%, white);
-  color: var(--brand-success, #047857);
+  background-color: color-mix(in srgb, var(--color-exito, #1a7a4a) 15%, var(--blanco));
+  color: var(--color-exito, #1a7a4a);
 }
 
 .statusModificada {
-  background-color: color-mix(in srgb, var(--brand-error, #dc2626) 15%, white);
-  color: var(--brand-error, #b91c1c);
+  background-color: color-mix(in srgb, var(--color-error, #c0392b) 15%, var(--blanco));
+  color: var(--color-error, #c0392b);
 }
 
 .footerRow {
@@ -251,29 +257,29 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 0.75rem;
-  border-top: 1px solid var(--border-color, #e2e8f0);
+  border-top: 1px solid var(--border-color, var(--gris-200));
   padding-top: 1.25rem;
 }
 
 .noteSuccess {
   font-size: 0.875rem;
   font-weight: 600;
-  color: var(--brand-success, #047857);
+  color: var(--color-exito, #1a7a4a);
 }
 
 .noteWarning {
   font-size: 0.875rem;
   font-weight: 600;
-  color: var(--brand-accent, #b45309);
+  color: var(--color-acento, #5ba3d9);
 }
 
 .noteError {
   font-size: 0.875rem;
   font-weight: 600;
-  color: var(--brand-error, #b91c1c);
+  color: var(--color-error, #c0392b);
 }
 
 .noteMuted {
   font-size: 0.875rem;
-  color: #64748b;
+  color: var(--gris-500);
 }

@@ -3,7 +3,7 @@ from apps.authentication.cookie_auth import CookieJWTAuthentication
 
 
 class AuditMiddleware:
-    excluded_prefixes = ("/api/v1/logs", "/admin/jsi18n")
+    excluded_prefixes = ("/api/v1/core/logs", "/admin/jsi18n")
 
     def __init__(self, get_response):
         self.get_response = get_response

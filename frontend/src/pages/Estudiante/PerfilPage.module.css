@@ -1,7 +1,7 @@
 .fixedFieldCard {
   border-radius: 1rem;
-  border: 1px solid var(--border-color, #e2e8f0);
-  background-color: #f8fafc;
+  border: 1px solid var(--border-color, var(--gris-200));
+  background-color: var(--gris-50);
   padding: 1rem;
 }
 
@@ -9,19 +9,19 @@
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.16em;
-  color: #64748b;
+  color: var(--gris-500);
 }
 
 .fixedFieldValue {
   margin-top: 0.5rem;
   font-size: 0.875rem;
   font-weight: 600;
-  color: #0f172a;
+  color: var(--gris-900);
 }
 
 .editableForm {
   margin-top: 1.5rem;
-  border-top: 1px solid var(--border-color, #e2e8f0);
+  border-top: 1px solid var(--border-color, var(--gris-200));
   padding-top: 1.5rem;
 }
 

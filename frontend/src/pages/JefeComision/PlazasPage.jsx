@@ -18,6 +18,7 @@ import {
   importPlanPlaza,
   updatePlanPlaza,
 } from "../../api/provincial.service";
+import { normalizeCatalogList } from "../../api/httpClient";
 
 const emptyForm = {
   carrera: "",
@@ -44,6 +45,7 @@ export default function PlazasPage() {
   const [tipos, setTipos] = useState([]);
   const [process, setProcess] = useState(null);
   const [stageStatus, setStageStatus] = useState(null);
+  const [importing, setImporting] = useState(false);
   const fileInput = useRef(null);
   const stageFinished = stageStatus === "completada";
 
@@ -70,11 +72,11 @@ export default function PlazasPage() {
       fetchProvincialTiposOtorgamiento(),
     ])
       .then(([careerData, cesData, provinceData, processData, tiposData]) => {
-        setCareers(careerData);
-        setCes(cesData);
-        setProvinces(provinceData);
+        setCareers(normalizeCatalogList(careerData));
+        setCes(normalizeCatalogList(cesData));
+        setProvinces(normalizeCatalogList(provinceData));
         setProcess(processData);
-        setTipos(tiposData);
+        setTipos(normalizeCatalogList(tiposData));
         setForm((current) => ({ ...current, proceso: processData?.id || "" }));
       })
       .catch((requestError) => setError(requestError.message));
@@ -110,6 +112,17 @@ export default function PlazasPage() {
   async function handleImport(event) {
     const file = event.target.files?.[0];
     if (!file) return;
+    const shouldImport = await confirm({
+      title: "Importar plan de plazas",
+      message: `Se importarán las plazas de "${file.name}", actualizando las plazas ya existentes que coincidan. ¿Deseas continuar?`,
+      confirmLabel: "Importar",
+      tone: "danger",
+    });
+    if (!shouldImport) {
+      event.target.value = "";
+      return;
+    }
+    setImporting(true);
     try {
       const result = await importPlanPlaza(file);
       setNotice(
@@ -127,6 +140,7 @@ export default function PlazasPage() {
     } catch (requestError) {
       setError(requestError.message);
     } finally {
+      setImporting(false);
       event.target.value = "";
     }
   }
@@ -219,10 +233,11 @@ export default function PlazasPage() {
               type="file"
               accept=".xlsx,.xls"
               className={styles.hiddenInput}
+              disabled={stageFinished || importing}
               onChange={handleImport}
             />
-            <PrimaryButton onClick={() => fileInput.current?.click()} disabled={stageFinished}>
-              Importar Excel
+            <PrimaryButton onClick={() => fileInput.current?.click()} disabled={stageFinished || importing}>
+              {importing ? "Importando..." : "Importar Excel"}
             </PrimaryButton>
             <PrimaryButton className={styles.darkButton} onClick={openCreateForm} disabled={stageFinished}>
               Añadir carrera

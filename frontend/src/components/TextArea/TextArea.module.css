@@ -3,12 +3,12 @@
   width: 100%;
   min-height: 44px;
   border-radius: 1rem;
-  border: 1px solid var(--border-color, #e2e8f0);
-  background-color: #ffffff;
+  border: 1px solid var(--border-color, var(--gris-200));
+  background-color: var(--blanco);
   padding: 0.75rem;
   font-size: 1rem;
   font-weight: 400;
-  color: #0f172a;
+  color: var(--gris-900);
 }
 
 @media (min-width: 640px) {
@@ -19,6 +19,6 @@
 
 .textarea:focus {
   outline: none;
-  border-color: var(--brand-accent, #5ba3d9);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand-accent, #5ba3d9) 30%, transparent);
+  border-color: var(--color-acento, #5ba3d9);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-acento, #5ba3d9) 30%, transparent);
 }

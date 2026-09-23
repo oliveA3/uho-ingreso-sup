@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { fetchProvincialEtapas } from "../../api/provincial.service";
 import styles from "./StageOneGuard.module.css";
 
-const allStagesActive = import.meta.env.DEV || import.meta.env.VITE_ALL_STAGES_ACTIVE === "true";
+
 
 export default function StageOneGuard({
   children,
@@ -13,10 +13,6 @@ export default function StageOneGuard({
   const [allowed, setAllowed] = useState(null);
 
   useEffect(() => {
-    if (allStagesActive) {
-      setAllowed(true);
-      return;
-    }
     fetchProvincialEtapas()
       .then((stages) => setAllowed(stages.some((stage) => stage.numero === stageNumber && stage.estado === "en_curso")))
       .catch(() => setAllowed(false));

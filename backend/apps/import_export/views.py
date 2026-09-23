@@ -1,75 +1,122 @@
+import logging
 import unicodedata
 
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.http import HttpResponse
 from django.db.models import Count, Q
-from rest_framework import status, permissions
-from django.db import IntegrityError
+from drf_spectacular.utils import extend_schema, inline_serializer, OpenApiParameter, OpenApiExample
+from drf_spectacular.types import OpenApiTypes
+from rest_framework import status, permissions, serializers
 from django.db import transaction
-from .services.excel_service import ExcelService
-from .services.mappers import PLAN_PLAZA_MAP, PLAN_PLAZA_FK, OTORGAMIENTO_MAP, OTORGAMIENTO_FK
-from .services.validators import validate_plan_plaza
 from apps.gestion_provincial.models import PlanPlaza, Otorgamiento, CorteCarrera, Proceso, Etapa
-from apps.authentication.models import Estudiante, Usuario
+from apps.authentication.models import Usuario
 from apps.core.audit import record_audit
 from apps.core.throttling import BulkOperationRateThrottle
 from apps.gestion_provincial.permissions import IsCareerManager
-from apps.superadmin.models import Carrera, Ces, Escuela, Provincia, TipoOtorgamiento
+from apps.superadmin.models import Asignatura, Carrera, Ces, Escuela, Municipio, Provincia, TipoOtorgamiento
 from .services.carreras_service import CareerExcelService
-from .services.escalafon_service import EscalafonExcelService, resolve_school
+from .services.escalafon_service import EscalafonExcelService, rank_escalafon_entries, resolve_school
 from apps.gestion_escuela.models import Escalafon, EscalafonItem
 from apps.gestion_escuela.serializers import EscalafonItemSerializer, StudentEscalafonActionSerializer
 from apps.gestion_escuela.permissions import CanManageEscalafon
 from apps.gestion_provincial.models import ETAPAS_NOMBRES, Etapa
 from django.utils import timezone
-from django.core.mail import send_mail
 import io
 from datetime import date, datetime
-from decimal import Decimal, InvalidOperation
 
-from openpyxl import Workbook, load_workbook
+from openpyxl import Workbook
 from apps.gestion_personal.models import BoletaInteres, BoletaSolicitud, BoletaSolicitudItem, Reclamacion
 from apps.gestion_personal.models import ResultadoExamen
-from .services.resultados_service import ResultadosExcelService
 from .services.upload_validation import validate_excel_upload
+from .services.import_tasks import enqueue_import
+from apps.core.pdf import render_pdf
+
+logger = logging.getLogger("django.request")
 
 
-def _ballot_pdf(title, student, items, career_getter):
+_IMPORT_ACCEPTED = inline_serializer(
+    name="ImportTaskAcceptedResponse",
+    fields={
+        "task_id": serializers.CharField(help_text="Identificador de la tarea; consultar en /import-export/tareas/{task_id}/."),
+        "estado": serializers.CharField(help_text="Siempre 'pendiente' al encolar."),
+    },
+)
+
+
+def _accepted(task_id):
+    return Response({"task_id": task_id, "estado": "pendiente"}, status=status.HTTP_202_ACCEPTED)
+
+
+def build_pdf_document(title, lines, process_name=None, process_identifier=None):
+    header_lines = []
+    if process_name:
+        header_lines.append(f"Proceso: {process_name}")
+    if process_identifier:
+        header_lines.append(f"Identificación del proceso: {process_identifier}")
+    return render_pdf(title, lines, header_lines)
+
+
+def _ballot_pdf(title, student, items, career_getter, process_name=None, process_identifier=None):
     escalafon_entry = EscalafonItem.objects.filter(
         estudiante=student,
         escalafon__proceso__anio__year=timezone.now().year,
     ).order_by("-escalafon__proceso__anio", "-escalafon_id", "-id").first()
     index = escalafon_entry.indice_general if escalafon_entry else student.indice_general
     lines = [
-        title,
         f"Nombre: {student.nombre} {student.apellidos}",
         f"CI: {student.ci}",
         f"Escuela: {student.escuela.nombre}",
-        f"Indice general: {index or ''}",
+        f"Índice general: {index or ''}",
         "",
         "Prioridad | Carrera | CES | Provincia universidad",
     ]
     for item in items:
         career = career_getter(item)
         lines.append(f"{item.prioridad} | {career.nombre} | {career.ces.nombre} | {career.provincia.nombre}")
-    safe_lines = []
-    for line in lines:
-        normalized = unicodedata.normalize("NFKD", str(line))
-        safe_lines.append("".join(char for char in normalized if not unicodedata.combining(char)))
-    content = "BT /F1 10 Tf 40 800 Td " + " ".join(
-        f"({line.replace('\\', '\\\\').replace('(', '[').replace(')', ']')}) Tj 0 -16 Td" for line in safe_lines
-    ) + " ET"
-    objects = [
-        b"1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj",
-        b"2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj",
-        b"3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 612 842]/Resources<</Font<</F1 4 0 R>>>>/Contents 5 0 R>>endobj",
-        b"4 0 obj<</Type/Font/Subtype/Type1/BaseFont/Courier>>endobj",
-        f"5 0 obj<</Length {len(content.encode())}>>stream\n{content}\nendstream endobj".encode(),
-    ]
-    return b"%PDF-1.4\n" + b"\n".join(objects) + b"\ntrailer<</Root 1 0 R>>\n%%EOF"
+    return build_pdf_document(title, lines, process_name=process_name, process_identifier=process_identifier)
 
 
+def _ballot_excel(title, student, items, career_getter, process):
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = "Boleta"
+    sheet.append([title])
+    sheet.append(["Nombre", f"{student.nombre} {student.apellidos}"])
+    sheet.append(["CI", student.ci])
+    sheet.append(["Escuela", student.escuela.nombre])
+    process_label = process.etapa.nombre if process and process.etapa else "Proceso de ingreso"
+    sheet.append(["Proceso", process_label])
+    sheet.append([])
+    sheet.append(["Prioridad", "Código", "Carrera", "CES", "Provincia universidad"])
+    for item in items:
+        career = career_getter(item)
+        sheet.append([
+            item.prioridad,
+            career.codigo,
+            career.nombre,
+            career.ces.nombre,
+            career.provincia.nombre,
+        ])
+
+    sheet.freeze_panes = "A7"
+    sheet.column_dimensions["A"].width = 12
+    for column in ("B", "C", "D", "E"):
+        sheet.column_dimensions[column].width = 28
+    output = io.BytesIO()
+    workbook.save(output)
+    return output.getvalue()
+
+
+@extend_schema(
+    tags=["Importación y exportación"],
+    summary="Descargar boleta de interés en PDF",
+    description=(
+        "Genera y descarga en PDF la boleta de interés del estudiante autenticado para el proceso de ingreso "
+        "vigente (etapa 'Boleta de interés'). Solo accesible para usuarios con rol 'estudiante'."
+    ),
+    responses={(200, "application/pdf"): OpenApiTypes.BINARY},
+)
 class StudentInterestPdfExportView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -82,11 +129,61 @@ class StudentInterestPdfExportView(APIView):
         if not ballot:
             return Response({"detail": "No existe una boleta de interés."}, status=404)
         items = ballot.boleta_interes.select_related("carrera__ces", "carrera__provincia").order_by("prioridad")
-        response = HttpResponse(_ballot_pdf("BOLETA DE INTERES", student, items, lambda item: item.carrera), content_type="application/pdf")
+        process_label = process.nombre if process else "Proceso de ingreso"
+        response = HttpResponse(
+            _ballot_pdf(
+                "BOLETA DE INTERES",
+                student,
+                items,
+                lambda item: item.carrera,
+                process_name=f"Proceso de Ingreso {timezone.now().year}",
+                process_identifier=f"{process_label}",
+            ),
+            content_type="application/pdf",
+        )
         response["Content-Disposition"] = 'attachment; filename="boleta-interes.pdf"'
         return response
 
 
+@extend_schema(
+    tags=["Importación y exportación"],
+    summary="Descargar boleta de interés en Excel",
+    description=(
+        "Genera y descarga en Excel (.xlsx) la boleta de interés del estudiante autenticado para el proceso de "
+        "ingreso vigente. Solo accesible para usuarios con rol 'estudiante'."
+    ),
+    responses={(200, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"): OpenApiTypes.BINARY},
+)
+class StudentInterestExcelExportView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        if request.user.rol != "estudiante":
+            return Response({"detail": "Solo un estudiante puede descargar esta boleta."}, status=403)
+        student = getattr(request.user, "estudiante", None)
+        process = Proceso.get_for_stage_and_year(timezone.now().year, ETAPAS_NOMBRES[2])
+        ballot = BoletaInteres.objects.filter(estudiante=student, proceso=process).first() if student and process else None
+        if not ballot:
+            return Response({"detail": "No existe una boleta de interés."}, status=404)
+        items = ballot.boleta_interes.select_related("carrera__ces", "carrera__provincia").order_by("prioridad")
+        response = HttpResponse(
+            _ballot_excel("BOLETA DE INTERES", student, items, lambda item: item.carrera, process),
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        response["Content-Disposition"] = 'attachment; filename="boleta-interes.xlsx"'
+        return response
+
+
+@extend_schema(
+    tags=["Importación y exportación"],
+    summary="Descargar boleta de solicitud en PDF",
+    description=(
+        "Genera y descarga en PDF la boleta de solicitud. Un estudiante autenticado descarga su propia boleta "
+        "del proceso vigente (sin indicar `ballot_id`); un Secretario o Director de escuela puede descargar la "
+        "boleta de un estudiante de su escuela indicando `ballot_id` en la ruta."
+    ),
+    responses={(200, "application/pdf"): OpenApiTypes.BINARY},
+)
 class SolicitudPdfExportView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -102,131 +199,140 @@ class SolicitudPdfExportView(APIView):
         if not ballot:
             return Response({"detail": "No existe la boleta de solicitud."}, status=404)
         items = ballot.boleta_solicitud.select_related("plan_plaza__carrera__ces", "plan_plaza__carrera__provincia").order_by("prioridad")
-        response = HttpResponse(_ballot_pdf("BOLETA DE SOLICITUD", ballot.estudiante, items, lambda item: item.plan_plaza.carrera), content_type="application/pdf")
+        process_label = ballot.proceso.etapa.nombre if ballot.proceso and ballot.proceso.etapa else "Proceso de ingreso"
+        response = HttpResponse(
+            _ballot_pdf(
+                "BOLETA DE SOLICITUD",
+                ballot.estudiante,
+                items,
+                lambda item: item.plan_plaza.carrera,
+                process_name=f"Proceso de Ingreso {timezone.now().year}",
+                process_identifier=f"{process_label}",
+            ),
+            content_type="application/pdf",
+        )
         response["Content-Disposition"] = 'attachment; filename="boleta-solicitud.pdf"'
         return response
 
+
+@extend_schema(
+    tags=["Importación y exportación"],
+    summary="Descargar boleta de solicitud en Excel",
+    description=(
+        "Genera y descarga en Excel (.xlsx) la boleta de solicitud. Un estudiante autenticado descarga su propia "
+        "boleta del proceso vigente (sin indicar `ballot_id`); un Secretario o Director de escuela puede descargar "
+        "la boleta de un estudiante de su escuela indicando `ballot_id` en la ruta."
+    ),
+    responses={(200, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"): OpenApiTypes.BINARY},
+)
+class SolicitudExcelExportView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, ballot_id=None):
+        student = getattr(request.user, "estudiante", None)
+        if request.user.rol == "estudiante":
+            process = Proceso.get_for_stage_and_year(timezone.now().year, ETAPAS_NOMBRES[3])
+            ballot = BoletaSolicitud.objects.filter(estudiante=student, proceso=process).select_related("estudiante__escuela").first() if student and process else None
+        elif request.user.rol in {"secretario_escuela", "director_escuela"} and request.user.escuela_id and ballot_id:
+            ballot = BoletaSolicitud.objects.filter(pk=ballot_id, estudiante__escuela_id=request.user.escuela_id).select_related("estudiante__escuela").first()
+        else:
+            return Response({"detail": "No tienes permiso para descargar esta boleta."}, status=403)
+        if not ballot:
+            return Response({"detail": "No existe la boleta de solicitud."}, status=404)
+        items = ballot.boleta_solicitud.select_related("plan_plaza__carrera__ces", "plan_plaza__carrera__provincia").order_by("prioridad")
+        response = HttpResponse(
+            _ballot_excel("BOLETA DE SOLICITUD", ballot.estudiante, items, lambda item: item.plan_plaza.carrera, ballot.proceso),
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        response["Content-Disposition"] = 'attachment; filename="boleta-solicitud.xlsx"'
+        return response
+
+
+def _disambiguate_ballot_operation_id(view_cls, bulk_operation_id, by_id_operation_id):
+    """
+    `SolicitudPdfExportView` and `SolicitudExcelExportView` are each registered on two
+    routes in urls.py (one without `ballot_id` for the student's own ballot, one with
+    `ballot_id` for a school staff member downloading a specific ballot). Since both
+    routes point at the same view/method, drf-spectacular would otherwise generate the
+    same operationId for both, producing a collision warning. This assigns distinct,
+    explicit operationIds based on whether `ballot_id` is part of the resolved path.
+    """
+    base_schema_class = type(view_cls.schema)
+
+    def get_operation_id(self):
+        return by_id_operation_id if "ballot_id" in self.path else bulk_operation_id
+
+    view_cls.schema = type(
+        f"{view_cls.__name__}OperationIdSchema",
+        (base_schema_class,),
+        {"get_operation_id": get_operation_id},
+    )()
+
+
+_disambiguate_ballot_operation_id(
+    SolicitudPdfExportView,
+    bulk_operation_id="import_export_boleta_solicitud_pdf_bulk",
+    by_id_operation_id="import_export_boleta_solicitud_pdf_by_id",
+)
+_disambiguate_ballot_operation_id(
+    SolicitudExcelExportView,
+    bulk_operation_id="import_export_boleta_solicitud_excel_bulk",
+    by_id_operation_id="import_export_boleta_solicitud_excel_by_id",
+)
+
+
+@extend_schema(
+    tags=["Importación y exportación"],
+    summary="Importar plan de plazas desde Excel",
+    description=(
+        "Sube un archivo Excel (.xlsx) con el plan de plazas por carrera, tipo de otorgamiento, CES, provincia y "
+        "sexo, y lo inserta o actualiza para el proceso de plan de plazas del año en curso. Columnas requeridas: "
+        "Codigo_Carrera, Nombre_Carrera, Cantidad_Plazas, Tipo_Otorgamiento, CES, Provincia, Sexo. Requiere permiso "
+        "de gestor de carreras (`IsCareerManager`). Los roles con alcance provincial ('jefe_comision', "
+        "'ingreso_provincial') solo pueden registrar plazas en su propia provincia. La importación es atómica: si "
+        "alguna fila tiene errores, no se guarda ningún registro.",
+    ),
+    request=inline_serializer(
+        name="ImportPlanPlazaUploadRequest",
+        fields={"file": serializers.FileField(help_text="Archivo .xlsx con el plan de plazas.")},
+    ),
+    responses={
+        202: _IMPORT_ACCEPTED,
+        201: inline_serializer(
+            name="ImportPlanPlazaResponse",
+            fields={
+                "inserted": serializers.IntegerField(),
+                "updated": serializers.IntegerField(),
+                "errors": serializers.ListField(child=serializers.DictField(), default=list),
+            },
+        ),
+        400: inline_serializer(
+            name="ImportPlanPlazaErrorResponse",
+            fields={
+                "inserted": serializers.IntegerField(),
+                "updated": serializers.IntegerField(),
+                "errors": serializers.ListField(child=serializers.DictField()),
+            },
+        ),
+    },
+    examples=[
+        OpenApiExample(
+            "Importación exitosa",
+            value={"success": True, "data": {"inserted": 12, "updated": 3, "errors": []}, "error": None},
+            response_only=True,
+        ),
+    ],
+)
 class ImportPlanPlazaView(APIView):
     permission_classes = [IsCareerManager]
     throttle_classes = [BulkOperationRateThrottle]
-
-    def _normalize_header(self, value):
-        text = str(value or "").strip().lower()
-        text = unicodedata.normalize("NFKD", text)
-        text = "".join(ch for ch in text if not unicodedata.combining(ch))
-        return text.replace("_", " ").replace("-", " ").replace(".", " ").replace("/", " ")
-
-    def _get_active_process(self):
-        stage = Etapa.objects.filter(nombre=ETAPAS_NOMBRES[3]).first()
-        if not stage:
-            raise ValueError("No existe la etapa para planes de plaza.")
-        process = Proceso.objects.filter(anio__year=timezone.now().year, etapa=stage).order_by("-id").first()
-        if process is None:
-            process = Proceso.objects.create(
-                anio=timezone.now().date().replace(month=1, day=1),
-                etapa=stage,
-            )
-        return process
 
     def post(self, request):
         file = request.FILES.get("file")
         upload_error = validate_excel_upload(file)
         if upload_error:
             return Response({"detail": upload_error}, status=400)
-        required = ["Codigo_Carrera", "Nombre_Carrera", "Cantidad_Plazas", "Tipo_Otorgamiento", "CES", "Provincia", "Sexo"]
-        try:
-            workbook = load_workbook(file, data_only=True)
-            sheet = workbook.active
-            raw_headers = [cell.value for cell in sheet[1]]
-            normalized_headers = {self._normalize_header(header): header for header in raw_headers if header is not None}
-            missing = [header for header in required if self._normalize_header(header) not in normalized_headers]
-            if missing:
-                return Response({"detail": "Faltan columnas requeridas.", "missing": missing}, status=400)
-
-            process = self._get_active_process()
-            result = {"inserted": 0, "updated": 0, "errors": []}
-
-            for row_number, values in enumerate(sheet.iter_rows(min_row=2, values_only=True), start=2):
-                data = {}
-                for index, header in enumerate(raw_headers):
-                    if index < len(values):
-                        key = self._normalize_header(header)
-                        data[key] = values[index]
-                try:
-                    codigo = str(data.get("codigo carrera") or "").strip()
-                    nombre = str(data.get("nombre carrera") or "").strip()
-                    carrera = Carrera.objects.filter(codigo__iexact=codigo).first()
-                    if carrera is None and nombre:
-                        carrera = Carrera.objects.filter(nombre__iexact=nombre).first()
-                    if carrera is None:
-                        raise ValueError(f"No existe una carrera con código o nombre '{codigo or nombre}'.")
-
-                    ces_name = str(data.get("ces") or "").strip()
-                    ces = Ces.objects.filter(nombre__iexact=ces_name).first() if ces_name else None
-                    if ces is None and carrera.ces_id:
-                        ces = carrera.ces
-                    if ces is None:
-                        raise ValueError(f"No existe el CES '{ces_name or 'vacío'}'.")
-
-                    row_provincia = str(data.get("provincia") or "").strip()
-                    universidad_provincia = Provincia.objects.filter(nombre__iexact=row_provincia).first() if row_provincia else None
-                    if universidad_provincia is None and carrera.provincia_id:
-                        universidad_provincia = carrera.provincia
-
-                    if request.user.is_authenticated and getattr(request.user, "rol", None) == "jefe_comision" and request.user.provincia_id:
-                        provincia = request.user.provincia
-                    else:
-                        provincia = universidad_provincia
-
-                    if provincia is None:
-                        raise ValueError(f"No existe la provincia '{row_provincia or 'asociada al usuario'}'.")
-
-                    if universidad_provincia and carrera.provincia_id and universidad_provincia.id != carrera.provincia_id:
-                        # La provincia del CES es informativa; la provincia real del plan se define por el usuario que lo sube.
-                        pass
-
-                    amount = int(data.get("cantidad plazas"))
-                    if amount <= 0:
-                        raise ValueError("Cantidad_Plazas debe ser un entero positivo.")
-
-                    tipo_name = str(data.get("tipo otorgamiento") or "").strip()
-                    tipo = TipoOtorgamiento.objects.filter(nombre__iexact=tipo_name, activa=True).first()
-                    if tipo is None:
-                        raise ValueError("Tipo_Otorgamiento debe ser un tipo de otorgamiento activo (p. ej. 'Municipal' o 'Provincial').")
-
-                    sex = str(data.get("sexo") or "").strip().upper()
-                    if sex not in {"A", "F", "M"}:
-                        raise ValueError("Sexo debe ser 'A', 'F' o 'M'.")
-
-                    if nombre and str(carrera.nombre).strip().lower() != str(nombre).strip().lower():
-                        raise ValueError("Nombre_Carrera no coincide con la carrera encontrada.")
-                    if carrera.ces_id != ces.id:
-                        raise ValueError("El CES no coincide con la carrera.")
-
-                    _, created = PlanPlaza.objects.update_or_create(
-                        proceso=process,
-                        carrera=carrera,
-                        sexo=sex,
-                        defaults={
-                            "cantidad_plazas": amount,
-                            "otorgamiento_tipo": tipo,
-                            "ces": ces,
-                            "provincia": provincia,
-                        },
-                    )
-                    result["inserted" if created else "updated"] += 1
-                except Exception as error:
-                    result["errors"].append({
-                        "row": row_number,
-                        "error": str(error),
-                        "data": {key: value for key, value in (data or {}).items() if key is not None},
-                    })
-
-            if not result["errors"]:
-                record_audit(request.user, "Importación de plan de plazas", request.path, request=request, new={"inserted": result["inserted"], "updated": result["updated"], "proceso": process.id})
-            return Response(result, status=400 if result["errors"] else 201)
-        except Exception as error:
-            return Response({"detail": f"No se pudo leer el Excel: {error}"}, status=400)
+        return _accepted(enqueue_import(request, "plan_plaza", file))
 
 
 def _normalize_plan_plaza_filename(provincia, anio):
@@ -240,6 +346,15 @@ def _normalize_plan_plaza_filename(provincia, anio):
     return f"plan_plazas_{text}_{anio}.xlsx"
 
 
+@extend_schema(
+    tags=["Importación y exportación"],
+    summary="Descargar plantilla de plan de plazas",
+    description=(
+        "Genera una plantilla Excel (.xlsx) de ejemplo con las columnas requeridas para importar el plan de "
+        "plazas, prellenada con hasta 25 carreras activas de muestra. Requiere permiso de gestor de carreras."
+    ),
+    responses={(200, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"): OpenApiTypes.BINARY},
+)
 class PlanPlazaTemplateView(APIView):
     permission_classes = [IsCareerManager]
 
@@ -258,6 +373,16 @@ class PlanPlazaTemplateView(APIView):
         return response
 
 
+@extend_schema(
+    tags=["Importación y exportación"],
+    summary="Exportar plan de plazas",
+    description="Exporta a Excel (.xlsx) el plan de plazas del proceso de plan de plazas, filtrable por año y provincia.",
+    parameters=[
+        OpenApiParameter("anio", OpenApiTypes.INT, OpenApiParameter.QUERY, required=False, description="Año del proceso (alias: year). Por defecto el año actual."),
+        OpenApiParameter("provincia", OpenApiTypes.STR, OpenApiParameter.QUERY, required=False, description="Nombre exacto de la provincia para filtrar (alias: province)."),
+    ],
+    responses={(200, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"): OpenApiTypes.BINARY},
+)
 class ImportPlanPlazaExportView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -303,119 +428,46 @@ class ImportPlanPlazaExportView(APIView):
         response["Content-Disposition"] = f'attachment; filename="{_normalize_plan_plaza_filename(provincia or "todos", anio)}"'
         return response
 
-def _normalize_import_header(value):
-    text = unicodedata.normalize("NFKD", str(value or "").strip().lower())
-    text = "".join(char for char in text if not unicodedata.combining(char))
-    return "".join(char for char in text if char.isalnum())
-
-
-def _get_stage_six_process():
-    stage = Etapa.objects.filter(nombre=ETAPAS_NOMBRES[6]).first()
-    process = Proceso.get_for_stage_and_year(timezone.now().year, ETAPAS_NOMBRES[6])
-    if not stage or not process:
-        raise ValueError("No existe un proceso de otorgamiento para el año actual.")
-    if stage.estado != "en_curso":
-        raise ValueError("La importación solo está disponible durante la etapa 6.")
-    return process
-
-
-def _read_stage_six_workbook(file_obj, required_headers):
-    workbook = load_workbook(filename=file_obj, data_only=True)
-    worksheet = workbook.active
-    headers = [cell.value for cell in worksheet[1]]
-    normalized = {_normalize_import_header(header): header for header in headers if header is not None}
-    missing = [header for header in required_headers if _normalize_import_header(header) not in normalized]
-    if missing:
-        raise ValueError(f"Faltan columnas requeridas: {', '.join(missing)}")
-    return worksheet, headers, normalized
-
-
-def _resolve_stage_six_career(data):
-    codigo = str(data.get("codigo_carrera") or "").strip()
-    nombre = str(data.get("nombre_carrera") or "").strip()
-    carrera = Carrera.objects.filter(codigo__iexact=codigo).first()
-    if not carrera:
-        raise ValueError(f"No existe una carrera con código '{codigo}'.")
-    if not nombre or carrera.nombre.strip().lower() != nombre.lower():
-        raise ValueError("Nombre_Carrera no coincide con la carrera del código indicado.")
-    return carrera
-
-
-def _import_stage_six_file(file_obj, kind):
-    required_headers = (
-        ["CI", "Codigo_Carrera", "Nombre_Carrera", "Indice_Otorgamiento"]
-        if kind == "otorgamiento"
-        else ["Codigo_Carrera", "Nombre_Carrera", "Indice_Corte"]
-    )
-    try:
-        process = _get_stage_six_process()
-        worksheet, headers, normalized_headers = _read_stage_six_workbook(file_obj, required_headers)
-    except Exception as error:
-        return {"inserted": 0, "updated": 0, "errors": [{"row": 1, "errors": [str(error)]}]}
-
-    rows = []
-    errors = []
-    seen = set()
-    for row_number, values in enumerate(worksheet.iter_rows(min_row=2, values_only=True), start=2):
-        if not any(value not in (None, "") for value in values):
-            continue
-        raw = {normalized_headers[_normalize_import_header(header)]: values[index] for index, header in enumerate(headers) if header is not None and index < len(values)}
-        data = {
-            "ci": raw.get(normalized_headers.get("ci")),
-            "codigo_carrera": raw.get(normalized_headers.get("codigocarrera")),
-            "nombre_carrera": raw.get(normalized_headers.get("nombrecarrera")),
-            "indice": raw.get(normalized_headers.get("indiceotorgamiento" if kind == "otorgamiento" else "indicecorte")),
-        }
-        row_errors = []
-        student = None
-        carrera = None
-        if kind == "otorgamiento":
-            ci = str(data["ci"] or "").strip()
-            if not ci.isdigit() or len(ci) != 11:
-                row_errors.append("CI debe contener exactamente 11 dígitos numéricos.")
-            else:
-                student = Estudiante.objects.filter(ci=ci).first()
-                if not student:
-                    row_errors.append("El CI no existe en la base de datos.")
-        try:
-            carrera = _resolve_stage_six_career(data)
-        except ValueError as error:
-            row_errors.append(str(error))
-        try:
-            indice = Decimal(str(data["indice"]))
-            if indice < 0 or indice > 100 or indice.as_tuple().exponent < -2:
-                raise ValueError
-            data["indice"] = float(indice)
-        except (InvalidOperation, TypeError, ValueError):
-            row_errors.append("El índice debe ser un decimal entre 0 y 100, con máximo 2 decimales.")
-        key = (student.id if student else data["ci"], carrera.id if carrera else data["codigo_carrera"])
-        if key in seen:
-            row_errors.append("La combinación indicada está repetida dentro del Excel.")
-        else:
-            seen.add(key)
-        if row_errors:
-            errors.append({"row": row_number, "errors": row_errors, "data": raw})
-        else:
-            rows.append((student, carrera, data["indice"]))
-    if errors:
-        return {"inserted": 0, "updated": 0, "errors": errors}
-
-    inserted = updated = 0
-    with transaction.atomic():
-        for student, carrera, indice in rows:
-            lookup = {"proceso": process, "carrera": carrera}
-            if kind == "otorgamiento":
-                lookup["estudiante"] = student
-                _, created = Otorgamiento.objects.update_or_create(**lookup, defaults={"indice_otorgamiento": indice})
-            else:
-                _, created = CorteCarrera.objects.update_or_create(**lookup, defaults={"indice_corte": indice})
-            if created:
-                inserted += 1
-            else:
-                updated += 1
-    return {"inserted": inserted, "updated": updated, "errors": []}
-
-
+@extend_schema(
+    tags=["Importación y exportación"],
+    summary="Importar otorgamientos de carreras",
+    description=(
+        "Sube un archivo Excel (.xlsx) con los otorgamientos de carreras (CI, Codigo_Carrera, Nombre_Carrera, "
+        "Indice_Otorgamiento) durante la etapa 6 del proceso de ingreso en curso. Solo puede ejecutarlo el Jefe de "
+        "Comisión (o superusuario). La importación es atómica y, al finalizar sin errores, notifica a los "
+        "estudiantes afectados (de la provincia del jefe de comisión, o a todos si es superusuario).",
+    ),
+    request=inline_serializer(
+        name="ImportOtorgamientoUploadRequest",
+        fields={"file": serializers.FileField(help_text="Archivo .xlsx con los otorgamientos.")},
+    ),
+    responses={
+        202: _IMPORT_ACCEPTED,
+        201: inline_serializer(
+            name="ImportOtorgamientoResponse",
+            fields={
+                "inserted": serializers.IntegerField(),
+                "updated": serializers.IntegerField(),
+                "errors": serializers.ListField(child=serializers.DictField(), default=list),
+            },
+        ),
+        400: inline_serializer(
+            name="ImportOtorgamientoErrorResponse",
+            fields={
+                "inserted": serializers.IntegerField(),
+                "updated": serializers.IntegerField(),
+                "errors": serializers.ListField(child=serializers.DictField()),
+            },
+        ),
+    },
+    examples=[
+        OpenApiExample(
+            "Importación exitosa",
+            value={"success": True, "data": {"inserted": 40, "updated": 0, "errors": []}, "error": None},
+            response_only=True,
+        ),
+    ],
+)
 class ImportOtorgamientoView(APIView):
     permission_classes = [IsCareerManager]
     throttle_classes = [BulkOperationRateThrottle]
@@ -427,24 +479,48 @@ class ImportOtorgamientoView(APIView):
         upload_error = validate_excel_upload(file)
         if upload_error:
             return Response({"detail": upload_error}, status=400)
-        result = _import_stage_six_file(file, "otorgamiento")
-        if not result["errors"]:
-            record_audit(request.user, "Importación de otorgamientos", request.path, request=request, new={"inserted": result["inserted"], "updated": result["updated"]})
-        if not result["errors"]:
-            from apps.core.notifications import notify_users
-            students = Usuario.objects.filter(
-                rol="estudiante",
-                escuela__municipio__provincia=request.user.provincia,
-            ) if request.user.rol == "jefe_comision" else Usuario.objects.filter(rol="estudiante")
-            notify_users(
-                students,
-                "Otorgamientos publicados",
-                f"Se publicaron los otorgamientos de carreras del proceso {timezone.now().year}. Ya puedes consultar tu resultado.",
-                filter_students=False,
-            )
-        return Response(result, status=400 if result["errors"] else 201)
+        return _accepted(enqueue_import(request, "otorgamiento", file))
 
 
+@extend_schema(
+    tags=["Importación y exportación"],
+    summary="Importar índices de corte por carrera",
+    description=(
+        "Sube un archivo Excel (.xlsx) con los índices de corte por carrera (Codigo_Carrera, Nombre_Carrera, "
+        "Indice_Corte) durante la etapa 6 del proceso de ingreso en curso. Solo puede ejecutarlo el Jefe de "
+        "Comisión (o superusuario). La importación es atómica.",
+    ),
+    request=inline_serializer(
+        name="ImportCorteCarreraUploadRequest",
+        fields={"file": serializers.FileField(help_text="Archivo .xlsx con los índices de corte.")},
+    ),
+    responses={
+        202: _IMPORT_ACCEPTED,
+        201: inline_serializer(
+            name="ImportCorteCarreraResponse",
+            fields={
+                "inserted": serializers.IntegerField(),
+                "updated": serializers.IntegerField(),
+                "errors": serializers.ListField(child=serializers.DictField(), default=list),
+            },
+        ),
+        400: inline_serializer(
+            name="ImportCorteCarreraErrorResponse",
+            fields={
+                "inserted": serializers.IntegerField(),
+                "updated": serializers.IntegerField(),
+                "errors": serializers.ListField(child=serializers.DictField()),
+            },
+        ),
+    },
+    examples=[
+        OpenApiExample(
+            "Importación exitosa",
+            value={"success": True, "data": {"inserted": 15, "updated": 2, "errors": []}, "error": None},
+            response_only=True,
+        ),
+    ],
+)
 class ImportCorteCarreraView(APIView):
     permission_classes = [IsCareerManager]
     throttle_classes = [BulkOperationRateThrottle]
@@ -456,12 +532,43 @@ class ImportCorteCarreraView(APIView):
         upload_error = validate_excel_upload(file)
         if upload_error:
             return Response({"detail": upload_error}, status=400)
-        result = _import_stage_six_file(file, "corte")
-        if not result["errors"]:
-            record_audit(request.user, "Importación de índices de corte", request.path, request=request, new={"inserted": result["inserted"], "updated": result["updated"]})
-        return Response(result, status=400 if result["errors"] else 201)
+        return _accepted(enqueue_import(request, "corte", file))
 
 
+@extend_schema(
+    tags=["Importación y exportación"],
+    summary="Resumen de otorgamientos y cortes",
+    description=(
+        "Devuelve un resumen numérico de otorgamientos de carreras, estudiantes sin otorgamiento e índices de "
+        "corte publicados para un año. Solo accesible al Jefe de Comisión (limitado a su provincia) o superusuario."
+    ),
+    parameters=[
+        OpenApiParameter("anio", OpenApiTypes.INT, OpenApiParameter.QUERY, required=False, description="Año del proceso. Por defecto el año actual."),
+    ],
+    responses={
+        200: inline_serializer(
+            name="OtorgamientoSummaryResponse",
+            fields={
+                "year": serializers.IntegerField(),
+                "province": serializers.CharField(),
+                "awarded_count": serializers.IntegerField(),
+                "without_award_count": serializers.IntegerField(),
+                "cuts_count": serializers.IntegerField(),
+            },
+        ),
+    },
+    examples=[
+        OpenApiExample(
+            "Resumen provincial",
+            value={
+                "success": True,
+                "data": {"year": 2025, "province": "La Habana", "awarded_count": 320, "without_award_count": 15, "cuts_count": 48},
+                "error": None,
+            },
+            response_only=True,
+        ),
+    ],
+)
 class OtorgamientoSummaryView(APIView):
     permission_classes = [IsCareerManager]
 
@@ -501,6 +608,20 @@ class OtorgamientoSummaryView(APIView):
         })
 
 
+@extend_schema(
+    tags=["Importación y exportación"],
+    summary="Exportar otorgamientos o índices de corte (etapa 6)",
+    description=(
+        "Exporta a Excel (.xlsx) los otorgamientos de carreras o los índices de corte de la etapa 6 para un año. "
+        "El resultado se acota automáticamente al alcance del usuario: Jefe de Comisión a su provincia, "
+        "Secretario/Director de escuela a su escuela, superadmin sin restricción."
+    ),
+    parameters=[
+        OpenApiParameter("kind", OpenApiTypes.STR, OpenApiParameter.PATH, enum=["otorgamientos", "cortes"], description="Tipo de exportación."),
+        OpenApiParameter("anio", OpenApiTypes.INT, OpenApiParameter.QUERY, required=False, description="Año del proceso. Por defecto el año actual."),
+    ],
+    responses={(200, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"): OpenApiTypes.BINARY},
+)
 class ExportStageSixView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -555,6 +676,54 @@ class ExportStageSixView(APIView):
         return response
 
 
+@extend_schema(
+    tags=["Importación y exportación"],
+    summary="Listar otorgamientos de la escuela",
+    description=(
+        "Lista los otorgamientos de carrera de los estudiantes de la escuela del Secretario o Director de escuela "
+        "autenticado, para un año dado, incluyendo el índice general de escalafón de cada estudiante."
+    ),
+    parameters=[
+        OpenApiParameter("anio", OpenApiTypes.INT, OpenApiParameter.QUERY, required=False, description="Año del proceso. Por defecto el año actual."),
+    ],
+    responses={
+        200: inline_serializer(
+            name="SchoolOtorgamientoListResponse",
+            fields={
+                "year": serializers.IntegerField(),
+                "items": serializers.ListField(child=inline_serializer(
+                    name="SchoolOtorgamientoItem",
+                    fields={
+                        "id": serializers.IntegerField(),
+                        "student": serializers.CharField(),
+                        "ci": serializers.CharField(),
+                        "general_index": serializers.FloatField(allow_null=True),
+                        "award_index": serializers.FloatField(),
+                        "career": serializers.CharField(),
+                        "ces": serializers.CharField(),
+                    },
+                )),
+            },
+        ),
+    },
+    examples=[
+        OpenApiExample(
+            "Otorgamientos de la escuela",
+            value={
+                "success": True,
+                "data": {
+                    "year": 2025,
+                    "items": [{
+                        "id": 1, "student": "Ana Pérez", "ci": "01020304050", "general_index": 92.5,
+                        "award_index": 90.0, "career": "Medicina", "ces": "Universidad de La Habana",
+                    }],
+                },
+                "error": None,
+            },
+            response_only=True,
+        ),
+    ],
+)
 class SchoolOtorgamientoListView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -594,6 +763,33 @@ class SchoolOtorgamientoListView(APIView):
         })
 
 
+@extend_schema(
+    tags=["Importación y exportación"],
+    summary="Importar carreras desde Excel",
+    description="Sube un archivo Excel (.xlsx) con carreras y las inserta o actualiza en el catálogo. Requiere permiso de gestor de carreras.",
+    request=inline_serializer(
+        name="ImportCarrerasUploadRequest",
+        fields={"file": serializers.FileField(help_text="Archivo .xlsx con las carreras.")},
+    ),
+    responses={
+        202: _IMPORT_ACCEPTED,
+        200: inline_serializer(
+            name="ImportCarrerasResponse",
+            fields={"inserted": serializers.IntegerField(), "errors": serializers.ListField(child=serializers.DictField(), default=list)},
+        ),
+        400: inline_serializer(
+            name="ImportCarrerasErrorResponse",
+            fields={"inserted": serializers.IntegerField(), "errors": serializers.ListField(child=serializers.DictField())},
+        ),
+    },
+    examples=[
+        OpenApiExample(
+            "Importación exitosa",
+            value={"success": True, "data": {"inserted": 8, "errors": []}, "error": None},
+            response_only=True,
+        ),
+    ],
+)
 class ImportCarrerasView(APIView):
     permission_classes = [IsCareerManager]
     throttle_classes = [BulkOperationRateThrottle]
@@ -603,12 +799,15 @@ class ImportCarrerasView(APIView):
         upload_error = validate_excel_upload(file)
         if upload_error:
             return Response({"detail": upload_error}, status=status.HTTP_400_BAD_REQUEST)
-        result = CareerExcelService().import_file(file)
-        if result.errors:
-            return Response({"inserted": 0, "errors": result.errors}, status=status.HTTP_400_BAD_REQUEST)
-        return Response({"inserted": result.inserted, "errors": []})
+        return _accepted(enqueue_import(request, "carreras", file))
 
 
+@extend_schema(
+    tags=["Importación y exportación"],
+    summary="Exportar carreras a Excel",
+    description="Exporta a Excel (.xlsx) el catálogo completo de carreras. Requiere permiso de gestor de carreras.",
+    responses={(200, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"): OpenApiTypes.BINARY},
+)
 class ExportCarrerasView(APIView):
     permission_classes = [IsCareerManager]
 
@@ -622,6 +821,104 @@ class ExportCarrerasView(APIView):
         return response
 
 
+@extend_schema(
+    tags=["Importación y exportación"],
+    summary="Exportar catálogo genérico",
+    description=(
+        "Exporta a Excel (.xlsx) un catálogo del sistema (Provincia, Municipio, Escuela, Ces, Carrera, Asignatura "
+        "o TipoOtorgamiento, según la subclase de vista concreta registrada en la URL). Incluye id, nombre, "
+        "descripción, estado y fecha de última modificación."
+    ),
+    responses={(200, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"): OpenApiTypes.BINARY},
+)
+class ExportCatalogView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+    resource_model = None
+    filename = "catalogo.xlsx"
+
+    def get(self, request, *args, **kwargs):
+        if not self.resource_model:
+            return Response({"detail": "Debe indicar un modelo de catálogo."}, status=400)
+
+        model_map = {
+            "Provincia": Provincia,
+            "Municipio": Municipio,
+            "Escuela": Escuela,
+            "Ces": Ces,
+            "Carrera": Carrera,
+            "Asignatura": Asignatura,
+            "TipoOtorgamiento": TipoOtorgamiento,
+        }
+        model = model_map.get(self.resource_model)
+        if model is None:
+            return Response({"detail": "Modelo de catálogo no soportado."}, status=400)
+
+        queryset = model.objects.all().order_by("nombre")
+        workbook = Workbook()
+        sheet = workbook.active
+        sheet.title = self.resource_model
+        headers = ["id", "nombre", "descripcion", "estado", "fecha_ultima_modificacion"]
+        sheet.append(headers)
+        for item in queryset:
+            estado = getattr(item, "activa", None)
+            if estado is None:
+                estado = getattr(item, "activo", None)
+            last_modified = getattr(item, "fecha_ultima_modificacion", None)
+            sheet.append([
+                item.pk,
+                getattr(item, "nombre", ""),
+                getattr(item, "descripcion", "") or "",
+                "Activo" if estado else "Inactivo",
+                timezone.localtime(last_modified).strftime("%Y-%m-%d %H:%M:%S") if last_modified else "",
+            ])
+        buffer = io.BytesIO()
+        workbook.save(buffer)
+        buffer.seek(0)
+        response = HttpResponse(
+            buffer.getvalue(),
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        response["Content-Disposition"] = f'attachment; filename="{self.filename}"'
+        return response
+
+
+@extend_schema(
+    tags=["Escalafón"],
+    summary="Importar escalafón de una escuela",
+    description=(
+        "Sube un archivo Excel (.xlsx) con el escalafón (índices de 10mo, 11no, 12mo y general) de los estudiantes "
+        "de una escuela para un año/proceso dado. Solo pueden importarlo el Secretario de la escuela (limitado a "
+        "su propia escuela), el Jefe de Comisión (limitado a escuelas de su provincia) o el superadmin. Falla si "
+        "ya existe un escalafón para esa escuela y año. Al finalizar sin errores, notifica a los estudiantes de la "
+        "escuela.",
+    ),
+    request=inline_serializer(
+        name="ImportEscalafonUploadRequest",
+        fields={
+            "file": serializers.FileField(help_text="Archivo .xlsx con el escalafón."),
+            "escuela": serializers.CharField(required=False, help_text="ID de la escuela (requerido salvo para Secretario, que usa la suya)."),
+            "anio": serializers.IntegerField(required=False, help_text="Año del proceso de escalafón (también acepta 'año'). Por defecto el año actual."),
+        },
+    ),
+    responses={
+        202: _IMPORT_ACCEPTED,
+        201: inline_serializer(
+            name="ImportEscalafonResponse",
+            fields={"inserted": serializers.IntegerField(), "errors": serializers.ListField(child=serializers.DictField(), default=list)},
+        ),
+        400: inline_serializer(
+            name="ImportEscalafonErrorResponse",
+            fields={"inserted": serializers.IntegerField(), "errors": serializers.ListField(child=serializers.DictField())},
+        ),
+    },
+    examples=[
+        OpenApiExample(
+            "Importación exitosa",
+            value={"success": True, "data": {"inserted": 30, "errors": []}, "error": None},
+            response_only=True,
+        ),
+    ],
+)
 class ImportEscalafonView(APIView):
     permission_classes = [permissions.IsAuthenticated]
     throttle_classes = [BulkOperationRateThrottle]
@@ -643,23 +940,60 @@ class ImportEscalafonView(APIView):
                 raise ValueError("No existe un proceso para la etapa de escalafón en el año indicado.")
         except (TypeError, ValueError, Escuela.DoesNotExist):
             return Response({"detail": "Debe indicar una escuela válida y el año del escalafón."}, status=status.HTTP_400_BAD_REQUEST)
-        try:
-            result = EscalafonExcelService().import_file(file, escuela, proceso)
-        except (IntegrityError, ValueError) as error:
-            if isinstance(error, IntegrityError):
-                error = "Ya existe un escalafón para esa escuela y año."
-            return Response({"detail": str(error)}, status=status.HTTP_400_BAD_REQUEST)
-        if result.errors:
-            return Response({"inserted": 0, "errors": result.errors}, status=status.HTTP_400_BAD_REQUEST)
-        from apps.core.notifications import notify_users
-        notify_users(
-            Usuario.objects.filter(rol="estudiante", escuela=escuela),
-            "Escalafón actualizado",
-            f"El secretario publicó el escalafón de tu escuela para el proceso {anio}.",
-        )
-        return Response({"inserted": result.inserted, "errors": []}, status=status.HTTP_201_CREATED)
+        if (
+            request.user.rol == "jefe_comision"
+            and escuela.municipio.provincia_id != request.user.provincia_id
+        ):
+            return Response({"detail": "Solo puedes importar el escalafón de escuelas de tu provincia."}, status=status.HTTP_403_FORBIDDEN)
+        task_id = enqueue_import(request, "escalafon", file, {"escuela_id": escuela.id, "proceso_id": proceso.id, "anio": anio})
+        return _accepted(task_id)
 
 
+@extend_schema(
+    tags=["Resultados"],
+    summary="Importar resultados de exámenes",
+    description=(
+        "Sube un archivo Excel (.xlsx) con las notas de una asignatura para el proceso de resultados (etapa 5) de "
+        "un año dado. Solo el Jefe de Comisión (limitado a su provincia) o el superadmin pueden importar, y solo "
+        "mientras la etapa 5 esté 'en_curso'. Al finalizar sin errores, notifica a los estudiantes afectados y "
+        "registra auditoría.",
+    ),
+    request=inline_serializer(
+        name="ImportResultadosUploadRequest",
+        fields={
+            "file": serializers.FileField(help_text="Archivo .xlsx con las notas."),
+            "anio": serializers.IntegerField(required=False, help_text="Año del proceso de resultados. Por defecto el año actual."),
+            "asignatura": serializers.CharField(help_text="Nombre de la asignatura importada (Matemática, Español o Historia)."),
+            "fecha_limite_reclamo": serializers.DateField(help_text="Fecha límite (ISO 8601, YYYY-MM-DD) para presentar reclamaciones sobre estas notas."),
+        },
+    ),
+    responses={
+        202: _IMPORT_ACCEPTED,
+        201: inline_serializer(
+            name="ImportResultadosResponse",
+            fields={
+                "inserted": serializers.IntegerField(),
+                "updated": serializers.IntegerField(),
+                "errors": serializers.ListField(child=serializers.DictField(), default=list),
+            },
+        ),
+        400: inline_serializer(
+            name="ImportResultadosErrorResponse",
+            fields={
+                "inserted": serializers.IntegerField(),
+                "updated": serializers.IntegerField(),
+                "errors": serializers.ListField(child=serializers.DictField()),
+            },
+        ),
+    },
+    examples=[
+        OpenApiExample(
+            "Importación exitosa",
+            value={"success": True, "data": {"inserted": 100, "updated": 0, "errors": []}, "error": None},
+            response_only=True,
+        ),
+    ],
+)
 class ImportResultadosView(APIView):
     permission_classes = [permissions.IsAuthenticated]
     throttle_classes = [BulkOperationRateThrottle]
@@ -687,32 +1021,10 @@ class ImportResultadosView(APIView):
             deadline = date.fromisoformat(str(request.data.get("fecha_limite_reclamo", "")))
         except ValueError:
             return Response({"detail": "Debe indicar una fecha límite de reclamaciones válida."}, status=400)
-        try:
-            result = ResultadosExcelService().import_file(
-                file,
-                proceso,
-                request.user.provincia,
-                selected_subject=selected_subject,
-                deadline=deadline,
-            )
-        except Exception as error:
-            return Response({"detail": f"No se pudo leer el Excel: {error}"}, status=400)
-        if result.errors:
-            return Response({"inserted": 0, "updated": 0, "errors": result.errors}, status=400)
-        from apps.core.notifications import notify_users
-        notification_users = Usuario.objects.filter(rol="estudiante")
-        if request.user.rol != "superadmin":
-            notification_users = notification_users.filter(
-                escuela__municipio__provincia=request.user.provincia,
-            )
-        notify_users(
-            notification_users,
-            "Resultados de exámenes publicados",
-            f"Ya puedes consultar tus resultados de {selected_subject} del proceso {proceso.anio.year}.",
-            filter_students=False,
-        )
-        record_audit(request.user, "Importación de resultados de exámenes", request.path, request=request, new={"inserted": result.inserted, "updated": result.updated, "anio": proceso.anio.year, "asignatura": selected_subject})
-        return Response({"inserted": result.inserted, "updated": result.updated, "errors": []}, status=201)
+        task_id = enqueue_import(request, "resultados", file, {
+            "proceso_id": proceso.id, "asignatura": selected_subject, "deadline": deadline.isoformat(),
+        })
+        return _accepted(task_id)
 
 
 def normalize_result_subject(value):
@@ -741,6 +1053,49 @@ def _school_result_row(entry, grades, anio):
     }
 
 
+@extend_schema(
+    tags=["Resultados"],
+    summary="Consultar resultados de exámenes",
+    description=(
+        "Consulta los resultados de exámenes de ingreso para un año. La forma de la respuesta depende del rol del "
+        "usuario autenticado: Secretario/Director de escuela recibe la lista de estudiantes de su escuela con sus "
+        "notas; un estudiante recibe el estado de la etapa y sus propias notas/reclamaciones por asignatura; "
+        "Jefe de Comisión (acotado a su provincia) o superadmin reciben la lista completa de resultados."
+    ),
+    parameters=[
+        OpenApiParameter("anio", OpenApiTypes.INT, OpenApiParameter.QUERY, required=False, description="Año del proceso. Por defecto el año actual."),
+    ],
+    responses={200: OpenApiTypes.OBJECT},
+    examples=[
+        OpenApiExample(
+            "Vista de Secretario/Director de escuela",
+            value={"success": True, "data": [{
+                "id": 1, "ci": "01020304050", "student": "Ana Pérez", "school": "IPU José Martí",
+                "matematica": 85, "espanol": 90, "historia": 88, "escalafon_index": 92.5, "process_year": 2025,
+            }], "error": None},
+            response_only=True,
+        ),
+        OpenApiExample(
+            "Vista de estudiante",
+            value={"success": True, "data": {
+                "stage": {"active": True, "completed": False, "current_number": 5, "fecha_fin": "2025-07-15"},
+                "results": [{
+                    "id": 10, "subject": "Matemática", "grade": 85, "fecha_limite_reclamo": "2025-07-20",
+                    "claim": None,
+                }],
+            }, "error": None},
+            response_only=True,
+        ),
+        OpenApiExample(
+            "Vista de Jefe de Comisión/superadmin",
+            value={"success": True, "data": [{
+                "id": 1, "ci": "01020304050", "student": "Ana Pérez", "subject": "Matemática", "grade": 85,
+                "school": "IPU José Martí", "fecha_limite_reclamo": "2025-07-20", "process_year": 2025,
+            }], "error": None},
+            response_only=True,
+        ),
+    ],
+)
 class ResultadosListView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -833,10 +1188,76 @@ class ResultadosListView(APIView):
             "grade": item.nota,
             "school": item.estudiante.escuela.nombre,
             "fecha_limite_reclamo": item.fecha_limite_reclamo,
+            "puede_reclamar": not (item.fecha_limite_reclamo and item.fecha_limite_reclamo < timezone.localdate()),
             "process_year": item.proceso.anio.year,
         } for item in queryset.select_related("estudiante__escuela", "asignatura", "proceso").order_by("estudiante__apellidos", "asignatura__nombre")])
 
 
+@extend_schema(
+    tags=["Resultados"],
+    summary="Resultados públicos",
+    description=(
+        "Consulta pública (sin autenticación) de resultados de exámenes de ingreso para la interoperabilidad "
+        "institucional, con filtros por año, provincia, municipio, escuela y asignatura. También devuelve los "
+        "valores disponibles para cada filtro."
+    ),
+    parameters=[
+        OpenApiParameter("anio", OpenApiTypes.INT, OpenApiParameter.QUERY, required=False, description="Año del proceso. Por defecto el año actual."),
+        OpenApiParameter("provincia", OpenApiTypes.STR, OpenApiParameter.QUERY, required=False, description="Nombre exacto de la provincia."),
+        OpenApiParameter("municipio", OpenApiTypes.STR, OpenApiParameter.QUERY, required=False, description="Nombre exacto del municipio."),
+        OpenApiParameter("escuela", OpenApiTypes.STR, OpenApiParameter.QUERY, required=False, description="Nombre exacto de la escuela."),
+        OpenApiParameter("asignatura", OpenApiTypes.STR, OpenApiParameter.QUERY, required=False, description="Nombre exacto de la asignatura."),
+    ],
+    responses={
+        200: inline_serializer(
+            name="LandingResultadosResponse",
+            fields={
+                "year": serializers.IntegerField(),
+                "results": serializers.ListField(child=inline_serializer(
+                    name="LandingResultadoItem",
+                    fields={
+                        "id": serializers.IntegerField(),
+                        "student": serializers.CharField(),
+                        "school": serializers.CharField(),
+                        "municipality": serializers.CharField(),
+                        "province": serializers.CharField(),
+                        "subject": serializers.CharField(),
+                        "grade": serializers.FloatField(),
+                        "year": serializers.IntegerField(),
+                    },
+                )),
+                "years": serializers.ListField(child=serializers.IntegerField()),
+                "provinces": serializers.ListField(child=serializers.CharField()),
+                "municipalities": serializers.ListField(child=serializers.CharField()),
+                "schools": serializers.ListField(child=serializers.CharField()),
+                "subjects": serializers.ListField(child=serializers.CharField()),
+            },
+        ),
+        400: inline_serializer(name="LandingResultadosErrorResponse", fields={"detail": serializers.CharField()}),
+    },
+    examples=[
+        OpenApiExample(
+            "Resultados filtrados",
+            value={
+                "success": True,
+                "data": {
+                    "year": 2025,
+                    "results": [{
+                        "id": 1, "student": "Ana Pérez", "school": "IPU José Martí", "municipality": "Plaza",
+                        "province": "La Habana", "subject": "Matemática", "grade": 85, "year": 2025,
+                    }],
+                    "years": [2025, 2024],
+                    "provinces": ["La Habana"],
+                    "municipalities": ["Plaza"],
+                    "schools": ["IPU José Martí"],
+                    "subjects": ["Matemática", "Español", "Historia"],
+                },
+                "error": None,
+            },
+            response_only=True,
+        ),
+    ],
+)
 class LandingResultadosView(APIView):
     permission_classes = [permissions.AllowAny]
 
@@ -886,6 +1307,65 @@ class LandingResultadosView(APIView):
         })
 
 
+@extend_schema(
+    tags=["Otorgamiento"],
+    summary="Otorgamientos públicos",
+    description=(
+        "Consulta pública (sin autenticación) del resultado de otorgamiento de carreras, con filtros por año, "
+        "provincia y CI, para la interoperabilidad institucional. También devuelve los años y provincias "
+        "disponibles."
+    ),
+    parameters=[
+        OpenApiParameter("anio", OpenApiTypes.INT, OpenApiParameter.QUERY, required=False, description="Año del proceso. Por defecto el año actual."),
+        OpenApiParameter("provincia", OpenApiTypes.STR, OpenApiParameter.QUERY, required=False, description="Nombre exacto de la provincia."),
+        OpenApiParameter("ci", OpenApiTypes.STR, OpenApiParameter.QUERY, required=False, description="Carné de identidad (búsqueda parcial) del estudiante."),
+    ],
+    responses={
+        200: inline_serializer(
+            name="LandingOtorgamientosResponse",
+            fields={
+                "year": serializers.IntegerField(),
+                "results": serializers.ListField(child=inline_serializer(
+                    name="LandingOtorgamientoItem",
+                    fields={
+                        "id": serializers.IntegerField(),
+                        "student": serializers.CharField(),
+                        "ci": serializers.CharField(),
+                        "career": serializers.CharField(),
+                        "ces": serializers.CharField(),
+                        "award_index": serializers.FloatField(),
+                        "school": serializers.CharField(),
+                        "province": serializers.CharField(),
+                        "year": serializers.IntegerField(),
+                    },
+                )),
+                "years": serializers.ListField(child=serializers.IntegerField()),
+                "provinces": serializers.ListField(child=serializers.CharField()),
+            },
+        ),
+        400: inline_serializer(name="LandingOtorgamientosErrorResponse", fields={"detail": serializers.CharField()}),
+    },
+    examples=[
+        OpenApiExample(
+            "Otorgamientos filtrados",
+            value={
+                "success": True,
+                "data": {
+                    "year": 2025,
+                    "results": [{
+                        "id": 1, "student": "Ana Pérez", "ci": "01020304050", "career": "Medicina",
+                        "ces": "Universidad de La Habana", "award_index": 90.0, "school": "IPU José Martí",
+                        "province": "La Habana", "year": 2025,
+                    }],
+                    "years": [2025, 2024],
+                    "provinces": ["La Habana"],
+                },
+                "error": None,
+            },
+            response_only=True,
+        ),
+    ],
+)
 class LandingOtorgamientosView(APIView):
     permission_classes = [permissions.AllowAny]
 
@@ -926,6 +1406,58 @@ class LandingOtorgamientosView(APIView):
         })
 
 
+@extend_schema(
+    tags=["Resultados"],
+    summary="Índices de corte públicos",
+    description=(
+        "Consulta pública (sin autenticación) de los índices de corte por carrera del año más reciente disponible "
+        "(o el indicado), con filtros por provincia y nombre de carrera, ordenados por cantidad de solicitudes "
+        "recibidas y nombre de carrera."
+    ),
+    parameters=[
+        OpenApiParameter("anio", OpenApiTypes.INT, OpenApiParameter.QUERY, required=False, description="Año del proceso. Por defecto el año más reciente con índices de corte publicados."),
+        OpenApiParameter("provincia", OpenApiTypes.STR, OpenApiParameter.QUERY, required=False, description="Nombre exacto de la provincia de la universidad."),
+        OpenApiParameter("carrera", OpenApiTypes.STR, OpenApiParameter.QUERY, required=False, description="Búsqueda parcial por nombre de carrera."),
+    ],
+    responses={
+        200: inline_serializer(
+            name="LandingCortesResponse",
+            fields={
+                "year": serializers.IntegerField(allow_null=True),
+                "years": serializers.ListField(child=serializers.IntegerField()),
+                "provinces": serializers.ListField(child=serializers.CharField()),
+                "items": serializers.ListField(child=inline_serializer(
+                    name="LandingCorteItem",
+                    fields={
+                        "id": serializers.IntegerField(),
+                        "career": serializers.CharField(),
+                        "career_code": serializers.CharField(),
+                        "index": serializers.FloatField(),
+                        "requests_count": serializers.IntegerField(),
+                        "year": serializers.IntegerField(),
+                    },
+                )),
+            },
+        ),
+        400: inline_serializer(name="LandingCortesErrorResponse", fields={"detail": serializers.CharField()}),
+    },
+    examples=[
+        OpenApiExample(
+            "Índices de corte",
+            value={
+                "success": True,
+                "data": {
+                    "year": 2025,
+                    "years": [2025, 2024],
+                    "provinces": ["La Habana"],
+                    "items": [{"id": 1, "career": "Medicina", "career_code": "MED01", "index": 88.5, "requests_count": 120, "year": 2025}],
+                },
+                "error": None,
+            },
+            response_only=True,
+        ),
+    ],
+)
 class LandingCortesView(APIView):
     permission_classes = [permissions.AllowAny]
 
@@ -976,6 +1508,20 @@ class LandingCortesView(APIView):
         })
 
 
+@extend_schema(
+    tags=["Importación y exportación"],
+    summary="Exportar datos públicos a Excel",
+    description=(
+        "Exporta a Excel (.xlsx), sin autenticación, resultados de exámenes, otorgamientos de carreras o índices "
+        "de corte, filtrables por año y provincia, para la interoperabilidad institucional."
+    ),
+    parameters=[
+        OpenApiParameter("kind", OpenApiTypes.STR, OpenApiParameter.PATH, enum=["resultados", "otorgamientos", "cortes"], description="Tipo de exportación."),
+        OpenApiParameter("anio", OpenApiTypes.INT, OpenApiParameter.QUERY, required=False, description="Año del proceso. Por defecto el año actual."),
+        OpenApiParameter("provincia", OpenApiTypes.STR, OpenApiParameter.QUERY, required=False, description="Nombre exacto de la provincia para filtrar."),
+    ],
+    responses={(200, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"): OpenApiTypes.BINARY},
+)
 class LandingExcelExportView(APIView):
     permission_classes = [permissions.AllowAny]
 
@@ -1057,6 +1603,29 @@ class LandingExcelExportView(APIView):
         return response
 
 
+@extend_schema(
+    tags=["Resultados"],
+    summary="Presentar reclamación sobre una nota",
+    description=(
+        "Permite a un estudiante autenticado presentar una reclamación sobre una de sus notas publicadas, "
+        "mientras la etapa 5 esté 'en_curso' y no haya vencido la fecha límite de reclamación. Solo se admite una "
+        "reclamación por resultado."
+    ),
+    parameters=[
+        OpenApiParameter("result_id", OpenApiTypes.INT, OpenApiParameter.PATH, description="ID del resultado de examen a reclamar."),
+    ],
+    request=inline_serializer(
+        name="StudentResultClaimRequest",
+        fields={"descripcion": serializers.CharField(max_length=500, help_text="Motivo de la reclamación (máximo 500 caracteres).")},
+    ),
+    responses={
+        201: inline_serializer(name="StudentResultClaimResponse", fields={"id": serializers.IntegerField(), "status": serializers.CharField()}),
+        400: inline_serializer(name="StudentResultClaimErrorResponse", fields={"detail": serializers.CharField()}),
+    },
+    examples=[
+        OpenApiExample("Reclamación creada", value={"success": True, "data": {"id": 5, "status": "pendiente"}, "error": None}, response_only=True),
+    ],
+)
 class StudentResultClaimView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -1080,6 +1649,8 @@ class StudentResultClaimView(APIView):
         description = str(request.data.get("descripcion", "")).strip()
         if not description:
             return Response({"detail": "Debes indicar el motivo de la reclamación."}, status=400)
+        if len(description) > 500:
+            return Response({"detail": "El motivo de la reclamación no puede superar los 500 caracteres."}, status=400)
         claim = Reclamacion.objects.create(
             estudiante=request.user.estudiante,
             resultado=result,
@@ -1095,6 +1666,47 @@ class StudentResultClaimView(APIView):
         return Response({"id": claim.id, "status": claim.estado}, status=201)
 
 
+@extend_schema(
+    tags=["Resultados"],
+    summary="Listar reclamaciones pendientes",
+    description=(
+        "Lista las reclamaciones de notas pendientes de resolución para un año, acotadas a la provincia del Jefe "
+        "de Comisión, o sin restricción para el superadmin."
+    ),
+    parameters=[
+        OpenApiParameter("anio", OpenApiTypes.INT, OpenApiParameter.QUERY, required=False, description="Año del proceso. Por defecto el año actual."),
+    ],
+    responses={
+        200: inline_serializer(
+            name="ResultClaimsListResponse",
+            fields={
+                "id": serializers.IntegerField(),
+                "student": serializers.CharField(),
+                "ci": serializers.CharField(),
+                "school": serializers.CharField(),
+                "subject": serializers.CharField(),
+                "grade": serializers.FloatField(),
+                "description": serializers.CharField(),
+                "status": serializers.CharField(),
+                "date": serializers.DateField(),
+                "deadline": serializers.DateField(allow_null=True),
+                "process_year": serializers.IntegerField(),
+            },
+            many=True,
+        ),
+    },
+    examples=[
+        OpenApiExample(
+            "Reclamaciones pendientes",
+            value={"success": True, "data": [{
+                "id": 5, "student": "Ana Pérez", "ci": "01020304050", "school": "IPU José Martí",
+                "subject": "Matemática", "grade": 60, "description": "Solicito revisión de la nota.",
+                "status": "pendiente", "date": "2025-07-01", "deadline": "2025-07-20", "process_year": 2025,
+            }], "error": None},
+            response_only=True,
+        ),
+    ],
+)
 class ResultClaimsListView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -1127,6 +1739,34 @@ class ResultClaimsListView(APIView):
         } for claim in claims.order_by("-fecha_solicitud", "estudiante__apellidos")])
 
 
+@extend_schema(
+    tags=["Resultados"],
+    summary="Resolver una reclamación de nota",
+    description=(
+        "Aprueba o rechaza una reclamación de nota pendiente. Solo puede resolverla el Jefe de Comisión (limitado "
+        "a su provincia) o el superadmin. Al aprobar, se debe indicar fecha/hora y lugar de presentación; el "
+        "estudiante es notificado."
+    ),
+    parameters=[
+        OpenApiParameter("claim_id", OpenApiTypes.INT, OpenApiParameter.PATH, description="ID de la reclamación a resolver."),
+    ],
+    request=inline_serializer(
+        name="ResultClaimDecisionRequest",
+        fields={
+            "estado": serializers.ChoiceField(choices=["aprobada", "rechazada"]),
+            "fecha_presentacion": serializers.CharField(required=False, help_text="Fecha/hora ISO 8601 (requerido si estado='aprobada')."),
+            "lugar_presentacion": serializers.CharField(required=False, max_length=150, help_text="Lugar de presentación (requerido si estado='aprobada')."),
+        },
+    ),
+    responses={
+        200: inline_serializer(name="ResultClaimDecisionResponse", fields={"id": serializers.IntegerField(), "status": serializers.CharField()}),
+        400: inline_serializer(name="ResultClaimDecisionErrorResponse", fields={"detail": serializers.CharField()}),
+        404: inline_serializer(name="ResultClaimDecisionNotFoundResponse", fields={"detail": serializers.CharField()}),
+    },
+    examples=[
+        OpenApiExample("Reclamación resuelta", value={"success": True, "data": {"id": 5, "status": "aprobada"}, "error": None}, response_only=True),
+    ],
+)
 class ResultClaimDecisionView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -1150,6 +1790,8 @@ class ResultClaimDecisionView(APIView):
             presentation_place = str(request.data.get("lugar_presentacion", "")).strip()
             if not presentation_date or not presentation_place:
                 return Response({"detail": "Para aceptar debes indicar fecha, hora y lugar de presentación."}, status=400)
+            if len(presentation_place) > 150:
+                return Response({"detail": "El lugar de presentación no puede superar los 150 caracteres."}, status=400)
             try:
                 parsed_date = datetime.fromisoformat(presentation_date)
                 if parsed_date.tzinfo is None:
@@ -1184,6 +1826,20 @@ class ResultClaimDecisionView(APIView):
         return Response({"id": claim.id, "status": claim.estado})
 
 
+@extend_schema(
+    tags=["Resultados"],
+    summary="Exportar resultados de exámenes",
+    description=(
+        "Exporta a Excel (.xlsx) los resultados de exámenes de ingreso para un año. Secretario/Director de "
+        "escuela obtienen una hoja con Matemática/Español/Historia por estudiante de su escuela; Jefe de Comisión "
+        "(acotado a su provincia) o superadmin obtienen el detalle por asignatura, filtrable por asignatura."
+    ),
+    parameters=[
+        OpenApiParameter("anio", OpenApiTypes.INT, OpenApiParameter.QUERY, required=False, description="Año del proceso. Por defecto el año actual."),
+        OpenApiParameter("asignatura", OpenApiTypes.STR, OpenApiParameter.QUERY, required=False, description="Nombre de la asignatura para filtrar (solo aplica a Jefe de Comisión/superadmin)."),
+    ],
+    responses={(200, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"): OpenApiTypes.BINARY},
+)
 class ExportResultadosView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -1268,6 +1924,19 @@ class ExportResultadosView(APIView):
         return response
 
 
+@extend_schema(
+    tags=["Escalafón"],
+    summary="Exportar el escalafón de una escuela",
+    description=(
+        "Exporta a Excel (.xlsx) el escalafón de una escuela para un año/proceso. Secretario/Director de escuela "
+        "solo pueden exportar el de su propia escuela; Jefe de Comisión solo escuelas de su provincia."
+    ),
+    parameters=[
+        OpenApiParameter("escuela", OpenApiTypes.STR, OpenApiParameter.QUERY, required=False, description="ID de la escuela. Por defecto la escuela del usuario autenticado."),
+        OpenApiParameter("anio", OpenApiTypes.INT, OpenApiParameter.QUERY, required=False, description="Año del proceso (también acepta 'año'). Por defecto el año actual."),
+    ],
+    responses={(200, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"): OpenApiTypes.BINARY},
+)
 class ExportEscalafonView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -1310,17 +1979,83 @@ def visible_entries(request):
     return entries
 
 
+@extend_schema(
+    tags=["Escalafón"],
+    summary="Listar entradas del escalafón",
+    description=(
+        "Lista las entradas del escalafón visibles para el usuario autenticado en el proceso vigente: un "
+        "estudiante ve solo su propia escuela, Secretario/Director la de su escuela, Jefe de Comisión las de su "
+        "provincia, y otros roles con permiso de gestión ven todas. Las entradas se devuelven ordenadas por índice "
+        "general descendente (desempate: apellidos, nombre, id) y cada una incluye `posicion` (1..n)."
+    ),
+    responses={
+        200: inline_serializer(
+            name="EscalafonListResponse",
+            fields={
+                "entries": EscalafonItemSerializer(many=True),  # cada entrada incluye ademas `posicion` (1..n)
+                "stage_active": serializers.BooleanField(),
+                "actual_id": serializers.IntegerField(allow_null=True),
+            },
+        ),
+    },
+)
 class EscalafonListView(APIView):
     permission_classes = [CanManageEscalafon]
 
     def get(self, request):
-        entries = visible_entries(request).order_by("-escalafon__proceso__anio", "-indice_general", "estudiante__apellidos")
+        entries = visible_entries(request)
         active, _ = escalafon_stage_active()
-        serialized = EscalafonItemSerializer(entries, many=True, context={"request": request}).data
+        serialized = []
+        for posicion, entry in rank_escalafon_entries(entries):
+            item = dict(EscalafonItemSerializer(entry, context={"request": request}).data)
+            item["posicion"] = posicion
+            serialized.append(item)
         current = entries.filter(estudiante__usuario=request.user).first() if request.user.rol == "estudiante" else None
         return Response({"entries": serialized, "stage_active": active, "actual_id": current.id if current else None})
 
 
+@extend_schema(
+    tags=["Escalafón"],
+    summary="Resumen provincial/escolar del escalafón",
+    description=(
+        "Devuelve un resumen del avance del envío del escalafón a la Comisión de Ingreso, desglosado por "
+        "municipio y escuela, para el proceso del año actual. Solo accesible para Jefe de Comisión (su provincia) "
+        "o Secretario de escuela (su escuela), o superusuario/superadmin."
+    ),
+    responses={
+        200: inline_serializer(
+            name="ProvincialEscalafonSummaryResponse",
+            fields={
+                "year": serializers.IntegerField(),
+                "escuelas_enviaron": serializers.IntegerField(),
+                "escuelas_pendientes": serializers.IntegerField(),
+                "total_estudiantes": serializers.IntegerField(),
+                "estudiantes_aceptaron": serializers.IntegerField(),
+                "estudiantes_pendientes": serializers.IntegerField(),
+                "municipios": serializers.ListField(child=inline_serializer(
+                    name="ProvincialEscalafonMunicipio",
+                    fields={
+                        "id": serializers.IntegerField(),
+                        "nombre": serializers.CharField(),
+                        "escuelas": serializers.IntegerField(),
+                        "escuelas_enviaron": serializers.IntegerField(),
+                        "estudiantes": serializers.IntegerField(),
+                        "estado": serializers.ChoiceField(choices=["Completo", "Parcial", "Pendiente"]),
+                        "escuelas_lista": serializers.ListField(child=inline_serializer(
+                            name="ProvincialEscalafonEscuela",
+                            fields={
+                                "id": serializers.IntegerField(),
+                                "nombre": serializers.CharField(),
+                                "estado": serializers.CharField(),
+                            },
+                        )),
+                    },
+                )),
+            },
+        ),
+        403: inline_serializer(name="ProvincialEscalafonSummaryErrorResponse", fields={"detail": serializers.CharField()}),
+    },
+)
 class ProvincialEscalafonSummaryView(APIView):
     permission_classes = [CanManageEscalafon]
 
@@ -1375,6 +2110,15 @@ class ProvincialEscalafonSummaryView(APIView):
         })
 
 
+@extend_schema(
+    tags=["Escalafón"],
+    summary="Exportar escalafones de la provincia",
+    description=(
+        "Exporta a Excel (.xlsx) todas las entradas de escalafón de las escuelas de la provincia del Jefe de "
+        "Comisión autenticado (o superusuario/superadmin), para el proceso del año actual."
+    ),
+    responses={(200, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"): OpenApiTypes.BINARY},
+)
 class ProvincialEscalafonExportView(APIView):
     permission_classes = [CanManageEscalafon]
 
@@ -1392,6 +2136,12 @@ class ProvincialEscalafonExportView(APIView):
         return response
 
 
+@extend_schema(
+    tags=["Escalafón"],
+    summary="Descargar plantilla de escalafón",
+    description="Genera una plantilla Excel (.xlsx) vacía con las columnas requeridas para importar el escalafón de una escuela.",
+    responses={(200, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"): OpenApiTypes.BINARY},
+)
 class EscalafonTemplateView(APIView):
     permission_classes = [CanManageEscalafon]
 
@@ -1406,6 +2156,25 @@ class EscalafonTemplateView(APIView):
         return response
 
 
+@extend_schema(
+    tags=["Escalafón"],
+    summary="Editar una entrada del escalafón",
+    description=(
+        "Actualiza parcialmente (campos de índice y otros datos editables) una entrada del escalafón visible "
+        "para el usuario, siempre que el escalafón de la escuela aún no haya sido enviado a la Comisión. "
+        "`nombre` (máx. 150) y `apellidos` (máx. 200) se envían por separado y no pueden ser vacíos. "
+        "La respuesta no incluye `posicion`; solo el listado la calcula."
+    ),
+    parameters=[
+        OpenApiParameter("pk", OpenApiTypes.INT, OpenApiParameter.PATH, description="ID de la entrada de escalafón."),
+    ],
+    request=EscalafonItemSerializer,
+    responses={
+        200: EscalafonItemSerializer,
+        403: inline_serializer(name="EscalafonEntryForbiddenResponse", fields={"detail": serializers.CharField()}),
+        404: inline_serializer(name="EscalafonEntryNotFoundResponse", fields={"detail": serializers.CharField()}),
+    },
+)
 class EscalafonEntryView(APIView):
     permission_classes = [CanManageEscalafon]
 
@@ -1417,6 +2186,17 @@ class EscalafonEntryView(APIView):
         if entry.escalafon.estado == "enviado":
             return Response({"detail": "El escalafón ya fue enviado y no puede modificarse."}, status=403)
         active, _ = escalafon_stage_active()
+        name_errors = {}
+        for field, max_length in (("nombre", 150), ("apellidos", 200)):
+            if field in request.data:
+                value = request.data.get(field)
+                value = value.strip() if isinstance(value, str) else ""
+                if not value:
+                    name_errors[field] = ["Este campo no puede estar vacío."]
+                elif len(value) > max_length:
+                    name_errors[field] = [f"Máximo {max_length} caracteres."]
+        if name_errors:
+            return Response(name_errors, status=400)
         serializer = EscalafonItemSerializer(entry, data=request.data, partial=True, context={"request": request, "stage_active": active})
         serializer.is_valid(raise_exception=True)
         previous = {field: getattr(entry, field) for field in ("indice_10", "indice_11", "indice_12", "indice_general")}
@@ -1426,6 +2206,24 @@ class EscalafonEntryView(APIView):
         return Response(EscalafonItemSerializer(updated, context={"request": request}).data)
 
 
+@extend_schema(
+    tags=["Escalafón"],
+    summary="Enviar el escalafón a la Comisión",
+    description=(
+        "Marca como 'enviado' el escalafón de la escuela del Secretario autenticado para el proceso del año "
+        "actual y bloquea la edición de los índices. Falla si existen reclamaciones ('por_revisar') pendientes. "
+        "Notifica a los Jefes de Comisión de la provincia."
+    ),
+    request=None,
+    responses={
+        200: inline_serializer(name="EscalafonSendResponse", fields={"updated": serializers.IntegerField()}),
+        400: inline_serializer(name="EscalafonSendErrorResponse", fields={"detail": serializers.CharField()}),
+        403: inline_serializer(name="EscalafonSendForbiddenResponse", fields={"detail": serializers.CharField()}),
+    },
+    examples=[
+        OpenApiExample("Envío exitoso", value={"success": True, "data": {"updated": 45}, "error": None}, response_only=True),
+    ],
+)
 class EscalafonSendView(APIView):
     permission_classes = [CanManageEscalafon]
 
@@ -1458,6 +2256,25 @@ class EscalafonSendView(APIView):
         return Response({"updated": entries.count()})
 
 
+@extend_schema(
+    tags=["Escalafón"],
+    summary="Aceptar o solicitar revisión del propio escalafón",
+    description=(
+        "Permite a un estudiante autenticado aceptar sus índices de escalafón del proceso del año actual "
+        "(`action=aceptar`) o solicitar una revisión indicando una causa (`action=revision`), siempre que el "
+        "escalafón de su escuela aún no haya sido enviado a la Comisión. Notifica al Secretario de la escuela."
+    ),
+    parameters=[
+        OpenApiParameter("action", OpenApiTypes.STR, OpenApiParameter.PATH, enum=["aceptar", "revision"], description="Acción a realizar."),
+    ],
+    request=StudentEscalafonActionSerializer,
+    responses={
+        200: EscalafonItemSerializer,
+        400: inline_serializer(name="StudentEscalafonActionErrorResponse", fields={"detail": serializers.CharField()}),
+        403: inline_serializer(name="StudentEscalafonActionForbiddenResponse", fields={"detail": serializers.CharField()}),
+        404: inline_serializer(name="StudentEscalafonActionNotFoundResponse", fields={"detail": serializers.CharField()}),
+    },
+)
 class StudentEscalafonActionView(APIView):
     permission_classes = [CanManageEscalafon]
 
@@ -1494,6 +2311,24 @@ class StudentEscalafonActionView(APIView):
         return Response(EscalafonItemSerializer(entry, context={"request": request}).data)
 
 
+@extend_schema(
+    tags=["Escalafón"],
+    summary="Atender una solicitud de revisión del escalafón",
+    description=(
+        "Marca como atendida ('sin_respuesta') una entrada de escalafón que estaba en estado 'por_revisar'. Solo "
+        "puede ejecutarlo el Secretario de la escuela correspondiente. Notifica al estudiante."
+    ),
+    parameters=[
+        OpenApiParameter("pk", OpenApiTypes.INT, OpenApiParameter.PATH, description="ID de la entrada de escalafón."),
+    ],
+    request=None,
+    responses={
+        200: EscalafonItemSerializer,
+        400: inline_serializer(name="EscalafonReviewErrorResponse", fields={"detail": serializers.CharField()}),
+        403: inline_serializer(name="EscalafonReviewForbiddenResponse", fields={"detail": serializers.CharField()}),
+        404: inline_serializer(name="EscalafonReviewNotFoundResponse", fields={"detail": serializers.CharField()}),
+    },
+)
 class EscalafonReviewView(APIView):
     permission_classes = [CanManageEscalafon]
 
@@ -1524,3 +2359,67 @@ class EscalafonReviewView(APIView):
             "El secretario revisó tu solicitud de revisión del escalafón.",
         )
         return Response(EscalafonItemSerializer(entry, context={"request": request}).data)
+
+
+@extend_schema(
+    tags=["Importación y exportación"],
+    summary="Consultar el estado de una importación",
+    description=(
+        "Las importaciones Excel se ejecutan de forma asíncrona (Celery). Este endpoint devuelve el estado de la "
+        "tarea encolada y, al terminar, el resultado con el mismo cuerpo y código HTTP que antes devolvía la "
+        "importación síncrona. Solo el usuario que inició la importación puede consultarla (404 en otro caso). "
+        "El identificador caduca a la hora."
+    ),
+    parameters=[
+        OpenApiParameter("task_id", OpenApiTypes.STR, OpenApiParameter.PATH, description="Identificador devuelto por la importación (202)."),
+    ],
+    responses={
+        200: inline_serializer(
+            name="ImportTaskStatusResponse",
+            fields={
+                "estado": serializers.ChoiceField(choices=["pendiente", "en_proceso", "completada", "fallida"]),
+                "http_status": serializers.IntegerField(allow_null=True),
+                "resultado": serializers.DictField(allow_null=True),
+            },
+        ),
+        404: inline_serializer(name="ImportTaskNotFoundResponse", fields={"detail": serializers.CharField()}),
+    },
+    examples=[
+        OpenApiExample(
+            "Importación completada",
+            value={"success": True, "data": {"estado": "completada", "http_status": 201, "resultado": {"inserted": 12, "updated": 3, "errors": []}}, "error": None},
+            response_only=True,
+        ),
+        OpenApiExample(
+            "Importación en curso",
+            value={"success": True, "data": {"estado": "en_proceso", "http_status": None, "resultado": None}, "error": None},
+            response_only=True,
+        ),
+    ],
+)
+class ImportTaskStatusView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, task_id):
+        from celery.result import AsyncResult
+        from django.core.cache import cache
+
+        meta = cache.get(f"import_task:{task_id}")
+        if not meta or meta.get("user_id") != request.user.id:
+            return Response({"detail": "Tarea no encontrada."}, status=status.HTTP_404_NOT_FOUND)
+        payload = cache.get(f"import_result:{task_id}")
+        if payload is None:
+            async_result = AsyncResult(str(task_id))
+            state = async_result.state
+            if state == "SUCCESS":
+                payload = async_result.result
+            elif state in {"FAILURE", "REVOKED"}:
+                payload = {"http_status": 500, "body": {"detail": "No se pudo procesar el archivo Excel. Inténtelo de nuevo."}}
+            else:
+                estado = "en_proceso" if state in {"STARTED", "RETRY"} else "pendiente"
+                return Response({"estado": estado, "http_status": None, "resultado": None})
+        return Response({
+            "estado": "completada" if payload["http_status"] < 400 else "fallida",
+            "http_status": payload["http_status"],
+            "resultado": payload["body"],
+        })

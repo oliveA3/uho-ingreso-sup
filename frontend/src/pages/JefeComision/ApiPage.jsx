@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Input, Select } from "../../components";
+import { API_BASE } from "../../api/httpClient";
 import styles from "./ApiPage.module.css";
 
 const API_PREFIX = "/api/v1";
@@ -30,12 +31,12 @@ const groups = [
     name: "Core, auditoría y notificaciones",
     description: "Salud del servicio, trazabilidad y mensajes del usuario.",
     endpoints: [
-      item("GET", "/health/", "Comprueba disponibilidad del backend."),
-      item("GET", "/logs/", "Lista logs. Filtros: usuario, acción, módulo, fecha_desde, fecha_hasta."),
-      item("GET", "/logs/export/", "Exporta logs de auditoría."),
-      item("GET", "/logs/export/pdf/", "Genera PDF de logs filtrados."),
-      item("GET", "/notificaciones/", "Lista notificaciones del usuario."),
-      item("POST", "/notificaciones/{id}/leer/", "Marca una notificación como leída."),
+      item("GET", "/core/health/", "Comprueba disponibilidad del backend."),
+      item("GET", "/core/logs/", "Lista logs. Filtros: usuario, acción, módulo, fecha_desde, fecha_hasta."),
+      item("GET", "/core/logs/export/", "Exporta logs de auditoría."),
+      item("GET", "/core/logs/export/pdf/", "Genera PDF de logs filtrados."),
+      item("GET", "/core/notificaciones/", "Lista notificaciones del usuario."),
+      item("PATCH", "/core/notificaciones/{id}/leer/", "Marca una notificación como leída."),
     ],
   },
   {
@@ -198,9 +199,14 @@ export default function ApiPage() {
     .filter((group) => group.endpoints.length), [normalizedQuery, selectedGroup]);
   const endpointCount = groups.reduce((total, group) => total + group.endpoints.length, 0);
   const origin = typeof window === "undefined" ? "" : window.location.origin;
-  const apiOrigin = import.meta.env.VITE_API_ORIGIN || origin;
-  const docsUrl = `${apiOrigin}${API_PREFIX}/docs/`;
-  const schemaUrl = `${apiOrigin}${API_PREFIX}/schema/`;
+  // API_BASE es la misma fuente de verdad que usa el cliente HTTP real: puede
+  // ser una URL absoluta (otro origen) o una ruta relativa servida por el
+  // mismo origen del frontend (proxy de Vite en desarrollo, o el mismo
+  // dominio en producción). Reutilizarla evita que estos enlaces apunten a
+  // un origen distinto al que realmente responde la API.
+  const apiBaseUrl = /^https?:\/\//i.test(API_BASE) ? API_BASE : `${origin}${API_BASE}`;
+  const docsUrl = `${apiBaseUrl}/docs/`;
+  const schemaUrl = `${apiBaseUrl}/schema/`;
 
   return (
     <div className={styles.page}>
@@ -221,7 +227,7 @@ export default function ApiPage() {
         <div className={styles.linksGrid}>
           <div className={styles.baseUrlBox}>
             <p className={styles.linkLabel}>URL base versionada</p>
-            <code className={styles.baseUrlCode}>{apiOrigin}{API_PREFIX}/</code>
+            <code className={styles.baseUrlCode}>{apiBaseUrl}/</code>
           </div>
           <a href={docsUrl} target="_blank" rel="noreferrer" className={styles.linkCardAccent}>
             <p className={styles.linkLabelAccent}>Swagger UI</p>

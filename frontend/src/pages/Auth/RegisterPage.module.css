@@ -12,7 +12,7 @@
   gap: 0.5rem;
   font-size: 0.875rem;
   font-weight: 500;
-  color: #64748b;
+  color: var(--gris-500);
   background: none;
   border: none;
   cursor: pointer;
@@ -20,19 +20,39 @@
 }
 
 .backLink:hover {
-  color: #1e293b;
+  color: var(--gris-800);
 }
 
 .title {
   font-size: 1.5rem;
   font-weight: 600;
-  color: #0f172a;
+  color: var(--gris-900);
 }
 
 .subtitle {
   margin-top: 0.5rem;
   font-size: 0.875rem;
-  color: #475569;
+  color: var(--gris-600);
+}
+
+.registrationNotice {
+  margin-top: 1.25rem;
+  border-left: 4px solid var(--advertencia-600);
+  border-radius: 0.75rem;
+  background: var(--advertencia-50);
+  padding: 0.875rem 1rem;
+  color: var(--advertencia-900);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.registrationNotice strong {
+  display: block;
+  color: var(--advertencia-800);
+}
+
+.registrationNotice p {
+  margin-top: 0.25rem;
 }
 
 .verificationForm {
@@ -44,12 +64,12 @@
 
 .verificationHint {
   font-size: 0.875rem;
-  color: #475569;
+  color: var(--gris-600);
 }
 
 .pendingEmailBox {
   border-radius: 1rem;
-  background-color: #f8fafc;
+  background-color: var(--gris-50);
   padding: 1rem;
 }
 
@@ -63,13 +83,13 @@
 .pendingEmailLabel {
   font-size: 0.875rem;
   font-weight: 600;
-  color: #334155;
+  color: var(--gris-700);
 }
 
 .changeEmailLink {
   font-size: 0.875rem;
   font-weight: 600;
-  color: var(--brand-primary, #0369a1);
+  color: var(--color-primario, #1f4e79);
   background: none;
   border: none;
   cursor: pointer;
@@ -83,7 +103,7 @@
   margin-top: 0.25rem;
   word-break: break-all;
   font-size: 0.875rem;
-  color: #0f172a;
+  color: var(--gris-900);
 }
 
 .pendingEmailEditRow {
@@ -134,7 +154,7 @@
 
 .optionalHint {
   font-weight: 400;
-  color: #64748b;
+  color: var(--gris-500);
 }
 
 .passwordField {
@@ -152,19 +172,57 @@
   right: 0.75rem;
   display: flex;
   align-items: center;
-  color: #64748b;
+  color: var(--gris-500);
   background: none;
   border: none;
   cursor: pointer;
 }
 
 .toggleButton:hover {
-  color: #1e293b;
+  color: var(--gris-800);
 }
 
 .toggleIcon {
   height: 1.25rem;
   width: 1.25rem;
+}
+
+.privacyConsentRow {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  grid-column: span 1 / span 1;
+}
+
+@media (min-width: 768px) {
+  .privacyConsentRow {
+    grid-column: span 2 / span 2;
+  }
+}
+
+.privacyConsentLabel {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  font-size: 0.875rem;
+  color: var(--gris-700);
+  line-height: 1.5;
+}
+
+.privacyConsentLabel input {
+  margin-top: 0.125rem;
+  width: 1rem;
+  height: 1rem;
+}
+
+.privacyConsentLabel a {
+  color: var(--color-primario, #1f4e79);
+  text-decoration: underline;
+}
+
+.errorText {
+  color: var(--color-error, #c0392b);
+  font-size: 0.75rem;
 }
 
 .submitButton {

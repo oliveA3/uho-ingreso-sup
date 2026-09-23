@@ -14,19 +14,19 @@
 }
 
 .error {
-  border-color: var(--brand-error, #c0392b);
-  background-color: color-mix(in srgb, var(--brand-error, #c0392b) 8%, white);
-  color: var(--brand-error, #c0392b);
+  border-color: var(--color-error, #c0392b);
+  background-color: color-mix(in srgb, var(--color-error, #c0392b) 8%, var(--blanco));
+  color: var(--color-error, #c0392b);
 }
 
 .warning {
-  border-color: #fbbf24;
-  background-color: #fffbeb;
-  color: #92400e;
+  border-color: var(--advertencia-400);
+  background-color: var(--advertencia-50);
+  color: var(--advertencia-800);
 }
 
 .success {
-  border-color: var(--brand-success, #1a7a4a);
-  background-color: color-mix(in srgb, var(--brand-success, #1a7a4a) 8%, white);
-  color: var(--brand-success, #1a7a4a);
+  border-color: var(--color-exito, #1a7a4a);
+  background-color: color-mix(in srgb, var(--color-exito, #1a7a4a) 8%, var(--blanco));
+  color: var(--color-exito, #1a7a4a);
 }

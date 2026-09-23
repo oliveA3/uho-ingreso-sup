@@ -6,8 +6,8 @@ from rest_framework.test import APIClient
 
 from apps.authentication.models import Estudiante
 from apps.authentication.models import Usuario
-from apps.gestion_escuela.models import Escalafon
-from apps.gestion_provincial.models import Proceso
+from apps.gestion_escuela.models import Escalafon, EscalafonItem
+from apps.gestion_provincial.models import ETAPAS_NOMBRES, Etapa, Proceso
 from apps.import_export.services.escalafon_service import EscalafonExcelService
 from apps.superadmin.models import Escuela, Municipio, Provincia
 
@@ -17,7 +17,8 @@ class EscalafonTests(TestCase):
 		self.provincia = Provincia.objects.create(nombre="Villa Clara")
 		self.municipio = Municipio.objects.create(nombre="Santa Clara", provincia=self.provincia)
 		self.escuela = Escuela.objects.create(nombre="IPVCE", municipio=self.municipio)
-		self.proceso = Proceso.objects.create(anio="2026-01-01")
+		self.etapa = Etapa.objects.get(nombre=ETAPAS_NOMBRES[1])
+		self.proceso = Proceso.objects.create(anio="2026-01-01", etapa=self.etapa)
 
 	def make_workbook(self, rows):
 		workbook = Workbook()
@@ -68,15 +69,31 @@ class EscalafonTests(TestCase):
 			self.escuela,
 			self.proceso,
 		)
+		from apps.authentication.models import EmailVerificationCode
 		from apps.authentication.serializers import RegisterSerializer
 
 		serializer = RegisterSerializer(data={
 			"ci": "12345678901", "escuela": self.escuela.pk,
 			"email": "ana@example.com", "username": "ana2026", "password": "secret1234",
+			"politica_privacidad_aceptada": True,
 		})
 		self.assertTrue(serializer.is_valid(), serializer.errors)
 		user = serializer.save()
+		self.assertFalse(user.is_active)
+
+		# El registro deja la cuenta pendiente; el vínculo con el estudiante
+		# solo se confirma al verificar el correo con el código enviado.
+		verification = EmailVerificationCode.objects.get(user=user)
+		client = APIClient()
+		verify_response = client.post(
+			"/api/v1/authentication/verify-email/",
+			{"username": user.username, "code": verification.code},
+			format="json",
+		)
+		self.assertEqual(verify_response.status_code, 200, verify_response.content)
+
 		student = Estudiante.objects.get(ci="12345678901")
+		user.refresh_from_db()
 		self.assertEqual(student.usuario_id, user.id)
 		self.assertEqual(user.first_name, "Ana")
 		self.assertEqual(user.last_name, "Pérez")
@@ -91,6 +108,11 @@ class EscalafonTests(TestCase):
 		student = Estudiante.objects.create(
 			ci="12345678901", nombre="Ana", apellidos="Pérez", sexo="F",
 			direccion="Calle 1", escuela=self.escuela, indice_general=91.5,
+		)
+		escalafon = Escalafon.objects.create(proceso=self.proceso, escuela=self.escuela)
+		EscalafonItem.objects.create(
+			escalafon=escalafon, estudiante=student,
+			indice_10=90, indice_11=91, indice_12=92, indice_general=91.5,
 		)
 		registered_user = Usuario.objects.create_user(
 			username="registrado", email="registrado@example.com", password="secret1234",
@@ -109,7 +131,7 @@ class EscalafonTests(TestCase):
 		response = client.get("/api/v1/gestion-escuela/estudiantes/sin-cuenta/")
 
 		self.assertEqual(response.status_code, 200)
-		self.assertEqual(response.json()["students"], [{
+		self.assertEqual(response.json()["data"]["students"], [{
 			"id": student.id,
 			"ci": "12345678901",
 			"nombre": "Ana",

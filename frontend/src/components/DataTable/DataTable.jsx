@@ -14,14 +14,19 @@ export default function DataTable({
   emptyMessage = "No hay elementos para mostrar.",
   loadingMessage = "Cargando...",
   className = "",
+  maxHeight,
 }) {
   return (
-    <div className={`${styles.wrapper} ${className}`}>
+    <div
+      className={`${styles.wrapper} ${className}`}
+      style={maxHeight ? { maxHeight, overflowY: "auto" } : undefined}
+      aria-busy={loading || undefined}
+    >
       <table className={styles.table}>
         <thead className={styles.thead}>
           <tr>
             {columns.map((column) => (
-              <th key={column.key} className={styles.th}>
+              <th key={column.key} scope="col" className={styles.th}>
                 {column.header}
               </th>
             ))}
@@ -30,7 +35,7 @@ export default function DataTable({
         <tbody className={styles.tbody}>
           {loading ? (
             <tr className={styles.statusRow}>
-              <td colSpan={columns.length} className={styles.statusCell}>
+              <td colSpan={columns.length} className={styles.statusCell} role="status" aria-live="polite">
                 {loadingMessage}
               </td>
             </tr>

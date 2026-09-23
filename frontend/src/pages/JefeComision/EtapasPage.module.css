@@ -9,20 +9,20 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.24em;
-  color: #334155;
+  color: var(--gris-700);
 }
 
 .title {
   margin-top: 0.5rem;
   font-size: 1.875rem;
   font-weight: 600;
-  color: #0f172a;
+  color: var(--gris-900);
 }
 
 .description {
   margin-top: 0.75rem;
   font-size: 0.875rem;
-  color: #475569;
+  color: var(--gris-600);
 }
 
 .notice {
@@ -39,8 +39,8 @@
 
 .stageCard {
   border-radius: 1.5rem;
-  border: 1px solid #e2e8f0;
-  background-color: #f8fafc;
+  border: 1px solid var(--gris-200);
+  background-color: var(--gris-50);
   padding: 1.25rem;
 }
 
@@ -60,12 +60,12 @@
 
 .stageName {
   font-weight: 600;
-  color: #0f172a;
+  color: var(--gris-900);
 }
 
 .stageDates {
   font-size: 0.875rem;
-  color: #475569;
+  color: var(--gris-600);
 }
 
 .stageActions {
@@ -83,26 +83,26 @@
 
 .statusCompletada {
   composes: statusBadge;
-  background-color: color-mix(in srgb, var(--brand-success, #1a7a4a) 14%, white);
-  color: var(--brand-success, #1a7a4a);
+  background-color: color-mix(in srgb, var(--color-exito, #1a7a4a) 14%, var(--blanco));
+  color: var(--color-exito, #1a7a4a);
 }
 
 .statusEnCurso {
   composes: statusBadge;
-  background-color: color-mix(in srgb, var(--brand-primary, #1f4e79) 12%, white);
-  color: var(--brand-primary, #1f4e79);
+  background-color: color-mix(in srgb, var(--color-primario, #1f4e79) 12%, var(--blanco));
+  color: var(--color-primario, #1f4e79);
 }
 
 .statusNoIniciada {
   composes: statusBadge;
-  background-color: #f1f5f9;
-  color: #334155;
+  background-color: var(--gris-100);
+  color: var(--gris-700);
 }
 
 .statusBloqueada {
   composes: statusBadge;
-  background-color: #f1f5f9;
-  color: #64748b;
+  background-color: var(--gris-100);
+  color: var(--gris-500);
 }
 
 .stageButton {
@@ -112,20 +112,20 @@
 
 .closeButton {
   composes: stageButton;
-  background-color: #0f172a !important;
+  background-color: var(--color-primario, #1f4e79) !important;
 }
 
 .closeButton:hover {
-  background-color: #1e293b !important;
+  background-color: var(--color-secundario, #2e75b6) !important;
 }
 
 .resetButton {
   margin-top: 1.5rem;
-  background-color: #9a3412 !important;
+  background-color: var(--color-acento, #5ba3d9) !important;
 }
 
 .resetButton:hover {
-  background-color: #7c2d12 !important;
+  background-color: var(--color-secundario, #2e75b6) !important;
 }
 
 .activationGrid {

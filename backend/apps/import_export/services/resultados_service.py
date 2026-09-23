@@ -6,7 +6,7 @@ from django.db import transaction
 from openpyxl import load_workbook
 
 from apps.authentication.models import Estudiante
-from apps.gestion_personal.models import ConfirmacionPrueba, ResultadoExamen
+from apps.gestion_personal.models import ResultadoExamen
 from apps.gestion_provincial.models import ETAPAS_NOMBRES
 from apps.superadmin.models import Asignatura
 

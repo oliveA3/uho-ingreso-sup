@@ -1,8 +1,8 @@
 import { useState } from "react";
-import BallotDetailModal from "./Modals/BallotDetailModal";
-import StageStatusNotice from "./StageStatusNotice/StageStatusNotice";
-import DataTable from "./DataTable/DataTable";
-import BallotMetrics from "./BallotMetrics";
+import BallotDetailModal from "../Modals/BallotDetailModal";
+import StageStatusNotice from "../StageStatusNotice/StageStatusNotice";
+import DataTable from "../DataTable/DataTable";
+import BallotMetrics from "../BallotMetrics/BallotMetrics";
 import styles from "./SolicitudOverviewView.module.css";
 
 const statusStyles = {
@@ -42,30 +42,26 @@ export default function SolicitudOverviewView({ data, title, canManage = false, 
       header: "Estado",
       render: (ballot) => <StatusBadge status={ballot.estado} />,
     },
-    ...(showActions
-      ? [
-          {
-            key: "acciones",
-            header: "Acciones",
-            render: (ballot) => (
-              <div className={styles.actions}>
-                <button type="button" onClick={() => setSelectedBallot(ballot)} className={styles.actionButton}>Ver</button>
-                <button type="button" onClick={() => onDownload(ballot.id)} className={styles.actionButton}>Descargar PDF</button>
-                {canApprove && (
-                  <button
-                    type="button"
-                    onClick={() => onApprove(ballot.id)}
-                    disabled={ballot.estado !== "pendiente"}
-                    className={styles.actionButton}
-                  >
-                    Aprobar
-                  </button>
-                )}
-              </div>
-            ),
-          },
-        ]
-      : []),
+    ...(showActions ? [{
+      key: "acciones",
+      header: "Acciones",
+      render: (ballot) => (
+        <div className={styles.actions}>
+          <button type="button" onClick={() => setSelectedBallot(ballot)} className={styles.actionButton}>Ver</button>
+          <button type="button" onClick={() => onDownload(ballot.id)} className={styles.actionButton}>Descargar PDF</button>
+          {canApprove && (
+            <button
+              type="button"
+              onClick={() => onApprove(ballot.id)}
+              disabled={ballot.estado !== "pendiente"}
+              className={styles.actionButton}
+            >
+              Aprobar
+            </button>
+          )}
+        </div>
+      ),
+    }] : []),
   ];
 
   return (
@@ -100,6 +96,7 @@ export default function SolicitudOverviewView({ data, title, canManage = false, 
           />
         </div>
       </section>
+
       {selectedBallot && <BallotDetailModal ballot={selectedBallot} onClose={() => setSelectedBallot(null)} />}
 
       <section className={styles.sectionFlat}>
@@ -117,6 +114,7 @@ export default function SolicitudOverviewView({ data, title, canManage = false, 
 
 function Ranking({ items }) {
   const maximum = Math.max(...items.map((item) => item.total), 1);
+
   return items.length ? (
     <div className={styles.rankingSection}>
       {items.map((item, index) => (
@@ -138,6 +136,7 @@ function Ranking({ items }) {
 
 function Distribution({ title, items }) {
   const total = items.reduce((sum, item) => sum + item.total, 0);
+
   return (
     <section className={styles.sectionFlat}>
       <h2 className={styles.tableTitle}>{title}</h2>

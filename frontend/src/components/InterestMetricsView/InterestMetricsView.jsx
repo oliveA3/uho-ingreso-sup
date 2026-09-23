@@ -1,4 +1,4 @@
-import StageStatusNotice from "./StageStatusNotice/StageStatusNotice";
+import StageStatusNotice from "../StageStatusNotice/StageStatusNotice";
 import styles from "./InterestMetricsView.module.css";
 
 const toneClasses = {
@@ -8,7 +8,7 @@ const toneClasses = {
 };
 
 export default function InterestMetricsView({ metrics, title, schoolName }) {
-  const maximum = Math.max(...metrics.top_carreras.map((career) => career.total), 1);
+  const maximum = Math.max(...(metrics.top_carreras || []).map((career) => career.total), 1);
 
   return (
     <div className={styles.wrapper}>
@@ -16,9 +16,7 @@ export default function InterestMetricsView({ metrics, title, schoolName }) {
         <p className={styles.eyebrow}>Boletas de Interés</p>
         <div className={styles.titleRow}>
           <h1 className={styles.title}>{title}</h1>
-          <span className={styles.schoolBadge}>
-            {schoolName || "Escuela no asignada"}
-          </span>
+          <span className={styles.schoolBadge}>{schoolName || "Escuela no asignada"}</span>
         </div>
         <p className={styles.subtitle}>Resumen de las boletas de interés de los estudiantes de tu escuela.</p>
         <StageStatusNotice stageNumber={2} />
@@ -37,7 +35,7 @@ export default function InterestMetricsView({ metrics, title, schoolName }) {
           </div>
           <span className={styles.countText}>{metrics.total_boletas} boletas registradas</span>
         </div>
-        {metrics.top_carreras.length ? (
+        {metrics.top_carreras?.length ? (
           <div className={styles.rankingList}>
             {metrics.top_carreras.map((career, index) => (
               <div key={career.id}>
@@ -75,6 +73,7 @@ function Metric({ label, value, tone }) {
 
 function Distribution({ title, items }) {
   const total = items.reduce((sum, item) => sum + item.total, 0);
+
   return (
     <section className={styles.sectionFlat}>
       <h2 className={styles.sectionTitle}>{title}</h2>

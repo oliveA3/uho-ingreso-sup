@@ -4,7 +4,7 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.2em;
-  color: var(--brand-primary, #1f4e79);
+  color: var(--color-primario, #1f4e79);
 }
 
 .name {
@@ -12,7 +12,7 @@
   margin-top: 0.25rem;
   font-size: 1.25rem;
   font-weight: 700;
-  color: #0c4a6e;
+  color: var(--color-primario, #1f4e79);
 }
 
 .filters {
@@ -39,10 +39,10 @@
 .error {
   margin-bottom: 0.75rem;
   border-radius: 0.75rem;
-  background-color: color-mix(in srgb, var(--brand-error, #c0392b) 10%, white);
+  background-color: color-mix(in srgb, var(--color-error, #c0392b) 10%, var(--blanco));
   padding: 0.75rem 1rem;
   font-size: 0.875rem;
-  color: var(--brand-error, #c0392b);
+  color: var(--color-error, #c0392b);
 }
 
 .tableWrapper {
@@ -55,7 +55,7 @@
   padding: 2.5rem 1rem;
   text-align: center;
   font-size: 0.875rem;
-  color: #64748b;
+  color: var(--gris-500);
 }
 
 .downloadButton {

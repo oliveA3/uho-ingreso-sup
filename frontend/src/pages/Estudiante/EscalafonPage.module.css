@@ -1,13 +1,13 @@
 .reviewBox {
   margin-top: 1.5rem;
   border-radius: 1rem;
-  border: 1px solid var(--border-color, #e2e8f0);
+  border: 1px solid var(--border-color, var(--gris-200));
   padding: 1rem;
 }
 
 .reviewHint {
   font-size: 0.875rem;
-  color: #475569;
+  color: var(--gris-600);
 }
 
 .reviewActions {
@@ -20,5 +20,5 @@
 .reviewSentNote {
   width: 100%;
   font-size: 0.75rem;
-  color: #64748b;
+  color: var(--gris-500);
 }
