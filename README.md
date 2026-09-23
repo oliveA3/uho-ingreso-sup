@@ -11,7 +11,7 @@ IngresoSUP es un sistema modular para la gestión del proceso de ingreso a la Ed
 
 ## Inicio rápido
 
-Consulta [docs/SETUP.md](docs/SETUP.md) para instalar y ejecutar el proyecto localmente. La API queda disponible bajo `http://127.0.0.1:8000/api/v1/` y la documentación interactiva en `/api/docs/`.
+Consulta [docs/SETUP.md](docs/SETUP.md) para instalar y ejecutar el proyecto localmente. La API queda disponible bajo `http://127.0.0.1:8000/api/v1/` y la documentación interactiva en `/api/v1/docs/`.
 
 ## Documentación
 
@@ -21,6 +21,7 @@ Consulta [docs/SETUP.md](docs/SETUP.md) para instalar y ejecutar el proyecto loc
 - [Carga inicial en Cuba: provincias, municipios, escuelas y roles](docs/SEED_INITIAL_DATA.md)
 - [API REST y OpenAPI](docs/API.md)
 - [Revisión de seguridad](docs/SECURITY.md)
+- [Diagrama entidad-relación de la base de datos](docs/DIAGRAMA_ER.md)
 
 ## Estado del proyecto
 

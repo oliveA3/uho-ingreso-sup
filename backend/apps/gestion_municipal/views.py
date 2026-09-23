@@ -55,5 +55,3 @@ class MunicipalUserViewSet(MunicipalScopeMixin, viewsets.ModelViewSet):
 		if not (self.request.user.is_superuser or self.request.user.rol == "superadmin") and school.municipio_id != municipality_id:
 			raise serializers.ValidationError("La escuela debe pertenecer a tu municipio.")
 		serializer.save(municipio=school.municipio, provincia=school.municipio.provincia)
-
-# Create your views here.

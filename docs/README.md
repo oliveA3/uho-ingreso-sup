@@ -7,6 +7,7 @@ Documentación operativa:
 - [Carga inicial de territorios y usuarios](SEED_INITIAL_DATA.md)
 - [API REST y OpenAPI](API.md)
 - [Revisión de seguridad](SECURITY.md)
+- [Diagrama entidad-relación](DIAGRAMA_ER.md)
 
 ## Orden recomendado
 

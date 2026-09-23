@@ -149,6 +149,13 @@ MEDIA_URL = "/media/"
 MEDIA_ROOT = Path(os.getenv("MEDIA_ROOT", BASE_DIR / "media"))
 MAX_EXCEL_UPLOAD_BYTES = int(os.getenv("MAX_EXCEL_UPLOAD_BYTES", str(10 * 1024 * 1024)))
 
+# Copias de seguridad (ver docs/DEPLOYMENT.md). No se ejecutan solas: hay que programarlas.
+BACKUP_DIR = Path(os.getenv("BACKUP_DIR", BASE_DIR / "backups"))
+BACKUP_REMOTE_DIR = os.getenv("BACKUP_REMOTE_DIR", "")
+BACKUP_KEEP_DAILY = int(os.getenv("BACKUP_KEEP_DAILY", "7"))
+BACKUP_KEEP_WEEKLY = int(os.getenv("BACKUP_KEEP_WEEKLY", "4"))
+BACKUP_KEEP_MONTHLY = int(os.getenv("BACKUP_KEEP_MONTHLY", "12"))
+
 LOG_DIR = BASE_DIR / "logs"
 LOG_DIR.mkdir(exist_ok=True)
 LOGGING = {

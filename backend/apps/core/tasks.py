@@ -71,3 +71,19 @@ def send_email_task(self, subject, message, recipient_list):
         send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, recipient_list, fail_silently=False)
     except Exception as error:
         raise self.retry(exc=error)
+
+
+@shared_task
+def backup_database_task():
+    """Copia de seguridad diaria. NO está programada: ver docs/DEPLOYMENT.md para activarla con Celery Beat o cron."""
+    from .services.backups import create_backup
+
+    return str(create_backup())
+
+
+@shared_task
+def verify_backup_task():
+    """Restauración de prueba de la última copia. NO está programada: ver docs/DEPLOYMENT.md."""
+    from .services.backups import verify_backup
+
+    return verify_backup()

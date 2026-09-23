@@ -36,3 +36,9 @@ pnpm-debug.log*
 .DS_Store
 github_scripts.md
 to-do.txt
+
+# Copias de seguridad de la base de datos
+backend/backups/
+
+# Archivos subidos temporalmente (importaciones Excel)
+backend/media/
