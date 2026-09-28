@@ -1,11 +1,11 @@
 .select {
   width: 100%;
-  min-height: 44px;
-  border-radius: 1rem;
+  min-height: var(--control-height);
+  border-radius: var(--control-radius);
   border: 1px solid var(--border-color, var(--gris-200));
   background-color: var(--blanco);
-  padding: 0.75rem 1rem;
-  font-size: 1rem;
+  padding: 0.5rem var(--control-padding-x);
+  font-size: var(--text-body);
   font-weight: 400;
   color: var(--gris-900);
   transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;

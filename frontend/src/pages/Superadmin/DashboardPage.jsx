@@ -23,7 +23,7 @@ export default function DashboardPage({ user }) {
   ];
   return (
     <div className="space-y-6">
-      <Card padding="p-8">
+      <Card padding="p-6">
         <PageHeader
           title="Panel de Administración Global"
           subtitle="Super Admin"

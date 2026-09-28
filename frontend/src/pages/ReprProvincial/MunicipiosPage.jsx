@@ -160,7 +160,7 @@ export default function MunicipiosPage({ user }) {
     [dashboard?.municipios ?? "-", "Municipios"],
     [dashboard?.escuelas ?? "-", "Escuelas"],
     [dashboard?.representantes_municipales ?? "-", "Repr. Municipales"],
-    [dashboard?.representantes_municipales ?? "-", "Usuarios Creados"],
+    [dashboard?.usuarios_creados ?? "-", "Usuarios Creados"],
   ];
   const normalizedMunicipioSearch = normalizeSearch(municipioSearch);
   const filteredMunicipios = (dashboard?.municipios_lista || []).filter((municipio) =>
@@ -182,7 +182,7 @@ export default function MunicipiosPage({ user }) {
       key: "acciones",
       header: "Acciones",
       render: (m) => (
-        <SecondaryButton className="!px-3 !py-2 !text-sm" onClick={() => setSelectedMunicipio(m)}>
+        <SecondaryButton className="" onClick={() => setSelectedMunicipio(m)}>
           👁 Ver escuelas
         </SecondaryButton>
       ),
@@ -207,12 +207,12 @@ export default function MunicipiosPage({ user }) {
 
   return (
     <div className="space-y-6">
-      <Card padding="p-8">
+      <Card padding="p-6">
         <p className="mb-4 text-sm font-semibold text-slate-600">Provincia: {user?.provincia_nombre || "No asignada"}</p>
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-700">Municipios y Escuelas</p>
-            <h1 className="mt-2 text-3xl font-semibold text-slate-900">Estructura territorial de la provincia</h1>
+            <h1 className="mt-2 text-2xl font-semibold text-slate-900">Estructura territorial de la provincia</h1>
             <p className="mt-2 text-sm text-slate-600">Gestiona las escuelas de tu provincia.</p>
           </div>
         </div>
@@ -224,7 +224,7 @@ export default function MunicipiosPage({ user }) {
         </StatsGrid>
       </Card>
 
-      <Card padding="p-8" className="overflow-x-auto">
+      <Card padding="p-6" className="overflow-x-auto">
         <div className="flex items-center justify-between gap-4">
           <div>
             <h2 className="text-xl font-semibold text-slate-900">Municipios</h2>
@@ -238,7 +238,7 @@ export default function MunicipiosPage({ user }) {
       </Card>
 
       {selectedMunicipio && (
-        <Card padding="p-8">
+        <Card padding="p-6">
           <div className="flex items-center justify-between gap-4">
             <div>
               <h2 className="text-xl font-semibold text-slate-900">Escuelas de {selectedMunicipio.nombre}</h2>

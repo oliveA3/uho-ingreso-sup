@@ -14,7 +14,6 @@ export default function CutoffSection({ items, year, onViewMore }) {
       <div className={styles.grid}>
         {items.map((item) => (
           <article key={item.id} className={styles.card}>
-            <p className={styles.cardYear}>{item.year}</p>
             <h3 className={styles.cardTitle}>{item.carrera || item.career}</h3>
             <p className={styles.cardIndex}>{item.index}</p>
           </article>

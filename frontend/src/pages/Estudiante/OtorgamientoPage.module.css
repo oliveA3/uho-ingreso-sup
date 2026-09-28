@@ -1,8 +1,7 @@
 .pendingBox {
   margin-top: 1.5rem;
   border-radius: 1.5rem;
-  border: 1px solid var(--border-color, var(--gris-200));
-  background-color: var(--gris-50);
+  background-color: color-mix(in srgb, var(--color-fondo, #d6e4f0) 45%, var(--blanco));
   padding: 1.5rem;
 }
 
@@ -25,44 +24,52 @@
 }
 
 .awardBox {
+  position: relative;
+  overflow: hidden;
   margin-top: 1.5rem;
   border-radius: 1.5rem;
-  background-color: var(--color-exito, #1a7a4a);
+  background:
+    radial-gradient(circle at 85% 15%, color-mix(in srgb, var(--color-exito, #1a7a4a) 55%, var(--blanco)), transparent 55%),
+    linear-gradient(135deg, var(--color-exito, #1a7a4a), color-mix(in srgb, var(--color-exito, #1a7a4a) 65%, var(--blanco)));
   padding: 1.5rem;
   text-align: center;
   color: var(--color-exito-texto);
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+  box-shadow: 0 12px 24px -12px color-mix(in srgb, var(--color-exito, #1a7a4a) 60%, transparent);
 }
 
 .awardLead {
-  font-size: 0.875rem;
+  font-size: 0.75rem;
   font-weight: 600;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--color-exito-texto) 85%, transparent);
 }
 
 .awardCareer {
   margin-top: 0.5rem;
   font-size: 1.5rem;
   font-weight: 700;
+  line-height: 1.2;
 }
 
 .awardCes {
-  margin-top: 0.25rem;
+  margin-top: 0.375rem;
   font-size: 1rem;
-  color: color-mix(in srgb, var(--color-exito-texto) 88%, var(--color-exito));
+  color: color-mix(in srgb, var(--color-exito-texto) 85%, transparent);
 }
 
 .awardIndex {
-  margin-top: 1rem;
-  font-size: 1.25rem;
+  display: inline-block;
+  margin-top: 1.25rem;
+  border-radius: 9999px;
+  background-color: color-mix(in srgb, var(--color-exito-texto) 16%, transparent);
+  padding: 0.4rem 1.1rem;
+  font-size: 1rem;
   font-weight: 600;
 }
 
 .summaryBox {
-  margin-top: 1.5rem;
-  border-radius: 1.5rem;
-  border: 1px solid var(--border-color, var(--gris-200));
-  background-color: var(--gris-50);
-  padding: 1.25rem;
+  margin-top: 1.75rem;
 }
 
 .summaryTitle {
@@ -126,20 +133,20 @@
 }
 
 .priorityNotice {
-  margin-top: 1rem;
-  border-radius: 1rem;
-  padding: 0.75rem 1rem;
+  margin-top: 1.5rem;
+  border-radius: 1.5rem;
+  border: 1px solid var(--gris-200);
+  background-color: var(--gris-50);
+  padding: 1.5rem;
   font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--gris-800);
 }
 
-.priorityNoticeQualified {
-  border: 1px solid var(--color-primario, #1f4e79);
-  background-color: color-mix(in srgb, var(--color-primario, #1f4e79) 8%, var(--blanco));
+.eyebrow {
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.24em;
   color: var(--color-primario, #1f4e79);
-}
-
-.priorityNoticeUnqualified {
-  border: 1px solid var(--color-acento, #5ba3d9);
-  background-color: color-mix(in srgb, var(--color-acento, #5ba3d9) 8%, var(--blanco));
-  color: var(--color-acento, #5ba3d9);
 }

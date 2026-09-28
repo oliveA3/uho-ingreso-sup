@@ -68,7 +68,7 @@ export default function OtorgamientoPage() {
 
   return (
     <div className={styles.page}>
-      <Card padding="p-8">
+      <Card padding="p-6">
         <div>
           <p className={styles.eyebrow}>Otorgamiento de Carreras</p>
           <h1 className={styles.title}>Importar otorgamientos y cortes</h1>
@@ -105,7 +105,7 @@ export default function OtorgamientoPage() {
         </div>
       </Card>
 
-      <Card padding="p-8">
+      <Card padding="p-6">
         <div className={styles.summaryHeader}>
           <div>
             <p className={styles.summaryTitle}>Resumen</p>

@@ -168,6 +168,7 @@ class StudentInterestView(APIView):
 					  "dias_restantes": max((stage.fecha_fin - timezone.localdate()).days, 0) if stage and stage.fecha_fin else None},
 			"max_items": MAX_ITEMS,
 			"puede_editar": stage_active and not ballot.enviada,
+			"puede_reabrir": stage_active and ballot.enviada,
 		})
 
 
@@ -662,14 +663,16 @@ class StudentExamConfirmationView(APIView):
 		if error:
 			return error
 		process, stage = context
+		stage_active = bool(stage and stage.estado == "en_curso")
 		if not process:
-			return Response({"detail": "No hay pruebas de ingreso disponibles para este año."}, status=404)
+			return Response({"process_year": None, "stage": {"active": stage_active, "fecha_fin": stage.fecha_fin if stage else None}, "puede_confirmar": False, "exams": []})
 		confirmations = ConfirmacionPrueba.objects.filter(
 			estudiante=student, proceso=process
 		).select_related("asignatura").order_by("fecha_prueba", "asignatura__nombre")
 		return Response({
 			"process_year": process.anio.year,
-			"stage": {"active": bool(stage and stage.estado == "en_curso"), "fecha_fin": stage.fecha_fin if stage else None},
+			"stage": {"active": stage_active, "fecha_fin": stage.fecha_fin if stage else None},
+			"puede_confirmar": stage_active,
 			"exams": [{
 				"id": confirmation.id,
 				"subject": confirmation.asignatura.nombre,
@@ -706,7 +709,7 @@ class StudentExamConfirmationView(APIView):
 			return error
 		process, stage = context
 		if not process or not stage or stage.estado != "en_curso":
-			return Response({"detail": "La confirmación solo está disponible durante la etapa 4."}, status=403)
+			return Response({"detail": "La confirmación solo está disponible durante la etapa 4; ahora solo puedes consultar tus pruebas."}, status=403)
 		confirmation = ConfirmacionPrueba.objects.filter(
 			pk=request.data.get("id"), estudiante=student, proceso=process
 		).select_related("asignatura").first()

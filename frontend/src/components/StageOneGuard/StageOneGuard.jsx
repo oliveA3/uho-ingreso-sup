@@ -9,14 +9,20 @@ export default function StageOneGuard({
   stageNumber = 1,
   stageName = "Publicación y validación del escalafón",
   panelName = "Esta sección",
+  allowCompleted = false,
 }) {
   const [allowed, setAllowed] = useState(null);
 
   useEffect(() => {
+    // Al pasar de una ruta protegida a otra, React reutiliza esta instancia: hay que volver a comprobar la etapa.
+    setAllowed(null);
     fetchProvincialEtapas()
-      .then((stages) => setAllowed(stages.some((stage) => stage.numero === stageNumber && stage.estado === "en_curso")))
+      .then((stages) => setAllowed(stages.some((stage) => (
+        stage.numero === stageNumber
+        && (stage.estado === "en_curso" || (allowCompleted && stage.estado === "completada"))
+      ))))
       .catch(() => setAllowed(false));
-  }, []);
+  }, [stageNumber, allowCompleted]);
 
   if (allowed === null) {
     return <div className={styles.checking}>Verificando etapa activa...</div>;

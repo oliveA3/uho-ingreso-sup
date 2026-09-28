@@ -305,7 +305,7 @@ export default function UsuariosPage() {
 
   return (
     <div className="space-y-6">
-      <Card padding="p-8">
+      <Card padding="p-6">
         <PageHeader
           title="👥 Usuarios"
           subtitle="Gestión global de usuarios en todo el sistema."

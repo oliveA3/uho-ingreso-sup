@@ -31,6 +31,7 @@ yarn-error.log*
 pnpm-debug.log*
 
 # Editor
+.claude/
 .vscode/
 .idea/
 .DS_Store
@@ -42,3 +43,6 @@ backend/backups/
 
 # Archivos subidos temporalmente (importaciones Excel)
 backend/media/
+
+# Variables de entorno locales (contienen secretos)
+.env

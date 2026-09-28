@@ -4,6 +4,25 @@
 
 :root {
   color-scheme: light;
+
+  /* Escala tipográfica única de toda la interfaz */
+  --text-page-title: 1.5rem;
+  --text-section-title: 1.25rem;
+  --text-card-title: 1.125rem;
+  --text-body: 0.875rem;
+  --text-small: 0.75rem;
+  --text-label: 0.8125rem;
+  --text-stat-value: 1.5rem;
+  --text-stat-label: 0.6875rem;
+  --text-table: 0.875rem;
+  --text-table-head: 0.75rem;
+  --control-height: 40px;
+  --control-padding-x: 1rem;
+  --control-radius: 0.75rem;
+  --card-padding: 1.25rem;
+  --card-radius: 1rem;
+  --container-padding: 1.5rem;
+  --container-radius: 1.5rem;
   /* Valores por defecto de la paleta; ThemeProvider los sobrescribe con los de la BD. */
   --color-primario: #1f4e79;
   --color-secundario: #2e75b6;
@@ -52,10 +71,26 @@ html {
 body {
   margin: 0;
   font-family: var(--brand-font, "Segoe UI"), ui-sans-serif, system-ui, sans-serif;
-  font-size: 0.95rem;
+  font-size: var(--text-body);
   line-height: 1.45;
   background: var(--color-fondo, #d6e4f0);
   color: var(--gris-900);
+}
+
+/* Toda la interfaz usa la tipografía de la identidad visual (--brand-font); solo <code>/<pre> conservan monoespaciada. */
+*,
+*::before,
+*::after {
+  font-family: inherit;
+}
+
+button,
+input,
+select,
+textarea,
+optgroup,
+option {
+  font-family: inherit;
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -64,15 +99,15 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 h1 {
-  font-size: clamp(1.5rem, 2vw, 1.9rem);
+  font-size: var(--text-page-title);
 }
 
 h2 {
-  font-size: clamp(1.2rem, 1.7vw, 1.45rem);
+  font-size: var(--text-section-title);
 }
 
 h3 {
-  font-size: 1.1rem;
+  font-size: var(--text-card-title);
 }
 
 p,
@@ -83,7 +118,7 @@ select,
 textarea,
 li,
 span {
-  font-size: 0.9rem;
+  font-size: var(--text-body);
 }
 
 button,

@@ -17,7 +17,7 @@ export default function EstudianteOtorgamientoPage() {
   }, [year]);
 
   if (error && !data) return <FeedbackMessage type="error" className="rounded-2xl">{error}</FeedbackMessage>;
-  if (!data) return <Card padding="p-8" className="text-sm text-slate-600">Cargando otorgamiento...</Card>;
+  if (!data) return <Card padding="p-6" className="text-sm text-slate-600">Cargando otorgamiento...</Card>;
 
   const award = data.award;
   const awardedCareerQualified = award?.cut_index != null
@@ -26,8 +26,8 @@ export default function EstudianteOtorgamientoPage() {
   const priorityLabel = awardedPriority === 1 ? "1ra" : awardedPriority === 2 ? "2da" : awardedPriority === 3 ? "3ra" : `${awardedPriority}ta`;
   return (
     <div className="space-y-6">
-      <Card padding="p-8">
-        <p className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-700">Mi Otorgamiento</p>
+      <Card padding="p-6">
+        <p className={styles.eyebrow}>Mi Otorgamiento</p>
         <h1 className="mt-2 text-2xl font-semibold text-slate-900">Carrera otorgada</h1>
         <p className="mt-3 text-sm text-slate-600">Resultado final del proceso {data.year}.</p>
         <StageStatusNotice stageNumber={6} />
@@ -46,7 +46,7 @@ export default function EstudianteOtorgamientoPage() {
               <p className={styles.awardIndex}>Índice de otorgamiento: {award.award_index}</p>
             </div>
             <div className={styles.summaryBox}>
-              <h2 className={styles.summaryTitle}>Resumen completo</h2>
+              <h2 className="text-xl font-semibold text-slate-900">Resumen completo</h2>
               <div className={styles.summaryGrid}>
                 <div className={`${styles.summaryTile} ${styles.summaryTileGeneral}`}>
                   <p className={`${styles.summaryTileLabel} ${styles.summaryTileLabelGeneral}`}>Índice general</p>
@@ -64,7 +64,7 @@ export default function EstudianteOtorgamientoPage() {
             </div>
             {awardedPriority && (
               <div className={`${styles.priorityNotice} ${awardedCareerQualified ? styles.priorityNoticeQualified : styles.priorityNoticeUnqualified}`}>
-                <span aria-hidden="true">ℹ️</span> Tu índice ({award.award_index}) {awardedCareerQualified ? "superó" : "no alcanzó"} el corte de {award.career} ({award.cut_index ?? "-"}) — accediste por tu {priorityLabel} opción.
+                Tu índice ({award.award_index}) {awardedCareerQualified ? "superó" : "no alcanzó"} el corte de {award.career} ({award.cut_index ?? "-"}) — accediste por tu {priorityLabel} opción.
               </div>
             )}
           </>

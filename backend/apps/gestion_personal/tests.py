@@ -139,3 +139,86 @@ class StudentSolicitudAtomicModificationTests(StudentSolicitudStageEditPermissio
     def test_approved_without_modification_flag_conflicts(self):
         response = self.client.post(self.url, {"plan_plazas": self.ids(), "confirmar": True}, format="json")
         self.assertEqual(response.status_code, 409, response.content)
+
+
+class StudentReadOnlyWhenStageCompletedTests(APITestCase):
+    """Etapa completada: los GET devuelven datos con flags en False y los POST se rechazan."""
+
+    def setUp(self):
+        from apps.gestion_personal.models import BoletaInteres, ConfirmacionPrueba, ResultadoExamen
+        from apps.superadmin.models import Asignatura
+        provincia = Provincia.objects.create(nombre="La Habana")
+        municipio = Municipio.objects.create(nombre="Plaza", provincia=provincia)
+        escuela = Escuela.objects.create(nombre="Escuela 1", municipio=municipio)
+        self.user = Usuario.objects.create_user(username="ro1", email="ro1@example.com", password="password123", rol="estudiante", escuela=escuela)
+        self.student = Estudiante.objects.create(
+            usuario=self.user, ci="99999999999", nombre="Ana", apellidos="Pérez", sexo="F",
+            direccion="Calle 1", escuela=escuela, indice_general=5.0)
+        year = date(date.today().year, 1, 1)
+        self.processes = {}
+        for number in range(1, 7):
+            stage = Etapa.objects.get(nombre=ETAPAS_NOMBRES[number])
+            stage.estado = "completada"
+            stage.save(update_fields=["estado"])
+            self.processes[number] = Proceso.objects.create(anio=year, etapa=stage)
+        BoletaInteres.objects.create(estudiante=self.student, proceso=self.processes[2])
+        BoletaSolicitud.objects.create(estudiante=self.student, proceso=self.processes[3], estado="aprobada")
+        subject = Asignatura.objects.create(nombre="Matemática")
+        self.confirmation = ConfirmacionPrueba.objects.create(
+            estudiante=self.student, proceso=self.processes[4], asignatura=subject,
+            confirmada=True, fecha_prueba="2026-07-01T09:00:00Z")
+        self.result = ResultadoExamen.objects.create(
+            estudiante=self.student, proceso=self.processes[5], asignatura=subject,
+            nota=90, fecha_limite_reclamo=date(date.today().year + 1, 1, 1))
+        self.client.force_authenticate(self.user)
+
+    def data(self, response):
+        self.assertEqual(response.status_code, 200, response.content)
+        body = response.json()
+        return body.get("data", body)
+
+    def test_solicitud_get_readonly(self):
+        data = self.data(self.client.get(reverse("student-solicitud")))
+        self.assertFalse(data["puede_editar"])
+        self.assertFalse(data["puede_solicitar_modificacion"])
+        self.assertEqual(self.client.post(reverse("student-solicitud-edit")).status_code, 403)
+
+    def test_interest_get_readonly(self):
+        data = self.data(self.client.get(reverse("student-interest")))
+        self.assertFalse(data["puede_editar"])
+        self.assertEqual(self.client.post(reverse("student-interest-send")).status_code, 403)
+
+    def test_exam_confirmation_get_readonly(self):
+        data = self.data(self.client.get(reverse("student-exam-confirmation")))
+        self.assertFalse(data["puede_confirmar"])
+        self.assertEqual(len(data["exams"]), 1)
+        response = self.client.post(reverse("student-exam-confirmation"), {"id": self.confirmation.id, "confirmada": False}, format="json")
+        self.assertEqual(response.status_code, 403)
+        self.confirmation.refresh_from_db()
+        self.assertTrue(self.confirmation.confirmada)
+
+    def test_results_get_readonly(self):
+        data = self.data(self.client.get(reverse("resultados-list")))
+        self.assertFalse(data["puede_reclamar"])
+        graded = [r for r in data["results"] if r["grade"] is not None]
+        self.assertEqual(len(graded), 1)
+        self.assertFalse(graded[0]["puede_reclamar"])
+        response = self.client.post(reverse("student-result-claim", args=[self.result.id]), {"descripcion": "x"}, format="json")
+        self.assertEqual(response.status_code, 403)
+
+    def test_otorgamiento_get_ok(self):
+        data = self.data(self.client.get(reverse("student-otorgamiento")))
+        self.assertFalse(data["published"])
+
+    def test_escalafon_get_readonly_and_action_rejected(self):
+        from apps.gestion_escuela.models import Escalafon, EscalafonItem
+        escalafon = Escalafon.objects.create(proceso=self.processes[1], escuela=self.student.escuela)
+        item = EscalafonItem.objects.create(
+            escalafon=escalafon, estudiante=self.student, indice_10=90, indice_11=90, indice_12=90, indice_general=90)
+        data = self.data(self.client.get(reverse("escalafon-list")))
+        self.assertEqual(len(data["entries"]), 1)
+        self.assertFalse(data["puede_responder"])
+        response = self.client.post(reverse("student-escalafon-action", args=["aceptar"]), {}, format="json")
+        self.assertEqual(response.status_code, 403, response.content)
+        item.refresh_from_db()
+        self.assertNotEqual(item.estado, "aceptado")

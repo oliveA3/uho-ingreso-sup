@@ -45,17 +45,17 @@ export default function EstudianteConfirmacionPruebasPage() {
   };
 
   if (error && !data) return <FeedbackMessage type="error" className="rounded-2xl">{error}</FeedbackMessage>;
-  if (!data) return <Card padding="p-8" className="text-sm text-slate-600">Cargando pruebas de ingreso...</Card>;
+  if (!data) return <Card padding="p-6" className="text-sm text-slate-600">Cargando pruebas de ingreso...</Card>;
 
-  const stageActive = data.stage?.active;
+  const canConfirm = Boolean(data.puede_confirmar);
   return (
     <div className="space-y-6">
-      <Card padding="p-8">
+      <Card padding="p-6">
         <div className={styles.headerBlock}>
           <div>
             <p className={styles.eyebrow}>Pruebas de Ingreso</p>
             <h1 className={styles.title}>Confirmación de Pruebas de Ingreso</h1>
-            <p className={styles.subtitle}>{stageActive ? "Confirma tu presentación en cada prueba." : "La etapa de confirmación no está activa. Puedes consultar tus pruebas, pero ya no modificar tu respuesta."}</p>
+            <p className={styles.subtitle}>{canConfirm ? "Confirma tu presentación en cada prueba." : "La etapa de confirmación no está en curso. Puedes consultar tus pruebas, pero ya no modificar tu respuesta."}</p>
           </div>
         </div>
         <StageStatusNotice stageNumber={4} />
@@ -74,7 +74,7 @@ export default function EstudianteConfirmacionPruebasPage() {
                       {getExamStatus(exam) === "confirmed" ? "Confirmado" : "No asistiré"}
                     </span>
                   )}
-                  {stageActive && <>
+                  {canConfirm && <>
                     <EntityActionButton variant="edit" onClick={() => respond(exam.id, true)} disabled={processingId === exam.id}>Confirmar</EntityActionButton>
                     <EntityActionButton variant="delete" onClick={() => respond(exam.id, false)} disabled={processingId === exam.id}>No asistiré</EntityActionButton>
                   </>}

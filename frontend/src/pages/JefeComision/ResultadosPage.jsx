@@ -136,7 +136,7 @@ export default function ResultadosPage() {
 
   return (
     <div className={styles.page}>
-      <Card padding="p-8">
+      <Card padding="p-6">
         <div>
           <p className={styles.eyebrow}>Gestión de Resultados</p>
           <h1 className={styles.title}>Importar notas y gestionar reclamaciones</h1>
@@ -173,7 +173,7 @@ export default function ResultadosPage() {
         </div>
       </Card>
 
-      <Card padding="p-8">
+      <Card padding="p-6">
         <div className={styles.summaryHeaderRow}>
           <p className={styles.summaryTitle}>Reclamaciones Pendientes</p>
           <span className={styles.pendingBadge}>{claims.filter((claim) => claim.status === "pendiente").length}</span>

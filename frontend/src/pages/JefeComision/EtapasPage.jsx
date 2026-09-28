@@ -129,7 +129,7 @@ export default function EtapasPage() {
 
   return (
     <div className={styles.page}>
-      <Card padding="p-8">
+      <Card padding="p-6">
         <div>
           <p className={styles.eyebrow}>Control de Etapas</p>
           <h1 className={styles.title}>Activación secuencial del proceso</h1>

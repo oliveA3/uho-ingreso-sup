@@ -41,7 +41,7 @@
 }
 
 .title {
-  font-size: 1.875rem;
+  font-size: 1.5rem;
   font-weight: 600;
   color: var(--gris-900);
 }
@@ -301,7 +301,7 @@
   border-radius: 1.5rem;
   border: 1px dashed var(--gris-300);
   background-color: var(--blanco);
-  padding: 2.5rem;
+  padding: 1.5rem;
   text-align: center;
   font-size: 0.875rem;
   color: var(--gris-500);
@@ -332,7 +332,7 @@
 .methodBadge {
   border-radius: 0.375rem;
   padding: 0.25rem 0.5rem;
-  font-size: 0.625rem;
+  font-size: 0.6875rem;
   font-weight: 700;
 }
 
@@ -393,7 +393,7 @@
   border-radius: 9999px;
   background-color: var(--gris-100);
   padding: 0.25rem 0.625rem;
-  font-size: 0.625rem;
+  font-size: 0.6875rem;
   font-weight: 600;
   color: var(--gris-600);
 }

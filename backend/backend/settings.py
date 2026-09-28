@@ -4,6 +4,16 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Carga opcional de variables desde un archivo .env (raíz del proyecto o backend/); las variables
+# ya definidas en el entorno tienen prioridad.
+try:
+    from dotenv import load_dotenv
+
+    for _env_file in (BASE_DIR.parent / ".env", BASE_DIR / ".env"):
+        load_dotenv(_env_file, override=False)
+except ImportError:
+    pass
+
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "django-insecure-change-this-for-production")
 DEBUG = os.getenv("DJANGO_DEBUG", "true").lower() == "true"
 ALLOWED_HOSTS = [host.strip() for host in os.getenv("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if host.strip()]

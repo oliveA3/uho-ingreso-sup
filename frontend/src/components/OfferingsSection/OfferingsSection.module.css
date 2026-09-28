@@ -1,5 +1,5 @@
 .section {
-  margin-bottom: 3rem;
+  margin-bottom: 1.8rem;
 }
 
 .header {
@@ -70,22 +70,34 @@
   color: var(--gris-500);
 }
 
+.searchRow {
+  margin-bottom: 1rem;
+}
+
+.emptyResults {
+  padding: 2rem 0;
+  text-align: center;
+  color: var(--gris-600);
+}
+
+/* Disposición tipo "ladrillos": cada tarjeta ocupa su alto y la siguiente sube hueco arriba. */
 .modalGrid {
-  display: grid;
-  gap: 1rem;
+  column-gap: 1rem;
 }
 
 @media (min-width: 640px) {
   .modalGrid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-count: 2;
   }
 }
 
 .modalCard {
   display: flex;
   flex-direction: column;
+  break-inside: avoid;
+  margin-bottom: 1rem;
   border-radius: 1rem;
-  background-color: var(--gris-50);
+  background-color: color-mix(in srgb, var(--color-fondo, #d6e4f0) 60%, var(--blanco));
   padding: 1.25rem;
 }
 
@@ -107,14 +119,21 @@
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  border-top: 1px solid var(--gris-200);
+  border-top: 1px solid color-mix(in srgb, var(--color-acento, #5ba3d9) 40%, var(--blanco));
   padding-top: 0.75rem;
   font-size: 0.75rem;
   color: var(--gris-600);
 }
 
 .modalCardDetails div {
+  display: block;
+}
+
+/* Etiqueta y valor en la misma línea; si el valor es largo, continúa en la siguiente. */
+.modalCardDetails dt,
+.modalCardDetails dd {
   display: inline;
+  margin: 0;
 }
 
 .detailTerm {
@@ -122,6 +141,11 @@
   color: var(--gris-800);
 }
 
-.visitLink {
-  margin-top: 1.25rem;
+.modalCard .visitLink {
+  align-self: flex-start;
+  width: auto;
+  min-height: 0;
+  margin-top: 1rem;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.75rem;
 }

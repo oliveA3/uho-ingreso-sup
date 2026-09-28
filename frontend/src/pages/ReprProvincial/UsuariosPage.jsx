@@ -153,11 +153,11 @@ export default function UsuariosPage() {
 
   return (
     <div className="space-y-6">
-      <Card padding="p-8">
+      <Card padding="p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-700">Usuarios</p>
-            <h1 className="mt-2 text-3xl font-semibold text-slate-900">Representantes municipales</h1>
+            <h1 className="mt-2 text-2xl font-semibold text-slate-900">Representantes municipales</h1>
             <p className="mt-2 text-sm text-slate-600">Gestiona los usuarios de los municipios de tu provincia.</p>
           </div>
           <PrimaryButton onClick={openCreate}>+ Nuevo</PrimaryButton>
@@ -165,7 +165,7 @@ export default function UsuariosPage() {
         {error && <FeedbackMessage type="error" className="mt-5 rounded-2xl">{error}</FeedbackMessage>}
       </Card>
 
-      <Card padding="p-8">
+      <Card padding="p-6">
         <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_220px]">
           <Input className="!mt-0" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por nombre, usuario, correo o municipio" />
           <Select className="!mt-0" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>

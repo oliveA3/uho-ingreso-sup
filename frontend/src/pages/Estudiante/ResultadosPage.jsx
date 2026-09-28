@@ -9,7 +9,7 @@ import styles from "./ResultadosPage.module.css";
 
 export default function ResultadosPage() {
   const [resultados, setResultados] = useState([]);
-  const [stage, setStage] = useState(null);
+  const [canClaim, setCanClaim] = useState(false);
   const [error, setError] = useState("");
   const [claimingId, setClaimingId] = useState(null);
   const [claimModal, setClaimModal] = useState(null);
@@ -20,7 +20,7 @@ export default function ResultadosPage() {
     fetchResults()
       .then((data) => {
         setResultados(data.results || []);
-        setStage(data.stage || null);
+        setCanClaim(Boolean(data.puede_reclamar));
       })
       .catch((requestError) => setError(requestError.message));
   }, []);
@@ -32,7 +32,7 @@ export default function ResultadosPage() {
       await submitStudentResultClaim(result.id, claimDescription.trim());
       const data = await fetchResults();
       setResultados(data.results || []);
-      setStage(data.stage || null);
+      setCanClaim(Boolean(data.puede_reclamar));
       setError("");
       setClaimModal(null);
       setClaimDescription("");
@@ -45,7 +45,7 @@ export default function ResultadosPage() {
 
   return (
     <div className="space-y-6">
-      <Card padding="p-8">
+      <Card padding="p-6">
         <div className={styles.headerRow}>
           <div>
             <h1 className={styles.title}>📊 Resultados</h1>
@@ -80,9 +80,9 @@ export default function ResultadosPage() {
                   <span className={`${styles.claimBadge} ${item.claim.status === "aprobada" ? styles.claimBadgeApproved : item.claim.status === "rechazada" ? styles.claimBadgeRejected : styles.claimBadgePending}`}>
                     {item.claim.status === "aprobada" ? "Reclamación aceptada" : item.claim.status === "rechazada" ? "Reclamación rechazada" : "Reclamación enviada"}
                   </span>
-                  {item.claim.status === "aprobada" && <SecondaryButton className="!px-3 !py-2 !text-xs" onClick={() => setAcceptedClaim(item.claim)}>Ver detalles</SecondaryButton>}
+                  {item.claim.status === "aprobada" && <SecondaryButton className="" onClick={() => setAcceptedClaim(item.claim)}>Ver detalles</SecondaryButton>}
                 </div>
-              ) : stage?.active && item.grade != null && (
+              ) : canClaim && item.grade != null && (
                 <PrimaryButton
                   className="!bg-orange-500 hover:!bg-orange-600"
                   onClick={() => { setClaimModal(item); setClaimDescription(""); }}

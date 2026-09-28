@@ -77,6 +77,9 @@ def build_plan_plaza_landing_payload(request):
         {
             "id": ces.id,
             "nombre": ces.nombre,
+            "descripcion": ces.descripcion or "",
+            "sede_principal": ces.sede_principal,
+            "sitio_web": ces.sitio_web,
             "carreras_count": selected_plan.filter(ces=ces).values("carrera_id").distinct().count(),
             "plan_year": selected_year,
         }
@@ -130,7 +133,9 @@ from .serializers import (
 from .permissions import IsCareerManager
 from .serializers_plan import PlanPlazaSerializer
 from .services.boletas import BoletaRuleError, resolve_modification
-from .services.etapas import StageRuleError, activate_stage
+from .services.etapas import StageRuleError, activate_stage, is_stage_active, stage_readonly_message
+from rest_framework.exceptions import PermissionDenied
+from rest_framework.permissions import SAFE_METHODS
 
 
 class ProvincialScopedMixin:
@@ -1111,6 +1116,11 @@ class ProvincialCarreraViewSet(viewsets.ModelViewSet):
 class PlanPlazaViewSet(viewsets.ModelViewSet):
     serializer_class = PlanPlazaSerializer
     permission_classes = [IsCommissionChief]
+
+    def initial(self, request, *args, **kwargs):
+        super().initial(request, *args, **kwargs)
+        if request.method not in SAFE_METHODS and not is_stage_active(3):
+            raise PermissionDenied(stage_readonly_message(3, "crear, editar o eliminar plazas"))
 
     def _scoped(self, queryset):
         user = self.request.user

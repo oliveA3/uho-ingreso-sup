@@ -14,7 +14,7 @@
 
 .title {
   margin-top: 0.5rem;
-  font-size: 1.875rem;
+  font-size: 1.5rem;
   font-weight: 600;
   color: var(--gris-900);
 }
@@ -34,7 +34,7 @@
 
 .examRow {
   border-radius: 1.5rem;
-  background-color: var(--gris-50);
+  background-color: color-mix(in srgb, var(--color-fondo, #d6e4f0) 60%, var(--blanco));
   padding: 1.25rem;
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
 }
@@ -55,6 +55,7 @@
 
 .examSubject {
   font-size: 1rem;
+  font-weight: 600;
   color: var(--gris-900);
 }
 
@@ -111,7 +112,7 @@
 
 .emptyNotice {
   border-radius: 1rem;
-  background-color: var(--gris-50);
+  background-color: color-mix(in srgb, var(--color-fondo, #d6e4f0) 60%, var(--blanco));
   padding: 1.25rem;
   font-size: 0.875rem;
   color: var(--gris-500);

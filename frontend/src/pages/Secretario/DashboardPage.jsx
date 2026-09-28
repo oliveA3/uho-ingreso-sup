@@ -1,7 +1,7 @@
 import StageStatusNotice from "../../components/StageStatusNotice/StageStatusNotice";
 import { useEffect, useState } from "react";
 import { fetchSchoolDashboard } from "../../api/school.service";
-import BallotMetrics from "../../components/BallotMetrics";
+import BallotMetrics from "../../components/BallotMetrics/BallotMetrics";
 import { StatCard, StatsGrid } from "../../components";
 import styles from "./DashboardPage.module.css";
 

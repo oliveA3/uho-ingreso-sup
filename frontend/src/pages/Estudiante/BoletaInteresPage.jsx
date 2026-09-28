@@ -72,7 +72,7 @@ export default function EstudianteBoletaInteresPage() {
   };
 
   if (!ballot) {
-    return <Card padding="p-8" className="text-sm text-slate-600">Cargando boleta de interés...</Card>;
+    return <Card padding="p-6" className="text-sm text-slate-600">Cargando boleta de interés...</Card>;
   }
 
   const editing = ballot.puede_editar;
@@ -81,7 +81,7 @@ export default function EstudianteBoletaInteresPage() {
   const careersToAdd = ballot.available_careers.filter((career) => !selectedIds.has(career.id));
   return (
     <div className="space-y-6">
-      <Card padding="p-8">
+      <Card padding="p-6">
         <p className={styles.eyebrow}>Boleta de Interés</p>
         <div className={styles.headerRow}>
           <div>
@@ -122,7 +122,7 @@ export default function EstudianteBoletaInteresPage() {
           </div>
           <div className={styles.footerRow}>
             {ballot.enviada ? (
-              <PrimaryButton disabled={!ballot.stage.active} onClick={reopenBallot}>Editar</PrimaryButton>
+              <PrimaryButton disabled={!ballot.puede_reabrir} onClick={reopenBallot}>Editar</PrimaryButton>
             ) : (
               <PrimaryButton className="!bg-brand-success hover:!brightness-90" disabled={!editing || ballot.items.length !== maxItems} onClick={() => update(async () => { await sendStudentInterest(); setMessage("Tu boleta fue enviada correctamente."); })}>Enviar boleta</PrimaryButton>
             )}

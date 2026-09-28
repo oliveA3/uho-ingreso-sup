@@ -34,7 +34,7 @@ export default function LogsPage() {
 
   return (
     <div className={styles.page}>
-      <Card padding="p-8">
+      <Card padding="p-6">
         <div>
           <p className={styles.eyebrow}>Registros</p>
           <div className={styles.titleRow}>
@@ -69,7 +69,7 @@ export default function LogsPage() {
         </div>
       </Card>
 
-      <Card padding="p-8">
+      <Card padding="p-6">
         <DataTable
           className="table-scroll"
           columns={columns}

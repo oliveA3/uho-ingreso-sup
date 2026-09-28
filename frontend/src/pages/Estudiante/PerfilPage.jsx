@@ -49,7 +49,7 @@ export default function EstudiantePerfilPage() {
     }
   };
 
-  if (!profile) return <Card padding="p-8" className="text-sm text-slate-600">Cargando perfil...</Card>;
+  if (!profile) return <Card padding="p-6" className="text-sm text-slate-600">Cargando perfil...</Card>;
 
   const fixedFields = [
     ["Nombre", profile.nombre],

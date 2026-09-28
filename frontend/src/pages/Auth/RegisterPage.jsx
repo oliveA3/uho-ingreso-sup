@@ -241,7 +241,7 @@ export default function RegisterPage() {
         : registrationOpen !== true;
 
     return (
-        <Card as="div" className={styles.wrapper} padding="p-8">
+        <Card as="div" className={styles.wrapper} padding="p-6">
             <div className="mb-6">
                 <button type="button" onClick={() => navigate("/")} className={styles.backLink}>
                     ← Volver al inicio

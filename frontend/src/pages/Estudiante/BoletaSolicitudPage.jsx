@@ -51,7 +51,7 @@ export default function BoletaPage() {
   const available = data?.available_plans || [];
   const maxItems = data?.max_items;
   const canRequestModification = Boolean(data?.puede_solicitar_modificacion);
-  const editing = Boolean(data?.puede_editar) || (editingMode !== null && Boolean(stage?.active));
+  const editing = Boolean(data?.puede_editar) || (editingMode !== null && (Boolean(data?.puede_editar) || canRequestModification));
   const modificationPending = data?.estado === "modificada";
   const plansToAdd = available.filter((plan) => !selected.includes(plan.id));
 
@@ -120,7 +120,7 @@ export default function BoletaPage() {
     } catch (requestError) { setError(requestError.message); }
   };
 
-  if (!data) return <Card padding="p-8" className="text-sm text-slate-600">Cargando boleta de solicitud...</Card>;
+  if (!data) return <Card padding="p-6" className="text-sm text-slate-600">Cargando boleta de solicitud...</Card>;
 
   const student = data.student;
   const studentInfo = [
@@ -134,7 +134,7 @@ export default function BoletaPage() {
 
   return (
     <div className="space-y-6">
-      <Card padding="p-8">
+      <Card padding="p-6">
         <div className={styles.headerRow}>
           <div>
             <p className={styles.eyebrow}>Boleta de Solicitud</p>
@@ -192,7 +192,7 @@ export default function BoletaPage() {
           <div className={styles.footerRow}>
             {data.estado === "pendiente" && editingMode === null ? (
               <>
-                <PrimaryButton onClick={() => { setEditingMode('edit-pending'); }} disabled={!stage.active}>Editar boleta</PrimaryButton>
+                <PrimaryButton onClick={() => { setEditingMode('edit-pending'); }} disabled={!data.puede_editar}>Editar boleta</PrimaryButton>
                 <span className={styles.noteSuccess}>Pendiente de aprobación</span>
               </>
             ) : data.estado === "pendiente" && editingMode === 'edit-pending' ? (
@@ -202,7 +202,7 @@ export default function BoletaPage() {
               </>
             ) : canRequestModification && editingMode === null ? (
               <>
-                <PrimaryButton onClick={() => { setEditingMode('request-modification'); }} disabled={!stage.active}>Solicitar modificación</PrimaryButton>
+                <PrimaryButton onClick={() => { setEditingMode('request-modification'); }} disabled={!canRequestModification}>Solicitar modificación</PrimaryButton>
                 <span className={styles.noteWarning}>La modificación será revisada por el Jefe de Comisión.</span>
               </>
             ) : editingMode === 'request-modification' ? (

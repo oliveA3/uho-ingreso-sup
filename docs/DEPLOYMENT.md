@@ -5,11 +5,102 @@ Esta guía reúne los pasos necesarios para desplegar IngresoSUP. Compleméntala
 ## Requisitos
 
 - Python compatible con las dependencias de `backend/requirements.txt`.
-- Una base de datos respaldada y accesible por el backend.
+- **PostgreSQL 14 o superior**, respaldado y accesible por el backend (ver la sección siguiente). SQLite solo sirve para pruebas rápidas: no soporta el bloqueo de filas (`select_for_update`) que usa el sistema para proteger la activación de etapas.
 - Redis accesible desde el backend y el worker Celery.
 - Un servidor SMTP institucional o proveedor transaccional.
 - Un proxy HTTPS y un servidor WSGI/ASGI para el backend.
 - Un servidor web para los archivos compilados del frontend.
+
+## Base de datos: PostgreSQL 14+
+
+IngresoSUP usa **PostgreSQL 14 o superior** en producción. El backend elige el motor con la variable `DB_ENGINE`:
+
+| Valor de `DB_ENGINE` | Motor | Uso |
+|---|---|---|
+| `postgresql` (o `postgres`) | PostgreSQL vía `psycopg` 3 | Producción y desarrollo serio |
+| vacío o `sqlite` | SQLite (`backend/db.sqlite3`) | Solo pruebas rápidas |
+
+Variables que lee `backend/backend/settings.py`:
+
+| Variable | Por defecto | Descripción |
+|---|---|---|
+| `DB_NAME` | `ingresosup` | Nombre de la base |
+| `DB_USER` | `ingresosup` | Usuario de la base |
+| `DB_PASSWORD` | vacío | Contraseña (obligatoria en producción) |
+| `DB_HOST` | `localhost` | Servidor |
+| `DB_PORT` | `5432` | Puerto |
+| `DB_CONN_MAX_AGE` | `60` | Segundos que se reutiliza una conexión abierta (evita reconectar en cada petición) |
+
+Las variables pueden definirse en el entorno del servidor o en un archivo `.env` en la raíz del proyecto (el backend lo carga solo; las variables ya definidas en el entorno tienen prioridad). El repositorio incluye una plantilla, [`.env.example`](../.env.example). **Nunca subas `.env` a Git**: ya está en `.gitignore`.
+
+### Opción 1 (recomendada para desarrollo): PostgreSQL y Redis con Docker
+
+Requiere Docker con Compose. En la raíz del proyecto:
+
+```bash
+cp .env.example .env          # en Windows: copy .env.example .env
+# edita .env: pon una DB_PASSWORD real y deja DB_ENGINE=postgresql
+docker compose up -d          # arranca PostgreSQL 16 y Redis 7
+docker compose ps             # ambos servicios deben aparecer como "healthy"
+```
+
+El archivo [`docker-compose.yml`](../docker-compose.yml) crea la base con el usuario y la contraseña de tu `.env`, la guarda en un volumen (`pgdata`, los datos sobreviven a reinicios) y solo la expone en `127.0.0.1`. Para parar los servicios: `docker compose down` (añade `-v` solo si quieres **borrar** los datos).
+
+### Opción 2: PostgreSQL instalado en el sistema
+
+1. Instala PostgreSQL 14+ (Windows: instalador oficial; Debian/Ubuntu: `sudo apt install postgresql postgresql-client`).
+2. Crea el usuario y la base (como administrador de PostgreSQL, por ejemplo con `psql -U postgres`):
+
+```sql
+CREATE ROLE ingresosup WITH LOGIN PASSWORD 'una-contrasena-larga';
+CREATE DATABASE ingresosup OWNER ingresosup ENCODING 'UTF8';
+-- Solo si quieres ejecutar los tests o `verify_backup` con este usuario (crean bases temporales):
+ALTER ROLE ingresosup CREATEDB;
+```
+
+3. Pon los mismos datos en `DB_USER`, `DB_PASSWORD` y `DB_NAME`, con `DB_ENGINE=postgresql`.
+
+### Puesta en marcha con PostgreSQL
+
+```bash
+cd backend
+python -m pip install -r requirements.txt
+python manage.py check                     # comprueba la configuración
+python manage.py migrate                   # crea todas las tablas (incluye las 6 etapas)
+python manage.py createsuperuser           # o carga los datos iniciales: docs/SEED_INITIAL_DATA.md
+python manage.py runserver                 # en desarrollo
+```
+
+Para comprobar que Django usa PostgreSQL y no SQLite:
+
+```bash
+python manage.py shell -c "from django.db import connection; print(connection.vendor, connection.cursor().connection.info.server_version)"
+# Debe imprimir: postgresql 160000 (o la versión que tengas; 140000 = 14)
+```
+
+### Migrar los datos existentes de SQLite a PostgreSQL
+
+Si ya tienes datos en `db.sqlite3` que quieres conservar:
+
+```bash
+cd backend
+# 1) Con DB_ENGINE sin definir (SQLite), exporta los datos:
+python manage.py dumpdata --natural-foreign --natural-primary     --exclude contenttypes --exclude auth.permission --exclude admin.logentry     --exclude sessions --exclude token_blacklist --indent 2 -o datos.json
+
+# 2) Cambia a PostgreSQL (DB_ENGINE=postgresql en .env), crea las tablas e importa:
+python manage.py migrate
+python manage.py loaddata datos.json
+```
+
+Notas: las migraciones ya crean las etapas y otros catálogos base, por lo que `loaddata` los actualiza por identificador en lugar de duplicarlos. Los tokens de sesión y la lista negra de tokens no se migran (los usuarios deberán iniciar sesión de nuevo). Revisa el resultado antes de borrar `db.sqlite3` y conserva `datos.json` como respaldo. Si empiezas desde cero, no hace falta nada de esto: usa `migrate` y los datos iniciales.
+
+### Buenas prácticas en producción
+
+- Usa un usuario de base **sin privilegios de superusuario** y una contraseña larga; la base no debe ser accesible desde Internet (firewall o red privada).
+- Si el servidor de la base está separado, activa TLS en la conexión y restringe `pg_hba.conf` a la IP del backend.
+- La aplicación calcula fechas en UTC y las muestra en la zona `America/Havana`: no cambies la zona horaria de PostgreSQL por ese motivo.
+- Las **copias de seguridad** (`backup_database`) usan `pg_dump` y necesitan el cliente de PostgreSQL en el servidor: ver la sección "Copias de seguridad de la base de datos" más abajo.
+- El worker de Celery y el servidor web abren conexiones propias: dimensiona `max_connections` de PostgreSQL (por defecto 100) según el número de procesos.
 
 ## Variables de entorno
 
@@ -28,6 +119,14 @@ EMAIL_HOST_PASSWORD=<secreto-smtp>
 EMAIL_USE_TLS=true
 DEFAULT_FROM_EMAIL=no-reply@ingresosup.cu
 
+DB_ENGINE=postgresql
+DB_NAME=ingresosup
+DB_USER=ingresosup
+DB_PASSWORD=<secreto-de-la-base>
+DB_HOST=db.ingresosup.cu
+DB_PORT=5432
+
+REDIS_URL=redis://redis:6379
 CELERY_BROKER_URL=redis://redis:6379/0
 CELERY_RESULT_BACKEND=redis://redis:6379/1
 ```

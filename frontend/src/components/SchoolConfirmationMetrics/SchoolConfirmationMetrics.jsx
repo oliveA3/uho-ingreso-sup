@@ -11,7 +11,7 @@ export default function SchoolConfirmationMetrics({ data, title }) {
 
   return (
     <div className={styles.wrapper}>
-      <Card as="section" padding="p-8">
+      <Card as="section" padding="p-6">
         <h1 className={styles.title}>{title}</h1>
         <p className={styles.subtitle}>Estado de las pruebas de ingreso de tu escuela en {data.year}.</p>
         <StageStatusNotice stageNumber={4} />

@@ -23,6 +23,8 @@ export default function Modal({
 }) {
   const dialogRef = useRef(null);
   const previouslyFocusedRef = useRef(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   // Gestiona el foco como exige un diálogo modal accesible (WCAG 2.4.3):
   // al abrir, mueve el foco dentro del diálogo; mientras está abierto, Tab/
@@ -37,7 +39,7 @@ export default function Modal({
 
     function handleKeyDown(event) {
       if (event.key === "Escape") {
-        onClose?.();
+        onCloseRef.current?.();
         return;
       }
       if (event.key !== "Tab" || !dialogNode) return;
@@ -58,7 +60,7 @@ export default function Modal({
       window.removeEventListener("keydown", handleKeyDown);
       previouslyFocusedRef.current?.focus?.();
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
 

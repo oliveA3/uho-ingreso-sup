@@ -47,7 +47,7 @@ export default function PlazasPage() {
   const [stageStatus, setStageStatus] = useState(null);
   const [importing, setImporting] = useState(false);
   const fileInput = useRef(null);
-  const stageFinished = stageStatus === "completada";
+  const stageFinished = stageStatus !== "en_curso";
 
   async function load() {
     try {
@@ -214,7 +214,7 @@ export default function PlazasPage() {
 
   return (
     <div className={styles.page}>
-      <Card padding="p-8">
+      <Card padding="p-6">
         <div className={styles.headerRow}>
           <div>
             <p className={styles.eyebrow}>
@@ -255,7 +255,7 @@ export default function PlazasPage() {
           loading={loading}
           loadingMessage="Cargando plan de plazas..."
           emptyMessage="No hay registros."
-          className={styles.tableUnwrapped}
+          className={`table-scroll ${styles.tableUnwrapped}`}
         />
       </Card>
       <Modal

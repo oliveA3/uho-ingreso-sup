@@ -80,9 +80,9 @@ export default function EscuelasPage({ user }) {
   const secretaries = activeUsers.filter((u) => u.rol === "secretario_escuela").length;
 
   const stats = [
-    ["Escuelas", schools.length, "Registros totales"],
-    ["Secretarios", secretaries, "Activos"],
-    ["Directores", directors, "Activos"],
+    ["Escuelas", schools.length],
+    ["Secretarios", secretaries],
+    ["Directores", directors],
   ];
 
   const columns = [
@@ -103,24 +103,24 @@ export default function EscuelasPage({ user }) {
 
   return (
     <div className="space-y-6">
-      <Card padding="p-8">
+      <Card padding="p-6">
         <p className="mb-4 text-sm font-semibold text-slate-600">Municipio: {user?.municipio_nombre || "No asignado"}</p>
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-700">Gestión municipal</p>
-            <h1 className="mt-2 text-3xl font-semibold text-slate-900">Escuelas</h1>
+            <h1 className="mt-2 text-2xl font-semibold text-slate-900">Escuelas</h1>
             <p className="mt-2 text-sm text-slate-600">Crea y gestiona las escuelas de tu municipio.</p>
           </div>
           <PrimaryButton onClick={openCreate}>+ Nueva escuela</PrimaryButton>
         </div>
         {error && <FeedbackMessage type="error" className="mt-5 rounded-2xl">{error}</FeedbackMessage>}
         <StatsGrid className="mt-6">
-          {stats.map(([label, value, caption]) => (
-            <StatCard key={label} label={label} value={value} caption={caption} />
+          {stats.map(([label, value]) => (
+            <StatCard key={label} label={label} value={value} />
           ))}
         </StatsGrid>
       </Card>
-      <Card padding="p-8">
+      <Card padding="p-6">
         <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por nombre o código" className="!mt-0 max-w-md" />
         <DataTable className="mt-6" columns={columns} data={filteredSchools} loading={loading} emptyMessage="No hay escuelas para mostrar." />
       </Card>

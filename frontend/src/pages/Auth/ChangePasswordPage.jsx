@@ -33,7 +33,7 @@ export default function ChangePasswordPage({ onChanged, onLogout }) {
 
   return (
     <div className={styles.page}>
-      <Card padding="p-8" className={styles.card}>
+      <Card padding="p-6" className={styles.card}>
         <p className={styles.eyebrow}>Seguridad de la cuenta</p>
         <h1 className={styles.title}>Cambia tu contraseña temporal</h1>
         <p className={styles.description}>

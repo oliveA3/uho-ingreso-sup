@@ -43,6 +43,8 @@ class Escuela(models.Model):
 class Ces(models.Model):
     nombre = models.CharField(max_length=200)
     descripcion = models.TextField(blank=True, null=True)
+    sede_principal = models.CharField(max_length=200, blank=True, default="")
+    sitio_web = models.URLField(max_length=300, blank=True, default="")
     activa = models.BooleanField(default=True)
     fecha_ultima_modificacion = models.DateTimeField(auto_now=True)
 

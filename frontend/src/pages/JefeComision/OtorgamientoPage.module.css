@@ -14,7 +14,7 @@
 
 .title {
   margin-top: 0.5rem;
-  font-size: 1.875rem;
+  font-size: 1.5rem;
   font-weight: 600;
   color: var(--gris-900);
 }
@@ -78,8 +78,8 @@
 
 .importButton {
   background-color: var(--color-primario, #1f4e79) !important;
-  padding: 0.75rem !important;
-  font-size: 0.75rem !important;
+  padding: 0.5rem 1.25rem !important;
+  font-size: 0.875rem !important;
 }
 
 .importButton:hover {
@@ -87,8 +87,8 @@
 }
 
 .exportButton {
-  padding: 0.75rem !important;
-  font-size: 0.75rem !important;
+  padding: 0.5rem 1.25rem !important;
+  font-size: 0.875rem !important;
 }
 
 .summaryHeader {
@@ -163,7 +163,7 @@
 
 .summaryValue {
   margin-top: 0.5rem;
-  font-size: 1.875rem;
+  font-size: 1.5rem;
   font-weight: 600;
   color: var(--gris-900);
 }

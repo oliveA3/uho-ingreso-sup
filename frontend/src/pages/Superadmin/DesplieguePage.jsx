@@ -19,7 +19,7 @@ const columns = [
 export default function DesplieguePage() {
   return (
     <div className="space-y-6">
-      <Card padding="p-8">
+      <Card padding="p-6">
         <PageHeader
           title="🐳 Despliegue Docker"
           subtitle="Entorno de desarrollo local reproducible y servicios del sistema."

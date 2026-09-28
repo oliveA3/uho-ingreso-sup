@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
-import InterestMetricsView from "../../components/InterestMetricsView";
+import InterestMetricsView from "../../components/InterestMetricsView/InterestMetricsView";
 import { fetchSchoolInterestMetrics } from "../../api/school.service";
 import { Card } from "../../components";
 
@@ -32,5 +32,5 @@ export default function DirectorBoletaInteresPage({ user }) {
 }
 
 function LoadingState() {
-  return <Card padding="p-8" className="text-sm text-slate-600">Cargando métricas...</Card>;
+  return <Card padding="p-6" className="text-sm text-slate-600">Cargando métricas...</Card>;
 }

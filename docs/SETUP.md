@@ -1,5 +1,7 @@
 # Instalación y operación local
 
+> **Base de datos:** el sistema está pensado para **PostgreSQL 14+** (y Redis 7+). Sin configuración adicional se usa SQLite, válido solo para pruebas rápidas. Para levantar PostgreSQL y Redis en un minuto con Docker, o instalarlos a mano, sigue la sección [Base de datos: PostgreSQL 14+](DEPLOYMENT.md#base-de-datos-postgresql-14) de la guía de despliegue.
+
 ## Backend en Windows CMD
 
 Desde la raíz del repositorio:

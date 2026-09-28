@@ -1,4 +1,5 @@
 from django.db.models import Count
+from apps.gestion_provincial.services.etapas import stage_readonly_message
 from django.utils import timezone
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiExample, OpenApiParameter, extend_schema, inline_serializer
@@ -274,6 +275,7 @@ class SchoolInterestMetricsView(APIView):
             "total": total_students,
             "total_boletas": ballots.count(),
             "proceso": process.anio if process else None,
+            "stage_active": bool(active_stage_number == 2),
             "stage": {
                 "active": bool(active_stage_number == 2),
                 "numero": active_stage_number,
@@ -529,6 +531,7 @@ class SchoolSolicitudView(APIView):
         return Response({
             "items": [{**BoletaSolicitudSerializer(ballot).data, "student": {"nombre": ballot.estudiante.nombre, "apellidos": ballot.estudiante.apellidos, "ci": ballot.estudiante.ci, "indice_general": (EscalafonItem.objects.filter(estudiante=ballot.estudiante, escalafon__proceso__anio__year=timezone.now().year).order_by("-escalafon_id", "-id").values_list("indice_general", flat=True).first() or ballot.estudiante.indice_general)}} for ballot in ballots],
             "stage_active": bool(stage and stage.estado == "en_curso"),
+            "puede_aprobar": bool(stage and stage.estado == "en_curso"),
             "metrics": {
                 "enviadas": submitted_count,
                 "pendientes": sum(ballot.estado == "pendiente" for ballot in all_ballots),
@@ -622,7 +625,7 @@ class SchoolSolicitudView(APIView):
             return Response({"detail": "Solo el Secretario de Escuela puede aprobar boletas."}, status=403)
         stage = Etapa.objects.filter(nombre=ETAPAS_NOMBRES[3]).first()
         if not stage or stage.estado != "en_curso":
-            return Response({"detail": "Las aprobaciones solo están disponibles durante la etapa 3."}, status=403)
+            return Response({"detail": stage_readonly_message(3, "aprobar boletas de solicitud")}, status=403)
         ballot = BoletaSolicitud.objects.filter(pk=ballot_id, estudiante__escuela_id=request.user.escuela_id).first()
         if not ballot:
             return Response({"detail": "No existe la boleta en tu escuela."}, status=404)

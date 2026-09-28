@@ -63,7 +63,9 @@ const catalogs = {
     icon: "🏛️",
     fields: [
       { name: "nombre", label: "Nombre", type: "text" },
-      { name: "descripcion", label: "Descripción", type: "text" },
+      { name: "descripcion", label: "Descripción (opcional)", type: "text" },
+      { name: "sede_principal", label: "Sede principal (opcional)", type: "text" },
+      { name: "sitio_web", label: "Página web (opcional, https://...)", type: "text" },
     ],
     activeField: "activa",
   },

@@ -123,9 +123,17 @@ class EscuelaSerializer(serializers.ModelSerializer):
 
 
 class CesSerializer(serializers.ModelSerializer):
+    sede_principal = serializers.CharField(max_length=200, required=False, allow_blank=True)
+    sitio_web = serializers.URLField(max_length=300, required=False, allow_blank=True)
+
     class Meta:
         model = Ces
-        fields = ['id', 'nombre', 'descripcion', 'activa', 'fecha_ultima_modificacion']
+        fields = ['id', 'nombre', 'descripcion', 'sede_principal', 'sitio_web', 'activa', 'fecha_ultima_modificacion']
+
+    def validate_sitio_web(self, value):
+        if value and not value.lower().startswith(("http://", "https://")):
+            raise serializers.ValidationError("La dirección web debe empezar por http:// o https://.")
+        return value
 
 
 class CarreraSerializer(serializers.ModelSerializer):

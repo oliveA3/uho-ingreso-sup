@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
-import InterestMetricsView from "../../components/InterestMetricsView";
+import InterestMetricsView from "../../components/InterestMetricsView/InterestMetricsView";
 import { fetchSchoolInterestMetrics } from "../../api/school.service";
 
 export default function SecretarioBoletaInteresPage({ user }) {

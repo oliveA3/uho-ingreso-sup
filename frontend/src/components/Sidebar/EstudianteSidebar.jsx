@@ -9,7 +9,7 @@ export default function EstudianteSidebar({ scope, onLogout, activeStageLabel })
         { label: "Escalafón", icon: "📋", to: "/estudiante/escalafon" },
         { label: "Boleta de Interés", icon: "🎯", to: "/estudiante/boleta-interes" },
         { label: "Boleta de Solicitud", icon: "📝", to: "/estudiante/boleta" },
-        { label: "Confirmación de Pruebas", icon: "✏️", to: "/estudiante/confirmacion-pruebas" },
+        { label: "Confirmación Pruebas", icon: "✏️", to: "/estudiante/confirmacion-pruebas" },
         { label: "Resultados", icon: "📊", to: "/estudiante/resultados" },
         { label: "Carrera Otorgada", icon: "🎓", to: "/estudiante/otorgamiento" },
     ],

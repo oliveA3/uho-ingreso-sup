@@ -28,7 +28,7 @@ const columns = [
 export default function RolesPage() {
   return (
     <div className="space-y-6">
-      <Card padding="p-8">
+      <Card padding="p-6">
         <PageHeader
           title="🔐 Roles y Permisos"
           subtitle="Matriz de control de acceso. Los permisos se verifican en el servidor en cada petición."

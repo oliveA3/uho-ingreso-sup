@@ -105,7 +105,7 @@ export default function EscalafonesPage() {
         </div>
 
         <DataTable
-          className={styles.table}
+          className={`table-scroll ${styles.table}`}
           columns={columns}
           data={summary?.municipios || []}
           loading={loading}

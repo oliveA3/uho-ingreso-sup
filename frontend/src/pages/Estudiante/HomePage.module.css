@@ -1,5 +1,5 @@
 .greeting {
-  font-size: 1.875rem;
+  font-size: 1.5rem;
   font-weight: 600;
   color: var(--gris-900);
 }
@@ -78,6 +78,7 @@
   border-color: var(--color-primario, #1f4e79);
   background-color: var(--color-primario, #1f4e79);
   color: var(--color-primario-texto);
+  box-shadow: 0 6px 14px -6px color-mix(in srgb, var(--color-primario, #1f4e79) 70%, transparent);
 }
 
 .stageBadgePending {
@@ -119,7 +120,7 @@
 
 .stageDates {
   margin-top: 0.25rem;
-  font-size: 0.625rem;
+  font-size: 0.6875rem;
   line-height: 1.1;
   color: var(--gris-500);
 }
@@ -132,10 +133,10 @@
 }
 
 .navLink {
-  border-radius: 1rem;
+  border-radius: 9999px;
   border-width: 1px;
   border-style: solid;
-  padding: 0.75rem 1rem;
+  padding: 0.6rem 1.25rem;
   font-size: 0.875rem;
   font-weight: 600;
   transition: background-color 0.15s ease;

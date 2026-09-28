@@ -41,7 +41,8 @@
 }
 
 .thead {
-  background-color: var(--gris-100);
+  background-color: var(--color-primario, #1f4e79);
+  color: var(--color-primario-texto);
 }
 
 .th {

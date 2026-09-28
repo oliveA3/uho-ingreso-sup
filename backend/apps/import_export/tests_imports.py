@@ -123,8 +123,7 @@ class StageSixImportTests(ImportBase):
     def test_otorgamiento_requires_stage_in_progress(self):
         self.stage(6, estado="no_iniciada")
         file = make_xlsx([self.OTORG_HEADERS, [self.student.ci, "IMP-1", "Carrera Imp", 91.5]])
-        code, _ = self.run_import("import-otorgamiento", self.jefe, file)
-        self.assertEqual(code, 400)
+        self.assertEqual(self.post_raw("import-otorgamiento", self.jefe, file).status_code, 403)
         self.assertEqual(Otorgamiento.objects.count(), 0)
 
     def test_otorgamiento_permissions_and_invalid_file(self):
@@ -281,3 +280,119 @@ class ResultadosImportTests(ImportBase):
         self.assertEqual(self.post_raw("import-resultados", self.jefe, bad_xls(), self.data).status_code, 400)
         self.assertEqual(self.post_raw("import-resultados", self.jefe, empty_xlsx(), self.data).status_code, 400)
         self.assertEqual(ResultadoExamen.objects.count(), 0)
+
+
+class JefeReadOnlyStageTests(ImportBase):
+    """Etapa completada: GET siguen respondiendo, escrituras 403 y flags en False."""
+
+    def test_stage_six_completed(self):
+        self.stage(6, estado="completada")
+        response = self.client.get(reverse("otorgamiento-summary"))
+        self.client.force_authenticate(self.jefe)
+        response = self.client.get(reverse("otorgamiento-summary"))
+        self.assertEqual(response.status_code, 200)
+        self.assertIs(response.data["stage_active"], False)
+        self.assertIs(response.data["puede_importar"], False)
+        for name in ("import-otorgamiento", "import-cortes-carrera"):
+            file = make_xlsx([["CI"], ["1"]])
+            self.assertEqual(self.post_raw(name, self.jefe, file).status_code, 403)
+
+    def test_stage_one_completed(self):
+        self.stage(1, estado="completada")
+        self.client.force_authenticate(self.jefe)
+        response = self.client.get(reverse("escalafon-summary-provincial"))
+        self.assertEqual(response.status_code, 200)
+        self.assertIs(response.data["stage_active"], False)
+        self.assertIs(response.data["puede_importar"], False)
+        file = make_xlsx([["CI"], ["1"]])
+        self.assertEqual(
+            self.post_raw("import-escalafon", self.jefe, file, {"escuela": self.escuela.id}).status_code, 403,
+        )
+
+    def test_stage_five_completed_claims_and_import(self):
+        from apps.gestion_personal.models import Reclamacion
+        proceso = self.stage(5, estado="completada")
+        asignatura = Asignatura.objects.create(nombre="Matematica")
+        student = self.make_student("90010300001")
+        resultado = ResultadoExamen.objects.create(
+            estudiante=student, proceso=proceso, asignatura=asignatura, nota=60, fecha_limite_reclamo=date(2030, 1, 1),
+        )
+        claim = Reclamacion.objects.create(estudiante=student, resultado=resultado, descripcion="x", estado="pendiente")
+        self.client.force_authenticate(self.jefe)
+        self.assertEqual(self.client.get(reverse("resultados-list")).status_code, 200)
+        self.assertEqual(self.client.get(reverse("result-claims-list")).status_code, 200)
+        response = self.client.patch(reverse("result-claim-decision", args=[claim.id]), {"estado": "rechazada"}, format="json")
+        self.assertEqual(response.status_code, 403)
+        claim.refresh_from_db()
+        self.assertEqual(claim.estado, "pendiente")
+        file = make_xlsx([["CI", "Asignatura", "Nota"], [student.ci, "Matematica", 80]])
+        data = {"asignatura": "Matematica", "fecha_limite_reclamo": "2030-01-31"}
+        self.assertEqual(self.post_raw("import-resultados", self.jefe, file, data).status_code, 403)
+
+
+class SecretarioReadOnlyStageTests(ImportBase):
+    """Secretario con etapa completada: GET 200 con flags en False y escrituras 403."""
+
+    def _entry(self, estado_escalafon="borrador"):
+        proceso = self.stage(1, estado="completada")
+        student = self.make_student("90020200001")
+        escalafon = Escalafon.objects.create(proceso=proceso, escuela=self.escuela, estado=estado_escalafon)
+        entry = EscalafonItem.objects.create(
+            escalafon=escalafon, estudiante=student, indice_10=90, indice_11=90, indice_12=90, indice_general=90,
+        )
+        return proceso, entry
+
+    def test_escalafon_completed(self):
+        _, entry = self._entry()
+        self.client.force_authenticate(self.secretario)
+        response = self.client.get(reverse("escalafon-list"))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data["entries"]), 1)
+        for flag in ("stage_active", "puede_importar", "puede_editar", "puede_enviar"):
+            self.assertIs(response.data[flag], False, flag)
+        self.assertEqual(self.client.get(reverse("escalafon-summary-provincial")).status_code, 200)
+        self.assertEqual(self.client.patch(reverse("escalafon-entry", args=[entry.id]), {"direccion": "X"}, format="json").status_code, 403)
+        self.assertEqual(self.client.post(reverse("escalafon-send")).status_code, 403)
+        entry.estado = "por_revisar"
+        entry.save(update_fields=["estado"])
+        self.assertEqual(self.client.post(reverse("escalafon-review", args=[entry.id])).status_code, 403)
+        entry.refresh_from_db()
+        self.assertEqual(entry.estado, "por_revisar")
+        file = make_xlsx([["CI"], ["1"]])
+        self.assertEqual(self.post_raw("import-escalafon", self.secretario, file).status_code, 403)
+
+    def test_escalafon_in_progress_flags(self):
+        self.stage(1)
+        self.client.force_authenticate(self.secretario)
+        response = self.client.get(reverse("escalafon-list"))
+        self.assertIs(response.data["stage_active"], True)
+        self.assertIs(response.data["puede_importar"], True)
+
+    def test_solicitud_completed(self):
+        self.stage(3, estado="completada")
+        self.client.force_authenticate(self.secretario)
+        response = self.client.get(reverse("school-solicitudes"))
+        self.assertEqual(response.status_code, 200)
+        self.assertIs(response.data["stage_active"], False)
+        self.assertIs(response.data["puede_aprobar"], False)
+        self.assertEqual(self.client.post(reverse("school-solicitud-approve", args=[1])).status_code, 403)
+
+    def test_interest_and_confirmation_completed(self):
+        self.stage(2, estado="completada")
+        self.stage(4, estado="completada")
+        self.client.force_authenticate(self.secretario)
+        response = self.client.get(reverse("school-interest-metrics"))
+        self.assertEqual(response.status_code, 200)
+        self.assertIs(response.data["stage_active"], False)
+        response = self.client.get(reverse("school-exam-confirmation-metrics"))
+        self.assertEqual(response.status_code, 200)
+        self.assertIs(response.data["stage_active"], False)
+
+    def test_results_and_awards_completed(self):
+        self.stage(5, estado="completada")
+        self.stage(6, estado="completada")
+        self.client.force_authenticate(self.secretario)
+        self.assertEqual(self.client.get(reverse("resultados-list")).status_code, 200)
+        response = self.client.get(reverse("school-otorgamiento-list"))
+        self.assertEqual(response.status_code, 200)
+        self.assertIs(response.data["stage_active"], False)

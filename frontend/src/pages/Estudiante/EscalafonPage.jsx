@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { fetchEscalafon, submitEscalafonAction } from "../../api/escalafon.service";
 import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
 import EscalafonTable from "../../components/EscalafonTable/EscalafonTable";
@@ -16,14 +16,12 @@ export default function EstudianteEscalafonPage() {
   const [search, setSearch] = useState("");
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [notice, setNotice] = useState("");
-  const [stageActive, setStageActive] = useState(false);
-  const handleStageStatus = useCallback((status) => {
-    setStageActive(status === "en_curso");
-  }, []);
+  const [canRespond, setCanRespond] = useState(false);
 
   useEffect(() => {
     fetchEscalafon().then((data) => {
       setEntries(data.entries);
+      setCanRespond(Boolean(data.puede_responder));
       setCurrent(data.entries.find((entry) => entry.id === data.actual_id) || null);
     }).catch((requestError) => setError(requestError.message));
   }, []);
@@ -48,7 +46,7 @@ export default function EstudianteEscalafonPage() {
           <p className="mt-1 text-sm text-slate-600">Consulta tus notas, tu posición en el escalafón y el estado de validación en el proceso de ingreso.</p>
         </div>
 
-        <StageStatusNotice stageNumber={1} onStatusChange={handleStageStatus} />
+        <StageStatusNotice stageNumber={1} />
 
         <StatsGrid className="mt-6">
           <StatCard label="10mo Grado" value={current?.indice_10 ?? "--"} />
@@ -62,14 +60,13 @@ export default function EstudianteEscalafonPage() {
 
         {current && <div className="mt-6 space-y-4">
           <EscalafonTable entries={entries} current={current} search={search} onSearchChange={(event) => setSearch(event.target.value)} />
-          {stageActive && (current.estado === "por_revisar" || current.estado === "sin_respuesta") && <div className={styles.reviewBox}>
+          {(current.estado === "por_revisar" || (canRespond && current.estado === "sin_respuesta")) && <div className={styles.reviewBox}>
             {current.estado === "por_revisar" && <FeedbackMessage type="warning" className="mt-2 rounded-xl">Tu solicitud de revisión fue enviada.</FeedbackMessage>}
-            {current.estado === "sin_respuesta" && <>
+            {canRespond && current.estado === "sin_respuesta" && <>
               <p className={styles.reviewHint}>¿Aceptas tus índices o deseas solicitar una revisión?</p>
               <div className={styles.reviewActions}>
-                <PrimaryButton className="!bg-brand-success hover:!brightness-90" onClick={() => act("aceptar")} disabled={current.estado_escalafon === "enviado"}>Aceptar</PrimaryButton>
-                <PrimaryButton className="!bg-amber-500 hover:!bg-amber-600" onClick={() => setReviewModalOpen(true)} disabled={current.estado_escalafon === "enviado"}>Solicitar revisión</PrimaryButton>
-                {current.estado_escalafon === "enviado" && <p className={styles.reviewSentNote}>El escalafón fue enviado a la Comisión y solo está disponible para consulta.</p>}
+                <PrimaryButton className="!bg-brand-success hover:!brightness-90" onClick={() => act("aceptar")}>Aceptar</PrimaryButton>
+                <PrimaryButton className="!bg-amber-500 hover:!bg-amber-600" onClick={() => setReviewModalOpen(true)}>Solicitar revisión</PrimaryButton>
               </div>
             </>}
           </div>}

@@ -11,7 +11,7 @@ IngresoSUP es un sistema modular para la gestión del proceso de ingreso a la Ed
 
 ## Inicio rápido
 
-Consulta [docs/SETUP.md](docs/SETUP.md) para instalar y ejecutar el proyecto localmente. La API queda disponible bajo `http://127.0.0.1:8000/api/v1/` y la documentación interactiva en `/api/v1/docs/`.
+Consulta [docs/SETUP.md](docs/SETUP.md) para instalar y ejecutar el proyecto localmente. El sistema requiere **PostgreSQL 14+** y **Redis 7+**: `docker compose up -d` los levanta en local (ver [Base de datos](docs/DEPLOYMENT.md#base-de-datos-postgresql-14)). La API queda disponible bajo `http://127.0.0.1:8000/api/v1/` y la documentación interactiva en `/api/v1/docs/`.
 
 ## Documentación
 

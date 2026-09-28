@@ -4,9 +4,9 @@ import { Card } from "../components";
 export default function PolicyPrivacyPage() {
   return (
     <div className="max-w-4xl mx-auto my-10 px-4">
-      <Card as="section" padding="p-8" className="space-y-6">
+      <Card as="section" padding="p-6" className="space-y-6">
         <div className="flex items-center justify-between gap-4">
-          <h1 className="text-3xl font-semibold text-slate-900">Política de privacidad</h1>
+          <h1 className="text-2xl font-semibold text-slate-900">Política de privacidad</h1>
           <Link to="/registro" className="text-sm font-medium text-blue-700 hover:text-blue-900">
             ← Volver al registro
           </Link>

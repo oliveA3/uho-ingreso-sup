@@ -92,18 +92,18 @@ export default function UsuariosPage() {
 
   return (
     <div className="municipal-users-page space-y-6">
-      <Card padding="p-8">
+      <Card padding="p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-700">Gestión</p>
-            <h1 className="mt-2 text-3xl font-semibold text-slate-900">Usuarios</h1>
+            <h1 className="mt-2 text-2xl font-semibold text-slate-900">Usuarios</h1>
             <p className="mt-2 text-sm text-slate-600">Crea Director y Secretario por escuela.</p>
           </div>
           <PrimaryButton onClick={openCreate}>+ Nuevo usuario</PrimaryButton>
         </div>
         {error && <FeedbackMessage type="error" className="mt-5 rounded-2xl">{error}</FeedbackMessage>}
       </Card>
-      <Card padding="p-8">
+      <Card padding="p-6">
         <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por nombre, correo o escuela" className="!mt-0 max-w-md" />
         <DataTable className="mt-6" columns={columns} data={filteredUsers} loading={loading} emptyMessage="No hay usuarios para mostrar." />
       </Card>

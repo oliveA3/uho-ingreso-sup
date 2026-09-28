@@ -185,7 +185,7 @@ export default function CarrerasPage() {
 
     return (
         <div className={styles.page}>
-            <Card padding="p-8">
+            <Card padding="p-6">
                 <div className={styles.headerRow}>
                     <div>
                         <p className={styles.eyebrow}>
@@ -207,9 +207,9 @@ export default function CarrerasPage() {
                 {error && <FeedbackMessage type="error" className="mt-5 rounded-2xl">{error}</FeedbackMessage>}
                 {notice && <FeedbackMessage type="success" className="mt-5 rounded-2xl">{notice}</FeedbackMessage>}
             </Card>
-            <Card padding="p-8">
+            <Card padding="p-6">
                 <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por nombre" className={styles.searchInput} />
-                <DataTable className={styles.table} columns={columns} data={filteredCareers} loading={loading} emptyMessage="No hay carreras para mostrar." />
+                <DataTable className={`table-scroll ${styles.table}`} columns={columns} data={filteredCareers} loading={loading} emptyMessage="No hay carreras para mostrar." />
             </Card>
             <Modal
                 open={modalOpen}

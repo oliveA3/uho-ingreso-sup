@@ -6,6 +6,8 @@ import styles from "./DataTable.module.css";
  *
  * columns: [{ key, header, render?(row), className? }]
  */
+const isActionsColumn = (column) => /^acciones?$/i.test(column.key);
+
 export default function DataTable({
   columns,
   data = [],
@@ -26,7 +28,7 @@ export default function DataTable({
         <thead className={styles.thead}>
           <tr>
             {columns.map((column) => (
-              <th key={column.key} scope="col" className={styles.th}>
+              <th key={column.key} scope="col" className={`${styles.th} ${isActionsColumn(column) ? styles.actionsCell : ""}`}>
                 {column.header}
               </th>
             ))}
@@ -52,7 +54,7 @@ export default function DataTable({
                   <td
                     key={column.key}
                     data-label={column.header}
-                    className={`${styles.td} ${column.className || ""}`}
+                    className={`${styles.td} ${isActionsColumn(column) ? styles.actionsCell : ""} ${column.className || ""}`}
                   >
                     {column.render ? column.render(row) : row[column.key]}
                   </td>

@@ -378,6 +378,7 @@ class PlanPlazaImportTests(APITestCase):
         self.active_stage.estado = "en_curso"
         self.active_stage.save(update_fields=["estado"])
         self.proceso = Proceso.objects.create(anio=date(2025, 1, 1), etapa=self.active_stage)
+        Etapa.objects.filter(nombre=ETAPAS_NOMBRES[3]).update(estado="en_curso")
 
     def _create_ces(self, nombre):
         from apps.superadmin.models import Ces
@@ -533,3 +534,57 @@ class PlanPlazaImportTests(APITestCase):
         self.assertEqual(response.data["provincia_nombre"], self.provincia.nombre)
         self.assertEqual(len(response.data["items"]), 1)
         self.assertEqual(response.data["items"][0]["cantidad_plazas"], 20)
+
+
+class JefeStageReadOnlyTests(APITestCase):
+    """Con la etapa 3 completada el panel del jefe es de solo lectura: GET ok, escrituras 403."""
+
+    def setUp(self):
+        self.provincia = Provincia.objects.create(nombre="Provincia RO")
+        self.ces = Ces.objects.create(nombre="CES RO", activa=True)
+        self.carrera = Carrera.objects.create(codigo="RO-1", nombre="Carrera RO", ces=self.ces, provincia=self.provincia, activa=True)
+        self.tipo = TipoOtorgamiento.objects.create(nombre="Municipal RO", activa=True)
+        self.jefe = Usuario.objects.create_user(
+            username="jefe.ro", email="jefe.ro@example.com", password="secret1234",
+            rol="jefe_comision", provincia=self.provincia,
+        )
+        self.client.force_authenticate(self.jefe)
+        self.etapa = Etapa.objects.get(nombre=ETAPAS_NOMBRES[3])
+        self.etapa.estado = "completada"
+        self.etapa.save(update_fields=["estado"])
+        self.proceso = Proceso.objects.get_or_create(anio=timezone.now().date().replace(month=1, day=1), etapa=self.etapa)[0]
+        self.plan = PlanPlaza.objects.create(
+            proceso=self.proceso, carrera=self.carrera, ces=self.ces, provincia=self.provincia,
+            otorgamiento_tipo=self.tipo, cantidad_plazas=5, sexo="A",
+        )
+
+    def _payload(self):
+        return {
+            "proceso": self.proceso.id, "carrera": self.carrera.id, "ces": self.ces.id,
+            "provincia": self.provincia.id, "otorgamiento_tipo": self.tipo.id, "cantidad_plazas": 3, "sexo": "A",
+        }
+
+    def test_get_still_returns_data_when_stage_completed(self):
+        response = self.client.get(reverse("plan-plazas"))
+        self.assertEqual(response.status_code, 200, response.content)
+
+    def test_crud_rejected_when_stage_completed(self):
+        base = reverse("plan-plazas")
+        detail = reverse("plan-plaza-detail", args=[self.plan.id])
+        self.assertEqual(self.client.post(base, self._payload(), format="json").status_code, 403)
+        self.assertEqual(self.client.patch(detail, {"cantidad_plazas": 9}, format="json").status_code, 403)
+        self.assertEqual(self.client.delete(detail).status_code, 403)
+        self.plan.refresh_from_db()
+        self.assertEqual(self.plan.cantidad_plazas, 5)
+
+    def test_crud_allowed_when_stage_in_progress(self):
+        self.etapa.estado = "en_curso"
+        self.etapa.save(update_fields=["estado"])
+        response = self.client.patch(reverse("plan-plaza-detail", args=[self.plan.id]), {"cantidad_plazas": 9}, format="json")
+        self.assertEqual(response.status_code, 200, response.content)
+
+    def test_import_plan_plaza_rejected_when_stage_completed(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        file = SimpleUploadedFile("p.xlsx", b"x", content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        response = self.client.post(reverse("import-plan-plaza"), {"file": file}, format="multipart")
+        self.assertEqual(response.status_code, 403)

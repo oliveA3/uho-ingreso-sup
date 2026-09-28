@@ -81,7 +81,7 @@ export default function SolicitudesPage() {
 
   return (
     <div className={styles.page}>
-      <Card padding="p-8">
+      <Card padding="p-6">
         <div>
           <p className={styles.eyebrow}>Solicitudes — Vista Provincial</p>
           <h1 className={styles.title}>Estado de boletas y modificaciones</h1>
@@ -98,7 +98,7 @@ export default function SolicitudesPage() {
       {error && <FeedbackMessage type="error" className="rounded-2xl">{error}</FeedbackMessage>}
       {message && <FeedbackMessage type="success" className="rounded-2xl">{message}</FeedbackMessage>}
 
-      <Card padding="p-8">
+      <Card padding="p-6">
         <div className={styles.modificationsHeader}>
           <p className={styles.modificationsTitle}>Modificaciones pendientes</p>
         </div>

@@ -26,7 +26,7 @@ export default function SecretarioNotificacionesPage() {
   return (
     <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
       <p className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-700">Cuenta</p>
-      <h1 className="mt-2 text-3xl font-semibold text-slate-900">Notificaciones</h1>
+      <h1 className="mt-2 text-2xl font-semibold text-slate-900">Notificaciones</h1>
       <p className="mt-3 text-sm text-slate-600">Consulta los avisos de tu cuenta.</p>
       {error && <FeedbackMessage type="error" className="mt-5 rounded-xl">{error}</FeedbackMessage>}
       <div className="mt-6 space-y-3">

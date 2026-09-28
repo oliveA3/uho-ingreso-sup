@@ -15,6 +15,7 @@ from apps.core.audit import record_audit
 from apps.core.throttling import BulkOperationRateThrottle
 from apps.gestion_provincial.permissions import IsCareerManager
 from apps.superadmin.models import Asignatura, Carrera, Ces, Escuela, Municipio, Provincia, TipoOtorgamiento
+from apps.gestion_provincial.services.etapas import is_stage_active, stage_readonly_message
 from .services.carreras_service import CareerExcelService
 from .services.escalafon_service import EscalafonExcelService, rank_escalafon_entries, resolve_school
 from apps.gestion_escuela.models import Escalafon, EscalafonItem
@@ -328,6 +329,8 @@ class ImportPlanPlazaView(APIView):
     throttle_classes = [BulkOperationRateThrottle]
 
     def post(self, request):
+        if not is_stage_active(3):
+            return Response({"detail": stage_readonly_message(3, "importar el plan de plazas")}, status=403)
         file = request.FILES.get("file")
         upload_error = validate_excel_upload(file)
         if upload_error:
@@ -475,6 +478,8 @@ class ImportOtorgamientoView(APIView):
     def post(self, request):
         if request.user.rol != "jefe_comision" and not request.user.is_superuser:
             return Response({"detail": "Solo el Jefe de Comisión puede importar otorgamientos."}, status=403)
+        if not is_stage_active(6):
+            return Response({"detail": stage_readonly_message(6, "importar otorgamientos")}, status=403)
         file = request.FILES.get("file")
         upload_error = validate_excel_upload(file)
         if upload_error:
@@ -528,6 +533,8 @@ class ImportCorteCarreraView(APIView):
     def post(self, request):
         if request.user.rol != "jefe_comision" and not request.user.is_superuser:
             return Response({"detail": "Solo el Jefe de Comisión puede importar índices de corte."}, status=403)
+        if not is_stage_active(6):
+            return Response({"detail": stage_readonly_message(6, "importar índices de corte")}, status=403)
         file = request.FILES.get("file")
         upload_error = validate_excel_upload(file)
         if upload_error:
@@ -554,6 +561,8 @@ class ImportCorteCarreraView(APIView):
                 "awarded_count": serializers.IntegerField(),
                 "without_award_count": serializers.IntegerField(),
                 "cuts_count": serializers.IntegerField(),
+                "stage_active": serializers.BooleanField(),
+                "puede_importar": serializers.BooleanField(),
             },
         ),
     },
@@ -605,6 +614,8 @@ class OtorgamientoSummaryView(APIView):
             "awarded_count": awards.count(),
             "without_award_count": students.exclude(estudiante_id__in=awarded_student_ids).count(),
             "cuts_count": cuts.count(),
+            "stage_active": is_stage_active(6),
+            "puede_importar": is_stage_active(6),
         })
 
 
@@ -751,6 +762,7 @@ class SchoolOtorgamientoListView(APIView):
         } if stage_one_process else {}
         return Response({
             "year": anio,
+            "stage_active": is_stage_active(6),
             "items": [{
                 "id": item.id,
                 "student": f"{item.estudiante.nombre} {item.estudiante.apellidos}",
@@ -928,6 +940,8 @@ class ImportEscalafonView(APIView):
             return Response({"detail": "Solo el Secretario puede importar el escalafón."}, status=status.HTTP_403_FORBIDDEN)
         if request.user.rol == "secretario_escuela" and request.data.get("escuela") not in {None, "", str(request.user.escuela_id), request.user.escuela_id}:
             return Response({"detail": "Solo puedes importar el escalafón de tu escuela."}, status=status.HTTP_403_FORBIDDEN)
+        if not is_stage_active(1):
+            return Response({"detail": stage_readonly_message(1, "importar el escalafón")}, status=403)
         file = request.FILES.get("file")
         upload_error = validate_excel_upload(file)
         if upload_error:
@@ -1139,11 +1153,9 @@ class ResultadosListView(APIView):
                     resultado__proceso=result_process,
                 )
             } if result_process else {}
-            current_stage = Etapa.objects.filter(estado="en_curso").order_by("id").first()
-            current_stage_number = next(
-                (number for number, name in ETAPAS_NOMBRES.items() if current_stage and current_stage.nombre == name),
-                None,
-            )
+            stage_five = Etapa.objects.filter(nombre=ETAPAS_NOMBRES[5]).first()
+            stage_en_curso = bool(stage_five and stage_five.estado == "en_curso")
+            today = timezone.localdate()
             results_by_subject = {
                 normalize_result_subject(result.asignatura.nombre): result
                 for result in results
@@ -1152,16 +1164,21 @@ class ResultadosListView(APIView):
             subjects = [("matematica", "Matemática"), ("espanol", "Español"), ("historia", "Historia")]
             return Response({
                 "stage": {
-                    "active": current_stage_number == 5,
-                    "completed": current_stage_number is not None and current_stage_number > 5,
-                    "current_number": current_stage_number,
-                    "fecha_fin": current_stage.fecha_fin if current_stage_number == 5 else None,
+                    "active": stage_en_curso,
+                    "completed": bool(stage_five and stage_five.estado == "completada"),
+                    "current_number": 5 if stage_en_curso else None,
+                    "fecha_fin": stage_five.fecha_fin if stage_en_curso else None,
                 },
+                "puede_reclamar": stage_en_curso,
                 "results": [{
                     "id": result.id if result else subject_key,
                     "subject": subject_name,
                     "grade": result.nota if result else None,
                     "fecha_limite_reclamo": result.fecha_limite_reclamo if result else None,
+                    "puede_reclamar": bool(
+                        stage_en_curso and result and result.id not in claims
+                        and not (result.fecha_limite_reclamo and result.fecha_limite_reclamo < today)
+                    ),
                     "claim": (
                         {
                             "id": claims[result.id].id,
@@ -1785,6 +1802,8 @@ class ResultClaimDecisionView(APIView):
             return Response({"detail": "La reclamación pendiente no existe."}, status=404)
         if request.user.rol == "jefe_comision" and claim.estudiante.escuela.municipio.provincia_id != request.user.provincia_id:
             return Response({"detail": "Solo puedes resolver reclamaciones de tu provincia."}, status=403)
+        if not is_stage_active(5):
+            return Response({"detail": stage_readonly_message(5, "resolver reclamaciones")}, status=403)
         if decision == "aprobada":
             presentation_date = str(request.data.get("fecha_presentacion", "")).strip()
             presentation_place = str(request.data.get("lugar_presentacion", "")).strip()
@@ -1962,8 +1981,7 @@ class ExportEscalafonView(APIView):
 
 def escalafon_stage_active():
     stage = Etapa.objects.filter(nombre=ETAPAS_NOMBRES[1]).first()
-    today = timezone.localdate()
-    return bool(stage and stage.fecha_inicio and stage.fecha_fin and stage.fecha_inicio <= today <= stage.fecha_fin), stage
+    return bool(stage and stage.estado == "en_curso"), stage
 
 
 def visible_entries(request):
@@ -2011,7 +2029,19 @@ class EscalafonListView(APIView):
             item["posicion"] = posicion
             serialized.append(item)
         current = entries.filter(estudiante__usuario=request.user).first() if request.user.rol == "estudiante" else None
-        return Response({"entries": serialized, "stage_active": active, "actual_id": current.id if current else None})
+        stage_one = Etapa.objects.filter(nombre=ETAPAS_NOMBRES[1]).first()
+        puede_responder = bool(
+            current and stage_one and stage_one.estado == "en_curso" and current.escalafon.estado != "enviado"
+        )
+        is_secretary = request.user.rol == "secretario_escuela"
+        enviado = any(entry.escalafon.estado == "enviado" for entry in entries[:1])
+        return Response({
+            "entries": serialized, "stage_active": active, "actual_id": current.id if current else None,
+            "puede_responder": puede_responder,
+            "puede_importar": bool(active and is_secretary),
+            "puede_editar": bool(active and is_secretary and not enviado),
+            "puede_enviar": bool(active and is_secretary and not enviado and serialized),
+        })
 
 
 @extend_schema(
@@ -2101,6 +2131,8 @@ class ProvincialEscalafonSummaryView(APIView):
             })
         return Response({
             "year": timezone.now().year,
+            "stage_active": is_stage_active(1),
+            "puede_importar": is_stage_active(1),
             "escuelas_enviaron": sum(item["escuelas_enviaron"] for item in data),
             "escuelas_pendientes": sum(item["escuelas"] - item["escuelas_enviaron"] for item in data),
             "total_estudiantes": current_entries.count(),
@@ -2186,6 +2218,8 @@ class EscalafonEntryView(APIView):
         if entry.escalafon.estado == "enviado":
             return Response({"detail": "El escalafón ya fue enviado y no puede modificarse."}, status=403)
         active, _ = escalafon_stage_active()
+        if not active:
+            return Response({"detail": stage_readonly_message(1, "editar el escalafón")}, status=403)
         name_errors = {}
         for field, max_length in (("nombre", 150), ("apellidos", 200)):
             if field in request.data:
@@ -2230,6 +2264,8 @@ class EscalafonSendView(APIView):
     def post(self, request):
         if request.user.rol != "secretario_escuela":
             return Response({"detail": "Solo el Secretario puede enviar índices a la Comisión."}, status=403)
+        if not is_stage_active(1):
+            return Response({"detail": stage_readonly_message(1, "enviar índices a la Comisión")}, status=403)
         entries = visible_entries(request).filter(escalafon__proceso__anio__year=timezone.now().year)
         if entries.filter(estado="por_revisar").exists():
             return Response({"detail": "No puedes enviar el escalafón mientras existan reclamaciones pendientes."}, status=400)
@@ -2289,6 +2325,9 @@ class StudentEscalafonActionView(APIView):
         serializer.is_valid(raise_exception=True)
         if action not in {"aceptar", "revision"}:
             return Response({"detail": "Acción no válida."}, status=400)
+        stage_one = Etapa.objects.filter(nombre=ETAPAS_NOMBRES[1]).first()
+        if not stage_one or stage_one.estado != "en_curso":
+            return Response({"detail": "El escalafón solo puede responderse durante la etapa 1; ahora solo puede consultarse."}, status=403)
         if entry.escalafon.estado == "enviado":
             return Response({"detail": "El escalafón ya fue enviado y solo puede consultarse."}, status=403)
         previous_state = entry.estado
@@ -2335,6 +2374,8 @@ class EscalafonReviewView(APIView):
     def post(self, request, pk):
         if request.user.rol != "secretario_escuela":
             return Response({"detail": "Solo el Secretario puede revisar solicitudes."}, status=403)
+        if not is_stage_active(1):
+            return Response({"detail": stage_readonly_message(1, "atender solicitudes de revisión")}, status=403)
         try:
             entry = visible_entries(request).get(pk=pk)
         except EscalafonItem.DoesNotExist:

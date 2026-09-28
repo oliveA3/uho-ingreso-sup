@@ -22,6 +22,11 @@ def is_stage_active(number):
     return Etapa.objects.en_curso().filter(nombre=ETAPAS_NOMBRES[number]).exists()
 
 
+def stage_readonly_message(number, action="modificar información"):
+    """Mensaje 403 estándar cuando una etapa no está en curso (solo lectura)."""
+    return f"La etapa {number} no está en curso: el panel está en solo lectura y no se puede {action}."
+
+
 def activate_stage(pk, data, actor, request, path):
     """Activa una etapa aplicando las reglas del proceso (secuencia estricta, una sola activa, fechas de exámenes)."""
     etapa = Etapa.objects.select_for_update().get(pk=pk)

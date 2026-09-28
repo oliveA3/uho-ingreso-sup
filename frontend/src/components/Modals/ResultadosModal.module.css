@@ -1,6 +1,6 @@
 .eyebrow {
   display: block;
-  font-size: 0.625rem;
+  font-size: 0.6875rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.2em;
@@ -51,6 +51,7 @@
 }
 
 .downloadButton {
-  padding: 0.5rem 0.75rem;
+  min-height: 0;
+  padding: 0.4rem 0.75rem;
   font-size: 0.75rem;
 }

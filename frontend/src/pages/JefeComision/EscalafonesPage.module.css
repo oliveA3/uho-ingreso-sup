@@ -22,7 +22,7 @@
 
 .title {
   margin-top: 0.5rem;
-  font-size: 1.875rem;
+  font-size: 1.5rem;
   font-weight: 600;
   color: var(--gris-900);
 }
@@ -79,7 +79,7 @@
 
 .summaryValue {
   margin-top: 0.5rem;
-  font-size: 1.875rem;
+  font-size: 1.5rem;
   font-weight: 600;
   color: var(--gris-900);
 }

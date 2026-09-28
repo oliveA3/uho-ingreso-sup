@@ -48,7 +48,6 @@ export default function SolicitudOverviewView({ data, title, canManage = false, 
       render: (ballot) => (
         <div className={styles.actions}>
           <button type="button" onClick={() => setSelectedBallot(ballot)} className={styles.actionButton}>Ver</button>
-          <button type="button" onClick={() => onDownload(ballot.id)} className={styles.actionButton}>Descargar PDF</button>
           {canApprove && (
             <button
               type="button"
@@ -97,7 +96,13 @@ export default function SolicitudOverviewView({ data, title, canManage = false, 
         </div>
       </section>
 
-      {selectedBallot && <BallotDetailModal ballot={selectedBallot} onClose={() => setSelectedBallot(null)} />}
+      {selectedBallot && (
+        <BallotDetailModal
+          ballot={selectedBallot}
+          onClose={() => setSelectedBallot(null)}
+          onDownload={onDownload ? () => onDownload(selectedBallot.id) : undefined}
+        />
+      )}
 
       <section className={styles.sectionFlat}>
         <h2 className={styles.tableTitle}>Top 10 carreras más solicitadas</h2>

@@ -12,12 +12,12 @@
 }
 
 .thead {
-  background-color: var(--gris-100);
-  color: var(--gris-500);
+  background-color: var(--color-primario, #1f4e79);
+  color: var(--color-primario-texto);
 }
 
 .th {
-  padding: 0.75rem 1rem;
+  padding: 0.75rem 0.75rem;
 }
 
 .tbody {
@@ -33,8 +33,21 @@
 }
 
 .td {
-  padding: 1rem;
+  padding: 1rem 0.75rem;
   color: var(--gris-600);
+}
+
+/* Columna de acciones: los botones nunca se parten en varias líneas ni se solapan;
+   la columna se ajusta al contenido y las demás ceden el espacio. */
+@media (min-width: 640px) {
+  .actionsCell {
+    width: 1%;
+    white-space: nowrap;
+  }
+
+  .actionsCell > button + button {
+    margin-left: 0.5rem;
+  }
 }
 
 .statusCell {

@@ -71,7 +71,7 @@ export default function LoginPage({ onLogin }) {
 
   return (
     <div className={styles.wrapper}>
-      <Card className="w-full max-w-xl" padding="p-8">
+      <Card className="w-full max-w-xl" padding="p-6">
         <div className="mb-6">
           <button type="button" onClick={() => navigate("/")} className={styles.backLink}>
             ← Volver al inicio
