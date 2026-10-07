@@ -3,6 +3,7 @@ import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
 import InterestMetricsView from "../../components/InterestMetricsView/InterestMetricsView";
 import { fetchSchoolInterestMetrics } from "../../api/school.service";
 import { Card } from "../../components";
+import styles from "./BoletaInteresPage.module.css";
 
 export default function DirectorBoletaInteresPage({ user }) {
   const [metrics, setMetrics] = useState(null);
@@ -15,7 +16,7 @@ export default function DirectorBoletaInteresPage({ user }) {
   }, []);
 
   if (error) {
-    return <FeedbackMessage type="error" className="rounded-2xl">{error}</FeedbackMessage>;
+    return <FeedbackMessage type="error" className={styles.errorMessage}>{error}</FeedbackMessage>;
   }
 
   if (!metrics) {
@@ -32,5 +33,5 @@ export default function DirectorBoletaInteresPage({ user }) {
 }
 
 function LoadingState() {
-  return <Card padding="p-6" className="text-sm text-slate-600">Cargando métricas...</Card>;
+  return <Card padding="p-6" className={styles.loadingCard}>Cargando métricas...</Card>;
 }

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { fetchStudentsWithoutAccount } from "../../api/school.service";
 import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
 import { Card, DataTable, PageHeader } from "../../components";
+import styles from "./SinCuentaPage.module.css";
 
 export default function SecretarioSinCuentaPage() {
   const [students, setStudents] = useState([]);
@@ -16,8 +17,8 @@ export default function SecretarioSinCuentaPage() {
   }, []);
 
   const columns = [
-    { key: "ci", header: "CI", className: "whitespace-nowrap text-slate-600", render: (s) => s.ci },
-    { key: "nombre", header: "Nombre", className: "font-medium text-slate-900", render: (s) => `${s.nombre} ${s.apellidos}` },
+    { key: "ci", header: "CI", className: styles.ciCell, render: (s) => s.ci },
+    { key: "nombre", header: "Nombre", className: styles.nameCell, render: (s) => `${s.nombre} ${s.apellidos}` },
     { key: "indice", header: "Índice general", render: (s) => s.indice_general ?? "--" },
   ];
 
@@ -28,11 +29,11 @@ export default function SecretarioSinCuentaPage() {
         subtitle="Lista de estudiantes que aún no han creado cuenta para que puedas gestionar su acceso."
       />
 
-      {students.length > 0 && <FeedbackMessage type="warning" className="mt-4 mb-4 rounded-xl">Hay {students.length} estudiante(s) sin cuenta activa.</FeedbackMessage>}
-      {error && <FeedbackMessage type="error" className="mb-4 rounded-xl">{error}</FeedbackMessage>}
+      {students.length > 0 && <FeedbackMessage type="warning" className={styles.warningMessage}>Hay {students.length} estudiante(s) sin cuenta activa.</FeedbackMessage>}
+      {error && <FeedbackMessage type="error" className={styles.errorMessage}>{error}</FeedbackMessage>}
 
       <DataTable
-        className="mt-2"
+        className={styles.table}
         columns={columns}
         data={students}
         loading={loading}

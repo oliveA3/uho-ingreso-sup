@@ -1,3 +1,75 @@
+.section {
+  border-radius: 1.5rem;
+  border: 1px solid var(--gris-200);
+  background-color: var(--blanco);
+  padding: 1.5rem;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+}
+
+@media (min-width: 640px) {
+  .section {
+    padding: 2rem;
+  }
+}
+
+.eyebrow {
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.24em;
+  color: var(--gris-700);
+}
+
+.title {
+  margin-top: 0.5rem;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--gris-900);
+}
+
+.subtitle {
+  margin-top: 0.75rem;
+  font-size: 0.875rem;
+  color: var(--gris-600);
+}
+
+.feedbackMessage {
+  margin-top: 1.25rem;
+  border-radius: 0.75rem;
+}
+
+.list {
+  margin-top: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.emptyState {
+  border-radius: 1rem;
+  background-color: var(--gris-50);
+  padding: 1.25rem;
+  font-size: 0.875rem;
+  color: var(--gris-500);
+}
+
+.notificationTitle {
+  font-weight: 600;
+  color: var(--gris-800);
+}
+
+.notificationContent {
+  margin-top: 0.25rem;
+  font-size: 0.875rem;
+  color: var(--gris-600);
+}
+
+.notificationDate {
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--gris-500);
+}
+
 .notification {
   display: block;
   width: 100%;

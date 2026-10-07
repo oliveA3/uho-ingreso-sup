@@ -1,0 +1,15 @@
+.accessCard {
+  margin: 1rem;
+}
+
+.title {
+  color: var(--gris-900);
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.message {
+  margin-top: 1rem;
+  color: var(--gris-600);
+  font-size: 0.875rem;
+}

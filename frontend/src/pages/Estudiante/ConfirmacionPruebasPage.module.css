@@ -117,3 +117,23 @@
   font-size: 0.875rem;
   color: var(--gris-500);
 }
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.errorMessage {
+  border-radius: 1rem;
+}
+
+.loadingCard {
+  font-size: 0.875rem;
+  color: var(--gris-600);
+}
+
+.feedbackMessage {
+  margin-top: 1.25rem;
+  border-radius: 1rem;
+}

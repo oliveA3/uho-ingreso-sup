@@ -180,7 +180,7 @@ export default function ResultadosPage() {
         </div>
 
         <DataTable
-          className="table-scroll mt-6"
+          className={`table-scroll ${styles.table}`}
           columns={columns}
           data={claims}
           loading={loading}

@@ -3,6 +3,7 @@ import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
 import SolicitudOverviewView from "../../components/SolicitudOverviewView/SolicitudOverviewView";
 import { downloadSchoolSolicitudPdf, fetchSchoolSolicitudes } from "../../api/school.service";
 import { Card } from "../../components";
+import styles from "./BoletasSolicitudPage.module.css";
 
 export default function DirectorBoletasSolicitudPage() {
   const [data, setData] = useState(null);
@@ -22,7 +23,7 @@ export default function DirectorBoletasSolicitudPage() {
     URL.revokeObjectURL(url);
   };
 
-  if (error) return <FeedbackMessage type="error" className="rounded-2xl">{error}</FeedbackMessage>;
-  if (!data) return <Card padding="p-6" className="text-sm text-slate-600">Cargando boletas de solicitud...</Card>;
+  if (error) return <FeedbackMessage type="error" className={styles.errorMessage}>{error}</FeedbackMessage>;
+  if (!data) return <Card padding="p-6" className={styles.loadingCard}>Cargando boletas de solicitud...</Card>;
   return <SolicitudOverviewView data={data} title="Estado de las boletas de solicitud" canDownload onDownload={download} readOnly />;
 }

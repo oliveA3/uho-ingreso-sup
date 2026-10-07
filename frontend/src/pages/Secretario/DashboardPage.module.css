@@ -1,3 +1,114 @@
+.errorBox {
+  border-radius: 1.5rem;
+  border: 1px solid var(--rosa-200, #fecdd3);
+  background-color: var(--rosa-50, #fff1f2);
+  padding: 2rem;
+  font-size: 0.875rem;
+  color: var(--rosa-700, #be123c);
+}
+
+.loadingBox {
+  border-radius: 1.5rem;
+  border: 1px solid var(--gris-200);
+  background-color: var(--blanco);
+  padding: 2rem;
+  font-size: 0.875rem;
+  color: var(--gris-600);
+}
+
+.card {
+  border-radius: 1.5rem;
+  border: 1px solid var(--gris-200);
+  background-color: var(--blanco);
+  padding: 1.25rem;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+}
+
+.cardInner {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.titleRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--gris-900);
+}
+
+.schoolBadge {
+  border-radius: 9999px;
+  background-color: var(--gris-100);
+  padding: 0.25rem 0.75rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--gris-700);
+}
+
+.subtitle {
+  margin-top: 0.25rem;
+  font-size: 0.875rem;
+  color: var(--gris-600);
+}
+
+.panelsGrid {
+  display: grid;
+  gap: 1rem;
+}
+
+@media (min-width: 1024px) {
+  .panelsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.panel {
+  border-radius: 1.5rem;
+  border: 1px solid var(--gris-200);
+  background-color: var(--gris-50);
+  padding: 1.25rem;
+}
+
+.panelTitle {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--gris-900);
+}
+
+.panelTitleSpaced {
+  margin-bottom: 1rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--gris-900);
+}
+
+.progressList {
+  margin-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.progressRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.875rem;
+  color: var(--gris-600);
+}
+
+.progressValue {
+  font-weight: 600;
+  color: var(--gris-900);
+}
+
 .progressTrack {
   height: 0.5rem;
   border-radius: 9999px;

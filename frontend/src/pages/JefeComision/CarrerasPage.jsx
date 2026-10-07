@@ -14,11 +14,20 @@ import StatusToggle from "../../components/Buttons/StatusToggle";
 import PrimaryButton from "../../components/Buttons/PrimaryButton";
 import SecondaryButton from "../../components/Buttons/SecondaryButton";
 import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
-import { Card, DataTable, FormField, Input, Modal, Select, useConfirm } from "../../components";
+import { Card, DataTable, FormField, Input, Modal, Select, TextArea, useConfirm } from "../../components";
 import { normalizeCatalogList } from "../../api/httpClient";
 import styles from "./CarrerasPage.module.css";
 
-const emptyForm = { codigo: "", nombre: "", ces: "", provincia: "" };
+const emptyForm = {
+    codigo: "",
+    nombre: "",
+    descripcion: "",
+    campo_laboral: "",
+    requisitos: "",
+    perfil_egresado: "",
+    ces: "",
+    provincia: "",
+};
 const normalize = (value) =>
     String(value || "")
         .toLowerCase()
@@ -39,6 +48,7 @@ export default function CarrerasPage() {
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState("");
     const [notice, setNotice] = useState("");
+    const [formError, setFormError] = useState("");
 
     async function loadCareers(showLoading = true) {
         try {
@@ -63,6 +73,7 @@ export default function CarrerasPage() {
     function openCreate() {
         setEditing(null);
         setForm({ ...emptyForm });
+        setFormError("");
         setModalOpen(true);
     }
     function openEdit(career) {
@@ -70,16 +81,21 @@ export default function CarrerasPage() {
         setForm({
             codigo: career.codigo,
             nombre: career.nombre,
+            descripcion: career.descripcion || "",
+            campo_laboral: career.campo_laboral || "",
+            requisitos: career.requisitos || "",
+            perfil_egresado: career.perfil_egresado || "",
             ces: String(career.ces),
             provincia: String(career.provincia),
         });
+        setFormError("");
         setModalOpen(true);
     }
     async function handleSubmit(event) {
         event.preventDefault();
         try {
             setBusy(true);
-            setError("");
+            setFormError("");
             const payload = {
                 ...form,
                 ces: Number(form.ces),
@@ -89,9 +105,10 @@ export default function CarrerasPage() {
             if (editing) await updateProvincialCareer(editing.id, payload);
             else await createProvincialCareer(payload);
             setModalOpen(false);
+            setNotice(editing ? "La carrera se actualizó correctamente." : "La carrera se creó correctamente.");
             await loadCareers(false);
         } catch (requestError) {
-            setError(requestError.message);
+            setFormError(requestError.message);
         } finally {
             setBusy(false);
         }
@@ -177,7 +194,7 @@ export default function CarrerasPage() {
             render: (c) => (
                 <>
                     <EntityActionButton variant="edit" onClick={() => openEdit(c)}>Editar</EntityActionButton>
-                    <EntityActionButton variant="delete" className="ml-2" onClick={() => handleDelete(c)}>Eliminar</EntityActionButton>
+                    <EntityActionButton variant="delete" className={styles.deleteAction} onClick={() => handleDelete(c)}>Eliminar</EntityActionButton>
                 </>
             ),
         },
@@ -204,8 +221,8 @@ export default function CarrerasPage() {
                         <SecondaryButton onClick={handleExport}>Exportar Excel</SecondaryButton>
                     </div>
                 </div>
-                {error && <FeedbackMessage type="error" className="mt-5 rounded-2xl">{error}</FeedbackMessage>}
-                {notice && <FeedbackMessage type="success" className="mt-5 rounded-2xl">{notice}</FeedbackMessage>}
+                {error && <FeedbackMessage type="error" className={styles.feedbackMessage}>{error}</FeedbackMessage>}
+                {notice && <FeedbackMessage type="success" className={styles.feedbackMessage}>{notice}</FeedbackMessage>}
             </Card>
             <Card padding="p-6">
                 <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por nombre" className={styles.searchInput} />
@@ -223,9 +240,20 @@ export default function CarrerasPage() {
                 }
             >
                 <form id="carrera-form" onSubmit={handleSubmit} className={styles.formGrid}>
+                    {formError && <FeedbackMessage type="error" className={styles.formError}>{formError}</FeedbackMessage>}
                     {[["Código", "codigo"], ["Nombre", "nombre"]].map(([label, field]) => (
                         <FormField key={field} label={label}>
                             <Input required value={form[field]} onChange={(event) => setForm({ ...form, [field]: event.target.value })} />
+                        </FormField>
+                    ))}
+                    {[
+                        ["Descripción", "descripcion"],
+                        ["Campo laboral", "campo_laboral"],
+                        ["Requisitos", "requisitos"],
+                        ["Perfil del egresado", "perfil_egresado"],
+                    ].map(([label, field]) => (
+                        <FormField key={field} label={label}>
+                            <TextArea rows={4} value={form[field]} onChange={(event) => setForm({ ...form, [field]: event.target.value })} />
                         </FormField>
                     ))}
                     {[["CES", "ces", ces], ["Provincia", "provincia", provinces]].map(([label, field, options]) => (

@@ -88,15 +88,15 @@ export default function SolicitudesPage() {
         </div>
 
         <StageStatusNotice stageNumber={3} onStatusChange={setStageStatus} />
-        <StatsGrid className="mt-6">
+        <StatsGrid className={styles.statsGrid}>
           <StatCard label="Aprobadas" value={total} tone="success" />
           <StatCard label="Pend. Comisión" value={data.metrics?.pendientes ?? 0} tone="warning" />
           <StatCard label="Mod. por aprobar" value={data.metrics?.pendientes ?? 0} tone="error" />
         </StatsGrid>
       </Card>
 
-      {error && <FeedbackMessage type="error" className="rounded-2xl">{error}</FeedbackMessage>}
-      {message && <FeedbackMessage type="success" className="rounded-2xl">{message}</FeedbackMessage>}
+      {error && <FeedbackMessage type="error" className={styles.feedbackMessage}>{error}</FeedbackMessage>}
+      {message && <FeedbackMessage type="success" className={styles.feedbackMessage}>{message}</FeedbackMessage>}
 
       <Card padding="p-6">
         <div className={styles.modificationsHeader}>
@@ -104,7 +104,7 @@ export default function SolicitudesPage() {
         </div>
 
         <DataTable
-          className="table-scroll mt-6"
+          className={`table-scroll ${styles.table}`}
           columns={columns}
           data={data.items}
           emptyMessage="No hay modificaciones pendientes."

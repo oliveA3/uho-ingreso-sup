@@ -1,0 +1,88 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.headerRow {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+@media (min-width: 640px) {
+  .headerRow {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
+
+.eyebrow {
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.24em;
+  color: var(--gris-700);
+}
+
+.title {
+  margin-top: 0.5rem;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--gris-900);
+}
+
+.subtitle {
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--gris-600);
+}
+
+.feedbackMessage {
+  margin-top: 1.25rem;
+  border-radius: 1rem;
+}
+
+.filtersGrid {
+  display: grid;
+  gap: 1rem;
+}
+
+@media (min-width: 640px) {
+  .filtersGrid {
+    grid-template-columns: minmax(0, 1fr) 220px;
+  }
+}
+
+.filterInput {
+  margin-top: 0;
+}
+
+.table {
+  margin-top: 1.5rem;
+}
+
+.strongCell {
+  font-weight: 500;
+  color: var(--gris-900);
+}
+
+.deleteAction {
+  margin-left: 0.5rem;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.formError {
+  border-radius: 0.5rem;
+}
+
+.passwordHint {
+  font-weight: 400;
+  color: var(--gris-500);
+}

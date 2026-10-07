@@ -42,7 +42,7 @@ export default function LogsPage() {
             <span className={styles.countBadge}>{total.toLocaleString("es-ES")} registros</span>
           </div>
           <p className={styles.description}>Registro inmutable de todas las acciones del sistema.</p>
-          {error && <FeedbackMessage type="error" className="mt-4 rounded-xl">{error}</FeedbackMessage>}
+          {error && <FeedbackMessage type="error" className={styles.feedbackMessage}>{error}</FeedbackMessage>}
           <div className={styles.filtersGrid}>
             {[["usuario", "Usuario"], ["accion", "Acción"], ["fecha_desde", "Desde"], ["fecha_hasta", "Hasta"]].map(([field, label]) => (
               <FormField key={field} label={label}>

@@ -416,10 +416,12 @@ def current_solicitud_context(request):
 	return student, (process, stage), None
 
 
-def student_escalafon_index(student):
+def student_escalafon_index(student, process):
 	entry = EscalafonItem.objects.filter(
 		estudiante=student,
-		escalafon__proceso__anio__year=timezone.now().year,
+		escalafon__escuela=student.escuela,
+		escalafon__proceso__anio=process.anio,
+		escalafon__proceso__etapa__nombre=ETAPAS_NOMBRES[1],
 	).order_by("-escalafon__proceso__anio", "-escalafon_id", "-id").first()
 	return entry.indice_general if entry else student.indice_general
 
@@ -448,6 +450,8 @@ class StudentSolicitudView(APIView):
 				}),
 				"max_items": serializers.IntegerField(),
 				"puede_editar": serializers.BooleanField(),
+				"escalafon_valido": serializers.BooleanField(),
+				"plan_anio": serializers.IntegerField(),
 				"puede_solicitar_modificacion": serializers.BooleanField(),
 				"stage": inline_serializer(name="SolicitudStage", fields={
 					"numero": serializers.IntegerField(allow_null=True), "active": serializers.BooleanField(),
@@ -469,7 +473,11 @@ class StudentSolicitudView(APIView):
 			return Response({"detail": "No hay un proceso de solicitud activo."}, status=404)
 		ballot, _ = BoletaSolicitud.objects.get_or_create(estudiante=student, proceso=process)
 		province_id = student.escuela.municipio.provincia_id
-		plans = PlanPlaza.objects.filter(proceso=process, provincia_id=province_id).select_related("carrera", "ces", "provincia", "otorgamiento_tipo").order_by("carrera__nombre")
+		escalafon_valido = solicitud_service.has_stage_one_escalafon_entry(student, process)
+		plans = PlanPlaza.objects.filter(
+			proceso=process,
+			provincia_id=province_id,
+		).select_related("carrera", "ces", "provincia", "otorgamiento_tipo").order_by("carrera__nombre") if escalafon_valido else PlanPlaza.objects.none()
 		active_stage = Etapa.objects.filter(estado="en_curso").order_by("id").first()
 		active_stage_number = next((number for number, name in ETAPAS_NOMBRES.items() if active_stage and name == active_stage.nombre), None)
 		allow_modification = active_stage_number == 3
@@ -478,13 +486,15 @@ class StudentSolicitudView(APIView):
 			**BoletaSolicitudSerializer(ballot).data,
 			"student": {"nombre": student.nombre, "apellidos": student.apellidos, "ci": student.ci,
 				"escuela": student.escuela.nombre, "municipio": student.escuela.municipio.nombre,
-				"provincia": student.escuela.municipio.provincia.nombre, "indice_general": student_escalafon_index(student)},
+				"provincia": student.escuela.municipio.provincia.nombre, "indice_general": student_escalafon_index(student, process)},
 			"available_plans": [{"id": plan.id, "carrera_nombre": plan.carrera.nombre, "carrera_codigo": plan.carrera.codigo,
 				"ces_nombre": plan.ces.nombre, "provincia_nombre": plan.provincia.nombre,
 				"cantidad_plazas": plan.cantidad_plazas, "otorgamiento_tipo": plan.otorgamiento_tipo.nombre, "sexo": plan.sexo}
 				for plan in plans],
 			"max_items": MAX_ITEMS,
-			"puede_editar": solicitud_service.can_edit(ballot, stage),
+			"escalafon_valido": escalafon_valido,
+			"plan_anio": process.anio.year,
+			"puede_editar": escalafon_valido and solicitud_service.can_edit(ballot, stage),
 			"puede_solicitar_modificacion": solicitud_service.can_request_modification(ballot, stage),
 			"stage": {"numero": active_stage_number or (3 if stage and stage.estado == "en_curso" else None),
 				"active": stage_is_active,
@@ -577,6 +587,8 @@ class StudentSolicitudEditView(APIView):
 			return Response({"detail": "No existe una boleta de solicitud para este estudiante."}, status=404)
 		if active_stage_number != 3:
 			return Response({"detail": "La solicitud de modificación solo está habilitada durante la etapa 3."}, status=403)
+		if not process or not solicitud_service.has_stage_one_escalafon_entry(student, process):
+			return Response({"detail": "No puedes modificar la boleta porque no apareces en el escalafón del año del proceso."}, status=403)
 		if ballot.estado == "modificada":
 			return Response({"detail": "Ya existe una solicitud de modificación pendiente de revisión."}, status=400)
 		if ballot.estado == "pendiente":
@@ -619,7 +631,7 @@ class StudentSolicitudPdfView(APIView):
 		if not ballot:
 			return Response({"detail": "No existe una boleta de solicitud."}, status=404)
 		lines = ["BOLETA DE SOLICITUD", f"Nombre: {student.nombre} {student.apellidos}", f"CI: {student.ci}",
-			f"Escuela: {student.escuela.nombre}", f"Indice general: {student_escalafon_index(student) or ''}", "", "Prioridad | Carrera | CES | Provincia universidad"]
+			f"Escuela: {student.escuela.nombre}", f"Indice general: {student_escalafon_index(student, process) or ''}", "", "Prioridad | Carrera | CES | Provincia universidad"]
 		lines += [f"{item.prioridad} | {item.plan_plaza.carrera.nombre} | {item.plan_plaza.carrera.ces.nombre} | {item.plan_plaza.carrera.provincia.nombre}" for item in ballot.boleta_solicitud.select_related("plan_plaza__carrera__ces", "plan_plaza__carrera__provincia").order_by("prioridad")]
 		response = HttpResponse(render_pdf("BOLETA DE SOLICITUD", lines[1:]), content_type="application/pdf")
 		response["Content-Disposition"] = 'attachment; filename="boleta-solicitud.pdf"'

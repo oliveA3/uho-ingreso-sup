@@ -4,6 +4,7 @@ import EstudianteSidebar from "./EstudianteSidebar";
 import JefeComisionSidebar from "./JefeComisionSidebar";
 import RepresentanteProvincialSidebar from "./RepresentanteProvincialSidebar";
 import RepresentanteMunicipalSidebar from "./RepresentanteMunicipalSidebar";
+import GestorNoticiasSidebar from "./GestorNoticiasSidebar";
 import SecretarioSidebar from "./SecretarioSidebar";
 import DirectorSidebar from "./DirectorSidebar";
 
@@ -26,6 +27,8 @@ export function SidebarSelector({ user, onLogout }) {
     case "ingreso_provincial":
     case "ingreso provincial":
       return React.createElement(RepresentanteProvincialSidebar, sidebarProps);
+    case "gestor_noticias":
+      return React.createElement(GestorNoticiasSidebar, sidebarProps);
     case "repr_municipal":
     case "repr municipal":
     case "ingreso_municipal":

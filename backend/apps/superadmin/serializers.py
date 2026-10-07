@@ -10,6 +10,7 @@ from .models import (
     Municipio,
     Provincia,
     TipoOtorgamiento,
+    normalize_territorial_name,
 )
 
 
@@ -104,22 +105,51 @@ class SuperAdminStudentSerializer(serializers.Serializer):
     )
 
 
-class ProvinciaSerializer(serializers.ModelSerializer):
+class NormalizedTerritorialNameValidationMixin:
+    def validate_normalized_territorial_name(self, attrs, scope_fields=()):
+        name = attrs.get("nombre", getattr(self.instance, "nombre", ""))
+        filters = {"nombre_normalizado": normalize_territorial_name(name)}
+        for field_name in scope_fields:
+            value = attrs.get(field_name, getattr(self.instance, field_name, None))
+            filters[f"{field_name}__isnull" if value is None else field_name] = value
+
+        duplicates = self.Meta.model.objects.filter(**filters)
+        if self.instance:
+            duplicates = duplicates.exclude(pk=self.instance.pk)
+        if duplicates.exists():
+            raise serializers.ValidationError({
+                "nombre": "Ya existe un nombre equivalente en este ámbito territorial.",
+            })
+
+
+class ProvinciaSerializer(NormalizedTerritorialNameValidationMixin, serializers.ModelSerializer):
     class Meta:
         model = Provincia
         fields = ['id', 'nombre', 'descripcion', 'activa', 'fecha_ultima_modificacion']
 
+    def validate(self, attrs):
+        self.validate_normalized_territorial_name(attrs)
+        return attrs
 
-class MunicipioSerializer(serializers.ModelSerializer):
+
+class MunicipioSerializer(NormalizedTerritorialNameValidationMixin, serializers.ModelSerializer):
     class Meta:
         model = Municipio
         fields = ['id', 'nombre', 'descripcion', 'provincia', 'activo', 'fecha_ultima_modificacion']
 
+    def validate(self, attrs):
+        self.validate_normalized_territorial_name(attrs, ("provincia",))
+        return attrs
 
-class EscuelaSerializer(serializers.ModelSerializer):
+
+class EscuelaSerializer(NormalizedTerritorialNameValidationMixin, serializers.ModelSerializer):
     class Meta:
         model = Escuela
         fields = ['id', 'nombre', 'codigo', 'descripcion', 'municipio', 'activa', 'fecha_ultima_modificacion']
+
+    def validate(self, attrs):
+        self.validate_normalized_territorial_name(attrs, ("municipio",))
+        return attrs
 
 
 class CesSerializer(serializers.ModelSerializer):
@@ -139,7 +169,10 @@ class CesSerializer(serializers.ModelSerializer):
 class CarreraSerializer(serializers.ModelSerializer):
     class Meta:
         model = Carrera
-        fields = ['id', 'codigo', 'nombre', 'descripcion', 'ces', 'provincia', 'activa', 'fecha_ultima_modificacion']
+        fields = [
+            'id', 'codigo', 'nombre', 'descripcion', 'campo_laboral', 'requisitos',
+            'perfil_egresado', 'ces', 'provincia', 'activa', 'fecha_ultima_modificacion',
+        ]
 
 
 class AsignaturaSerializer(serializers.ModelSerializer):

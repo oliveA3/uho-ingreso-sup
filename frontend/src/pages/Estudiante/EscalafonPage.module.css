@@ -1,3 +1,72 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.eyebrow {
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.24em;
+  color: var(--gris-700);
+}
+
+.title {
+  margin-top: 0.5rem;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--gris-900);
+}
+
+.subtitle {
+  margin-top: 0.25rem;
+  font-size: 0.875rem;
+  color: var(--gris-600);
+}
+
+.statsGrid {
+  margin-top: 1.5rem;
+}
+
+.feedbackMessage {
+  margin-top: 1.5rem;
+  border-radius: 1rem;
+}
+
+.noticeMessage {
+  margin-top: 0.75rem;
+  border-radius: 1rem;
+}
+
+.escalafonSection {
+  margin-top: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.reviewPendingMessage {
+  margin-top: 0.5rem;
+  border-radius: 0.75rem;
+}
+
+.acceptButton {
+  background-color: var(--color-exito, #1a7a4a) !important;
+}
+
+.acceptButton:hover {
+  filter: brightness(0.9);
+}
+
+.reviewButton {
+  background-color: #f59e0b !important;
+}
+
+.reviewButton:hover {
+  background-color: var(--advertencia-600, #d97706) !important;
+}
+
 .reviewBox {
   margin-top: 1.5rem;
   border-radius: 1rem;

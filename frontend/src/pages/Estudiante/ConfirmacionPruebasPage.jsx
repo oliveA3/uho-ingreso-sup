@@ -44,12 +44,12 @@ export default function EstudianteConfirmacionPruebasPage() {
     }
   };
 
-  if (error && !data) return <FeedbackMessage type="error" className="rounded-2xl">{error}</FeedbackMessage>;
-  if (!data) return <Card padding="p-6" className="text-sm text-slate-600">Cargando pruebas de ingreso...</Card>;
+  if (error && !data) return <FeedbackMessage type="error" className={styles.errorMessage}>{error}</FeedbackMessage>;
+  if (!data) return <Card padding="p-6" className={styles.loadingCard}>Cargando pruebas de ingreso...</Card>;
 
   const canConfirm = Boolean(data.puede_confirmar);
   return (
-    <div className="space-y-6">
+    <div className={styles.page}>
       <Card padding="p-6">
         <div className={styles.headerBlock}>
           <div>
@@ -59,7 +59,7 @@ export default function EstudianteConfirmacionPruebasPage() {
           </div>
         </div>
         <StageStatusNotice stageNumber={4} />
-        {error && <FeedbackMessage type="error" className="mt-5 rounded-2xl">{error}</FeedbackMessage>}
+        {error && <FeedbackMessage type="error" className={styles.feedbackMessage}>{error}</FeedbackMessage>}
         <div className={styles.examList}>
           {data.exams.length ? data.exams.map((exam) => (
             <div key={exam.id} className={styles.examRow}>

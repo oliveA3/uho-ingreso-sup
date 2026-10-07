@@ -1,4 +1,4 @@
-from django.db.models import Count
+from django.db.models import Count, Q
 from django.db import transaction
 from django.utils import timezone
 from drf_spectacular.utils import OpenApiExample, extend_schema, inline_serializer
@@ -127,6 +127,7 @@ from .serializers import (
     ProvincialProvinciaSerializer,
     ProvincialUserSerializer,
     ProvincialCarreraSerializer,
+    PublicCareerInformationSerializer,
     ProvincialCesSerializer,
     ProvincialTipoOtorgamientoSerializer,
 )
@@ -644,6 +645,37 @@ class PublicPlanPlazaLandingView(APIView):
 
     def get(self, request):
         return Response(build_plan_plaza_landing_payload(request))
+
+
+class PublicCareerInformationLandingView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        province = None
+        user = request.user
+        if user.is_authenticated and user.provincia_id:
+            province = Provincia.objects.filter(pk=user.provincia_id).first()
+        if province is None:
+            province = Provincia.objects.filter(nombre__iexact="Holguín").order_by("id").first()
+
+        careers = Carrera.objects.none()
+        if province:
+            has_information = (
+                (Q(descripcion__isnull=False) & ~Q(descripcion=""))
+                | ~Q(campo_laboral="")
+                | ~Q(requisitos="")
+                | ~Q(perfil_egresado="")
+            )
+            careers = Carrera.objects.filter(
+                provincia=province,
+                activa=True,
+            ).filter(has_information).select_related("ces").order_by("nombre")
+
+        return Response({
+            "provincia_id": province.id if province else None,
+            "provincia_nombre": province.nombre if province else "Holguín",
+            "items": PublicCareerInformationSerializer(careers, many=True).data,
+        })
 
 
 class ProvincialProcesoViewSet(viewsets.GenericViewSet):

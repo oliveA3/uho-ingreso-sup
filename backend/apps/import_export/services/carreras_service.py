@@ -58,21 +58,27 @@ class CareerExcelService:
             if row_errors:
                 errors.append({"row": row_number, "errors": row_errors, "data": data})
             else:
-                rows.append({"codigo": code, "nombre": name, "ces": ces, "provincia": province})
+                rows.append({
+                    "codigo": code,
+                    "nombre": name,
+                    "ces": ces,
+                    "provincia": province,
+                })
 
         if errors:
             return CareerImportResult(errors=errors)
         with transaction.atomic():
             imported_codes = set()
             for row in rows:
+                defaults = {
+                    "nombre": row["nombre"],
+                    "ces": row["ces"],
+                    "provincia": row["provincia"],
+                    "activa": True,
+                }
                 Carrera.objects.update_or_create(
                     codigo=row["codigo"],
-                    defaults={
-                        "nombre": row["nombre"],
-                        "ces": row["ces"],
-                        "provincia": row["provincia"],
-                        "activa": True,
-                    },
+                    defaults=defaults,
                 )
                 imported_codes.add(row["codigo"])
             # Careers dropped from the sheet are deactivated, not deleted,

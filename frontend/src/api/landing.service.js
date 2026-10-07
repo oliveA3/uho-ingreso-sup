@@ -4,6 +4,14 @@ export function fetchLandingData() {
   return request("/gestion-provincial/etapas/disponibilidad/", { credentials: "same-origin" });
 }
 
+export function fetchLandingCareerInformation() {
+  return request("/gestion-provincial/carreras/landing/");
+}
+
+export function fetchLandingNews() {
+  return request("/gestion-provincial/noticias/landing/");
+}
+
 export function fetchRegistrationAvailability() {
   return request("/gestion-provincial/etapas/disponibilidad/", { credentials: "same-origin" });
 }

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
 import StageStatusNotice from "../../components/StageStatusNotice/StageStatusNotice";
 import { downloadStudentSolicitudExcel, downloadStudentSolicitudPdf, fetchStudentSolicitud, submitStudentSolicitud } from "../../api/student.service";
@@ -21,6 +22,8 @@ function StatusBadge({ status }) {
 
 export default function BoletaPage() {
   const confirm = useConfirm();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [data, setData] = useState(null);
   const [selected, setSelected] = useState([]);
   const [selectedPlan, setSelectedPlan] = useState("");
@@ -36,6 +39,38 @@ export default function BoletaPage() {
   };
 
   useEffect(() => { refresh().catch((requestError) => setError(requestError.message)); }, []);
+
+  useEffect(() => {
+    const addPlanId = Number(location.state?.addPlanId);
+    if (!data || !addPlanId) return;
+
+    const clearPendingAdd = () => navigate(location.pathname, { replace: true, state: null });
+    const plan = data.available_plans.find((item) => item.id === addPlanId);
+    if (!plan) {
+      setError("La plaza de esa carrera ya no está disponible en tu provincia.");
+      clearPendingAdd();
+      return;
+    }
+    if (data.items.some((item) => item.carrera_codigo === plan.carrera_codigo)) {
+      setMessage("Esa carrera ya está incluida en tu boleta.");
+      clearPendingAdd();
+      return;
+    }
+    if (!data.puede_editar || data.items.length >= data.max_items) {
+      setError("No se agregó la carrera porque la boleta está llena o no disponible para edición.");
+      clearPendingAdd();
+      return;
+    }
+
+    setSelected((current) => (
+      current.includes(addPlanId) || current.length >= data.max_items
+        ? current
+        : [...current, addPlanId]
+    ));
+    if (data.estado === "pendiente") setEditingMode("edit-pending");
+    setMessage(`${plan.carrera_nombre} se agregó a la selección. La boleta se guarda al enviarla.`);
+    clearPendingAdd();
+  }, [data, location.pathname, location.state?.addPlanId, navigate]);
 
   const update = async (action) => {
     setError(null);
@@ -120,7 +155,7 @@ export default function BoletaPage() {
     } catch (requestError) { setError(requestError.message); }
   };
 
-  if (!data) return <Card padding="p-6" className="text-sm text-slate-600">Cargando boleta de solicitud...</Card>;
+  if (!data) return <Card padding="p-6" className={styles.loadingCard}>Cargando boleta de solicitud...</Card>;
 
   const student = data.student;
   const studentInfo = [
@@ -133,7 +168,7 @@ export default function BoletaPage() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className={styles.page}>
       <Card padding="p-6">
         <div className={styles.headerRow}>
           <div>
@@ -146,8 +181,8 @@ export default function BoletaPage() {
             <SecondaryButton onClick={downloadExcel} disabled={!data.id}>Descargar Excel</SecondaryButton>
           </div>
         </div>
-        {error && <FeedbackMessage type="error" className="mt-6 rounded-2xl">{error}</FeedbackMessage>}
-        {message && <FeedbackMessage type="success" className="mt-6 rounded-2xl">{message}</FeedbackMessage>}
+        {error && <FeedbackMessage type="error" className={styles.feedbackMessage}>{error}</FeedbackMessage>}
+        {message && <FeedbackMessage type="success" className={styles.feedbackMessage}>{message}</FeedbackMessage>}
         <StageStatusNotice stageNumber={3} />
         <div className={styles.studentInfoGrid}>
           {studentInfo.map((item) => (
@@ -197,7 +232,7 @@ export default function BoletaPage() {
               </>
             ) : data.estado === "pendiente" && editingMode === 'edit-pending' ? (
               <>
-                <PrimaryButton className="!bg-brand-success hover:!brightness-90" onClick={send} disabled={!editing || selected.length !== data.max_items}>Enviar boleta</PrimaryButton>
+                <PrimaryButton className={styles.submitButton} onClick={send} disabled={!editing || selected.length !== data.max_items}>Enviar boleta</PrimaryButton>
                 <SecondaryButton onClick={() => setEditingMode(null)}>Cancelar</SecondaryButton>
               </>
             ) : canRequestModification && editingMode === null ? (
@@ -207,14 +242,14 @@ export default function BoletaPage() {
               </>
             ) : editingMode === 'request-modification' ? (
               <>
-                <PrimaryButton className="!bg-brand-success hover:!brightness-90" onClick={send} disabled={!editing || selected.length !== data.max_items}>Enviar solicitud de modificación</PrimaryButton>
+                <PrimaryButton className={styles.submitButton} onClick={send} disabled={!editing || selected.length !== data.max_items}>Enviar solicitud de modificación</PrimaryButton>
                 <SecondaryButton onClick={() => setEditingMode(null)}>Cancelar</SecondaryButton>
               </>
             ) : modificationPending ? (
               <span className={styles.noteError}>Modificada y pendiente de aprobación del Jefe de Comisión.</span>
             ) : data.estado === "aprobada" ? null : (
               <>
-                <PrimaryButton className="!bg-brand-success hover:!brightness-90" onClick={send} disabled={!editing || selected.length !== data.max_items}>Enviar boleta</PrimaryButton>
+                <PrimaryButton className={styles.submitButton} onClick={send} disabled={!editing || selected.length !== data.max_items}>Enviar boleta</PrimaryButton>
                 <span className={styles.noteMuted}>Debes seleccionar las {data.max_items} carreras para enviarla.</span>
               </>
             )}

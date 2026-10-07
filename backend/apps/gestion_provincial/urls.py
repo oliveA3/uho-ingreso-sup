@@ -16,8 +16,15 @@ from .views import (
     ProvincialReiniciarEtapasView,
     PublicEtapasDisponibilidadView,
     PublicPlanPlazaLandingView,
+    PublicCareerInformationLandingView,
     PlanPlazaViewSet,
     CommissionSolicitudAuthorizationView,
+)
+from .views_noticias import (
+    ProvincialNewsManagerViewSet,
+    ProvincialNoticiaViewSet,
+    PublicNoticiaDownloadView,
+    PublicNoticiasLandingView,
 )
 
 urlpatterns = [
@@ -35,6 +42,13 @@ urlpatterns = [
     path("etapas/", ProvincialEtapaViewSet.as_view({"get": "list"}), name="provincial-etapas"),
     path("etapas/disponibilidad/", PublicEtapasDisponibilidadView.as_view(), name="etapas-disponibilidad"),
     path("plan-plazas/landing/", PublicPlanPlazaLandingView.as_view(), name="plan-plazas-landing"),
+    path("carreras/landing/", PublicCareerInformationLandingView.as_view(), name="career-information-landing"),
+    path("noticias/landing/", PublicNoticiasLandingView.as_view(), name="noticias-landing"),
+    path("noticias/<int:pk>/descargar/", PublicNoticiaDownloadView.as_view(), name="noticia-multimedia-download"),
+    path("noticias/", ProvincialNoticiaViewSet.as_view({"get": "list", "post": "create"}), name="provincial-noticias"),
+    path("noticias/<int:pk>/", ProvincialNoticiaViewSet.as_view({"get": "retrieve", "patch": "partial_update", "delete": "destroy"}), name="provincial-noticia-detail"),
+    path("gestores-noticias/", ProvincialNewsManagerViewSet.as_view({"get": "list", "post": "create"}), name="provincial-gestores-noticias"),
+    path("gestores-noticias/<int:pk>/", ProvincialNewsManagerViewSet.as_view({"get": "retrieve", "patch": "partial_update", "delete": "destroy"}), name="provincial-gestor-noticia-detail"),
     path("procesos/", ProvincialProcesoViewSet.as_view({"get": "list", "post": "create"}), name="provincial-procesos"),
     path("etapas/<int:pk>/activar/", ProvincialActivarEtapaView.as_view(), name="provincial-etapa-activar"),
     path("etapas/<int:pk>/cerrar/", ProvincialCerrarEtapaView.as_view(), name="provincial-etapa-cerrar"),

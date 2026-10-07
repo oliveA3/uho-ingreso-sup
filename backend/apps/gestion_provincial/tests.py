@@ -1,5 +1,9 @@
 from datetime import date, timedelta
+import tempfile
+from unittest.mock import patch
 
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import override_settings
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework.test import APITestCase
@@ -9,7 +13,268 @@ from apps.gestion_escuela.models import Escalafon, EscalafonItem
 from apps.gestion_personal.models import BoletaInteres, BoletaInteresItem, BoletaSolicitud, BoletaSolicitudItem
 from apps.superadmin.models import Carrera, Ces, Escuela, Municipio, Provincia, TipoOtorgamiento
 
-from .models import ETAPAS_NOMBRES, Etapa, PlanPlaza, Proceso
+from .models import ETAPAS_NOMBRES, Etapa, Noticia, PlanPlaza, Proceso
+
+
+class ProvincialNewsTests(APITestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.media_directory = tempfile.TemporaryDirectory()
+        cls.media_settings = override_settings(MEDIA_ROOT=cls.media_directory.name)
+        cls.media_settings.enable()
+        super().setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super().tearDownClass()
+        cls.media_settings.disable()
+        cls.media_directory.cleanup()
+
+    def setUp(self):
+        self.holguin = Provincia.objects.create(nombre="Holguín")
+        self.matanzas = Provincia.objects.create(nombre="Matanzas")
+        self.manager = Usuario.objects.create_user(
+            username="news.manager",
+            email="news.manager@example.com",
+            password="secret1234",
+            rol="gestor_noticias",
+            provincia=self.matanzas,
+        )
+
+    def create_news(self, province, **fields):
+        values = {
+            "titulo": "Aviso provincial",
+            "contenido": "Información importante.",
+            "permanente": False,
+            "fecha_expiracion": timezone.localdate() + timedelta(days=2),
+        }
+        values.update(fields)
+        return Noticia.objects.create(provincia=province, **values)
+
+    def test_public_landing_defaults_to_holguin_and_excludes_expired_news(self):
+        active = self.create_news(self.holguin)
+        permanent = self.create_news(self.holguin, titulo="Aviso permanente", permanente=True, fecha_expiracion=None)
+        self.create_news(self.holguin, titulo="Aviso vencido", fecha_expiracion=timezone.localdate() - timedelta(days=1))
+        self.create_news(self.matanzas, titulo="Otra provincia")
+
+        response = self.client.get(reverse("noticias-landing"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["provincia_nombre"], "Holguín")
+        self.assertEqual({item["id"] for item in response.data["items"]}, {active.id, permanent.id})
+        other_province_news = Noticia.objects.get(titulo="Otra provincia")
+        download = self.client.get(reverse("noticia-multimedia-download", args=[other_province_news.id]))
+        self.assertEqual(download.status_code, 404)
+
+    def test_authenticated_landing_uses_the_users_province(self):
+        news = self.create_news(self.matanzas)
+        self.client.force_authenticate(self.manager)
+
+        response = self.client.get(reverse("noticias-landing"))
+
+        self.assertEqual(response.data["provincia_nombre"], "Matanzas")
+        self.assertEqual([item["id"] for item in response.data["items"]], [news.id])
+
+    def test_manager_can_download_expired_news_but_public_users_cannot(self):
+        expired = self.create_news(
+            self.matanzas,
+            fecha_expiracion=timezone.localdate() - timedelta(days=1),
+            multimedia=SimpleUploadedFile("aviso.pdf", b"%PDF-1.4 aviso"),
+        )
+        self.client.force_authenticate(self.manager)
+        manager_response = self.client.get(reverse("noticia-multimedia-download", args=[expired.id]))
+        self.assertEqual(manager_response.status_code, 200)
+
+        self.client.force_authenticate(None)
+        public_response = self.client.get(reverse("noticia-multimedia-download", args=[expired.id]))
+        self.assertEqual(public_response.status_code, 404)
+
+    def test_manager_crud_is_limited_to_assigned_province(self):
+        other_news = self.create_news(self.holguin)
+        self.client.force_authenticate(self.manager)
+        created = self.client.post(reverse("provincial-noticias"), {
+            "titulo": "Comunicado de Matanzas",
+            "contenido": "Contenido de prueba.",
+            "fecha_expiracion": (timezone.localdate() + timedelta(days=4)).isoformat(),
+            "permanente": "false",
+        }, format="multipart")
+
+        self.assertEqual(created.status_code, 201, created.data)
+        self.assertEqual(created.data["provincia"], self.matanzas.id)
+        listed = self.client.get(reverse("provincial-noticias"))
+        self.assertEqual([item["id"] for item in listed.data], [created.data["id"]])
+        self.assertNotEqual(created.data["id"], other_news.id)
+
+        updated = self.client.patch(
+            reverse("provincial-noticia-detail", args=[created.data["id"]]),
+            {"titulo": "Comunicado actualizado", "permanente": "true"},
+            format="multipart",
+        )
+        self.assertEqual(updated.status_code, 200, updated.data)
+        self.assertTrue(updated.data["permanente"])
+        self.assertIsNone(updated.data["fecha_expiracion"])
+
+        deleted = self.client.delete(reverse("provincial-noticia-detail", args=[created.data["id"]]))
+        self.assertEqual(deleted.status_code, 204)
+
+    def test_non_news_manager_cannot_use_management_api(self):
+        student = Usuario.objects.create_user(
+            username="news.student",
+            email="news.student@example.com",
+            password="secret1234",
+            rol="estudiante",
+            provincia=self.matanzas,
+        )
+        self.client.force_authenticate(student)
+
+        response = self.client.get(reverse("provincial-noticias"))
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_commission_chief_can_manage_news_only_in_assigned_province(self):
+        chief = Usuario.objects.create_user(
+            username="news.chief",
+            email="news.chief@example.com",
+            password="secret1234",
+            rol="jefe_comision",
+            provincia=self.matanzas,
+        )
+        holguin_news = self.create_news(self.holguin, titulo="Aviso de Holguín")
+        expired_news = self.create_news(
+            self.matanzas,
+            titulo="Aviso vencido del jefe",
+            fecha_expiracion=timezone.localdate() - timedelta(days=1),
+            multimedia=SimpleUploadedFile("aviso-vencido.pdf", b"%PDF-1.4 aviso"),
+        )
+        self.client.force_authenticate(chief)
+        expired_download = self.client.get(
+            reverse("noticia-multimedia-download", args=[expired_news.id])
+        )
+        self.assertEqual(expired_download.status_code, 200)
+        self.assertEqual(b"".join(expired_download.streaming_content), b"%PDF-1.4 aviso")
+
+        created = self.client.post(reverse("provincial-noticias"), {
+            "titulo": "Aviso del jefe de comisión",
+            "contenido": "El jefe también puede administrar noticias de su provincia.",
+            "permanente": "true",
+        }, format="multipart")
+
+        self.assertEqual(created.status_code, 201, created.data)
+        self.assertEqual(created.data["provincia"], self.matanzas.id)
+        listed = self.client.get(reverse("provincial-noticias"))
+        self.assertEqual({item["id"] for item in listed.data}, {created.data["id"], expired_news.id})
+        self.assertNotIn(holguin_news.id, [item["id"] for item in listed.data])
+
+        deleted = self.client.delete(reverse("provincial-noticia-detail", args=[created.data["id"]]))
+        self.assertEqual(deleted.status_code, 204)
+
+    def test_uploaded_document_can_be_downloaded_and_invalid_types_are_rejected(self):
+        self.client.force_authenticate(self.manager)
+        created = self.client.post(reverse("provincial-noticias"), {
+            "titulo": "Documento provincial",
+            "contenido": "Descarga el documento adjunto.",
+            "permanente": "true",
+            "multimedia": SimpleUploadedFile(
+                "orientaciones.pdf", b"%PDF-1.4 contenido", content_type="application/pdf"
+            ),
+        }, format="multipart")
+
+        self.assertEqual(created.status_code, 201, created.data)
+        download = self.client.get(reverse("noticia-multimedia-download", args=[created.data["id"]]))
+        self.assertEqual(download.status_code, 200)
+        self.assertIn("attachment", download["Content-Disposition"])
+        self.assertEqual(b"".join(download.streaming_content), b"%PDF-1.4 contenido")
+
+        invalid = self.client.post(reverse("provincial-noticias"), {
+            "titulo": "Archivo inválido",
+            "contenido": "No debe aceptar ejecutables.",
+            "permanente": "true",
+            "multimedia": SimpleUploadedFile(
+                "programa.exe", b"MZ executable", content_type="application/octet-stream"
+            ),
+        }, format="multipart")
+        self.assertEqual(invalid.status_code, 400)
+        self.assertIn("multimedia", invalid.data)
+
+        invalid_signature = self.client.post(reverse("provincial-noticias"), {
+            "titulo": "PDF falso",
+            "contenido": "El contenido debe coincidir con la extensión.",
+            "permanente": "true",
+            "multimedia": SimpleUploadedFile(
+                "falso.pdf", b"MZ executable", content_type="application/pdf"
+            ),
+        }, format="multipart")
+        self.assertEqual(invalid_signature.status_code, 400)
+
+    def test_uploaded_video_has_a_safe_inline_preview_and_download(self):
+        self.client.force_authenticate(self.manager)
+        created = self.client.post(reverse("provincial-noticias"), {
+            "titulo": "Video provincial",
+            "contenido": "Video del proceso.",
+            "permanente": "true",
+            "multimedia": SimpleUploadedFile(
+                "proceso.mp4", b"\x00\x00\x00\x18ftypisom0000", content_type="video/mp4"
+            ),
+        }, format="multipart")
+
+        self.assertEqual(created.status_code, 201, created.data)
+        landing = self.client.get(reverse("noticias-landing"))
+        item = landing.data["items"][0]
+        self.assertEqual(item["media_type"], "video")
+        self.assertIn("inline=1", item["media_url"])
+        self.assertTrue(item["media_url"].startswith("http://testserver/"))
+        inline = self.client.get(
+            reverse("noticia-multimedia-download", args=[created.data["id"]]),
+            {"inline": "1"},
+        )
+        self.assertEqual(inline.status_code, 200)
+        self.assertEqual(inline["Content-Type"], "video/mp4")
+        self.assertEqual(b"".join(inline.streaming_content), b"\x00\x00\x00\x18ftypisom0000")
+
+    @patch("apps.gestion_provincial.serializers_noticias.fetch_open_graph_image")
+    def test_external_article_cover_is_cached_for_landing(self, fetch_cover):
+        fetch_cover.return_value = (b"\x89PNG\r\n\x1a\npreview", ".png")
+        self.client.force_authenticate(self.manager)
+        created = self.client.post(reverse("provincial-noticias"), {
+            "titulo": "Enlace externo",
+            "contenido": "Lee el comunicado completo.",
+            "url_externa": "https://example.org/noticia",
+            "permanente": "true",
+            "multimedia": SimpleUploadedFile(
+                "comunicado.pdf", b"%PDF-1.4 contenido", content_type="application/pdf"
+            ),
+        }, format="multipart")
+
+        self.assertEqual(created.status_code, 201, created.data)
+        self.assertIn("tipo=portada", created.data["imagen_portada_url"])
+        landing = self.client.get(reverse("noticias-landing"))
+        self.assertIn("tipo=portada", landing.data["items"][0]["cover_url"])
+        cover = self.client.get(
+            reverse("noticia-multimedia-download", args=[created.data["id"]]),
+            {"tipo": "portada", "inline": "1"},
+        )
+        self.assertEqual(cover.status_code, 200)
+        self.assertEqual(cover["Content-Type"], "image/png")
+        self.assertEqual(cover["X-Content-Type-Options"], "nosniff")
+        fetch_cover.assert_called_once_with("https://example.org/noticia")
+
+    @patch("apps.gestion_provincial.services.noticias._safe_get")
+    def test_open_graph_image_is_extracted_and_signature_checked(self, safe_get):
+        html = b'<meta property="og:image" content="/media/cover.png">'
+        png = b"\x89PNG\r\n\x1a\nvalid-preview"
+        safe_get.side_effect = [
+            ("https://example.org/noticia", "text/html", html),
+            ("https://example.org/media/cover.png", "image/png", png),
+        ]
+
+        from apps.gestion_provincial.services.noticias import fetch_open_graph_image
+
+        self.assertEqual(fetch_open_graph_image("https://example.org/noticia"), (png, ".png"))
+
+    def test_open_graph_fetch_rejects_private_ip_addresses(self):
+        from apps.gestion_provincial.services.noticias import fetch_open_graph_image
+
+        self.assertIsNone(fetch_open_graph_image("http://127.0.0.1/internal"))
 
 
 class EtapaActivationTests(APITestCase):
@@ -476,6 +741,32 @@ class PlanPlazaImportTests(APITestCase):
         self.assertEqual(plan.proceso.etapa_id, plan_stage.id)
         self.assertEqual(plan.proceso.anio.year, 2026)
 
+    def test_import_resolves_national_career_code_for_user_province(self):
+        from io import BytesIO
+        from openpyxl import Workbook
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        other_province = Provincia.objects.create(nombre="Santiago de Cuba")
+        self.user.provincia = other_province
+        self.user.save(update_fields=["provincia"])
+
+        workbook = Workbook()
+        sheet = workbook.active
+        sheet.title = "Plan de Plazas"
+        sheet.append(["Código_Carrera", "Nombre_Carrera", "Cantidad_Plazas", "Tipo_Otorgamiento", "CES", "Provincia", "Sexo"])
+        sheet.append([self.carrera.codigo, self.carrera.nombre, 10, "Municipal", self.ces.nombre, other_province.nombre, "A"])
+
+        buffer = BytesIO()
+        workbook.save(buffer)
+        file = SimpleUploadedFile("plan-plazas-national-code.xlsx", buffer.getvalue(), content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
+        response = self._import_plan_plaza(file)
+
+        self.assertEqual(response.status_code, 201, response.content)
+        plan = PlanPlaza.objects.get(carrera=self.carrera, provincia=other_province)
+        self.assertEqual(plan.carrera_id, self.carrera.id)
+        self.assertEqual(plan.provincia_id, other_province.id)
+
     def test_import_rejects_invalid_type_values(self):
         from io import BytesIO
         from openpyxl import Workbook
@@ -534,6 +825,99 @@ class PlanPlazaImportTests(APITestCase):
         self.assertEqual(response.data["provincia_nombre"], self.provincia.nombre)
         self.assertEqual(len(response.data["items"]), 1)
         self.assertEqual(response.data["items"][0]["cantidad_plazas"], 20)
+
+
+class CareerInformationLandingTests(APITestCase):
+    def setUp(self):
+        self.holguin = Provincia.objects.create(nombre="Holguín")
+        self.other_province = Provincia.objects.create(nombre="Matanzas")
+        self.ces = Ces.objects.create(nombre="CES catálogo landing")
+        self.holguin_career = Carrera.objects.create(
+            codigo="LAND-HOL-1",
+            nombre="Carrera informada de Holguín",
+            descripcion="Ficha pública disponible.",
+            ces=self.ces,
+            provincia=self.holguin,
+        )
+        Carrera.objects.create(
+            codigo="LAND-HOL-2",
+            nombre="Carrera sin ficha",
+            ces=self.ces,
+            provincia=self.holguin,
+        )
+        self.other_career = Carrera.objects.create(
+            codigo="LAND-MAT-1",
+            nombre="Carrera informada de Matanzas",
+            campo_laboral="Empresas del sector.",
+            ces=self.ces,
+            provincia=self.other_province,
+        )
+
+    def test_anonymous_landing_defaults_to_holguin_and_hides_empty_records(self):
+        response = self.client.get(reverse("career-information-landing"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["provincia_nombre"], "Holguín")
+        self.assertEqual([item["id"] for item in response.data["items"]], [self.holguin_career.id])
+
+    def test_authenticated_user_sees_informed_careers_from_own_province(self):
+        user = Usuario.objects.create_user(
+            username="landing.provincial",
+            email="landing.provincial@example.com",
+            password="secret1234",
+            rol="jefe_comision",
+            provincia=self.other_province,
+        )
+        self.client.force_authenticate(user)
+
+        response = self.client.get(reverse("career-information-landing"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["provincia_nombre"], "Matanzas")
+        self.assertEqual([item["id"] for item in response.data["items"]], [self.other_career.id])
+
+
+class ProvincialCareerInformationTests(APITestCase):
+    def setUp(self):
+        self.province = Provincia.objects.create(nombre="Provincia carreras")
+        self.ces = Ces.objects.create(nombre="CES carreras")
+        user = Usuario.objects.create_user(
+            username="jefe.carreras",
+            email="jefe.carreras@example.com",
+            password="secret1234",
+            rol="jefe_comision",
+            provincia=self.province,
+        )
+        self.client.force_authenticate(user)
+
+    def test_create_and_edit_career_information(self):
+        fields = {
+            "codigo": "INFO-1",
+            "nombre": "Carrera con perfil",
+            "descripcion": "Descripción",
+            "campo_laboral": "Campo laboral",
+            "requisitos": "Requisitos",
+            "perfil_egresado": "Perfil del egresado",
+            "ces": self.ces.id,
+            "provincia": self.province.id,
+        }
+        created = self.client.post(reverse("provincial-carreras"), fields, format="json")
+
+        self.assertEqual(created.status_code, 201, created.data)
+        self.assertEqual(created.data["descripcion"], "Descripción")
+        self.assertEqual(created.data["campo_laboral"], "Campo laboral")
+        self.assertEqual(created.data["requisitos"], "Requisitos")
+        self.assertEqual(created.data["perfil_egresado"], "Perfil del egresado")
+
+        updated = self.client.patch(
+            reverse("provincial-carrera-detail", args=[created.data["id"]]),
+            {"campo_laboral": "Campo laboral actualizado"},
+            format="json",
+        )
+
+        self.assertEqual(updated.status_code, 200, updated.data)
+        self.assertEqual(updated.data["campo_laboral"], "Campo laboral actualizado")
+        self.assertEqual(updated.data["requisitos"], "Requisitos")
 
 
 class JefeStageReadOnlyTests(APITestCase):

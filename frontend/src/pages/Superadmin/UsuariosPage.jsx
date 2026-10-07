@@ -19,6 +19,7 @@ const roles = [
   ["superadmin", "Super Administrador"],
   ["jefe_comision", "Jefe de Comisión"],
   ["ingreso_provincial", "Repr. Provincial"],
+  ["gestor_noticias", "Gestor de Noticias"],
   ["ingreso_municipal", "Repr. Municipal"],
   ["director_escuela", "Director de Escuela"],
   ["secretario_escuela", "Secretario de Escuela"],
@@ -32,6 +33,13 @@ const fieldLabels = {
   email: "Correo",
   first_name: "Nombre",
   last_name: "Apellidos",
+};
+
+const autoCompleteByField = {
+  username: "username",
+  email: "email",
+  first_name: "given-name",
+  last_name: "family-name",
 };
 
 const emptyForm = {
@@ -82,6 +90,8 @@ export default function UsuariosPage() {
   const [editing, setEditing] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [error, setError] = useState("");
+  const [formError, setFormError] = useState("");
+  const [notice, setNotice] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [students, setStudents] = useState([]);
@@ -155,6 +165,7 @@ export default function UsuariosPage() {
   function openCreate() {
     setEditing(null);
     setForm(emptyForm);
+    setFormError("");
     setShowPassword(false);
     setModalOpen(true);
   }
@@ -194,6 +205,7 @@ export default function UsuariosPage() {
       password: "",
       is_active: user.is_active,
     });
+    setFormError("");
     setShowPassword(false);
     setModalOpen(true);
   }
@@ -201,7 +213,7 @@ export default function UsuariosPage() {
   async function handleSubmit(event) {
     event.preventDefault();
     try {
-      setError("");
+      setFormError("");
       const payload = {
         ...form,
         username: form.username.trim(),
@@ -225,9 +237,10 @@ export default function UsuariosPage() {
         await createSuperAdminUser(payload);
       }
       setModalOpen(false);
+      setNotice(editing ? "El usuario se actualizó correctamente." : "El usuario se creó correctamente.");
       await loadUsers();
     } catch (requestError) {
-      setError(requestError.message);
+      setFormError(requestError.message);
     }
   }
 
@@ -282,7 +295,7 @@ export default function UsuariosPage() {
       render: (user) => (
         <>
           <EntityActionButton variant="edit" onClick={() => openEdit(user)}>Editar</EntityActionButton>
-          <EntityActionButton variant="delete" className="ml-2" onClick={() => handleDelete(user)}>Eliminar</EntityActionButton>
+          <EntityActionButton variant="delete" className={styles.deleteAction} onClick={() => handleDelete(user)}>Eliminar</EntityActionButton>
         </>
       ),
     },
@@ -304,7 +317,7 @@ export default function UsuariosPage() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className={styles.page}>
       <Card padding="p-6">
         <PageHeader
           title="👥 Usuarios"
@@ -339,9 +352,10 @@ export default function UsuariosPage() {
           </FormField>
         </div>
 
-        {error && <FeedbackMessage type="error" className="mt-5 rounded-2xl">{error}</FeedbackMessage>}
+        {notice && <FeedbackMessage type="success" className={styles.noticeMessage}>{notice}</FeedbackMessage>}
+        {error && <FeedbackMessage type="error" className={styles.errorMessage}>{error}</FeedbackMessage>}
         <DataTable
-          className="table-scroll mt-6"
+          className={`table-scroll ${styles.usersTable}`}
           columns={columns}
           data={users}
           loading={loading}
@@ -373,7 +387,7 @@ export default function UsuariosPage() {
           </FormField>
         </div>
         <DataTable
-          className={`${styles.studentTable} mt-2`}
+          className={styles.studentTable}
           columns={studentColumns}
           data={students}
           loading={studentsLoading}
@@ -394,10 +408,13 @@ export default function UsuariosPage() {
           </>
         }
       >
-        <form id="usuario-form" onSubmit={handleSubmit} className="grid gap-4 sm:grid-cols-2">
+        <form id="usuario-form" onSubmit={handleSubmit} className={styles.form}>
+          {formError && <FeedbackMessage type="error" className={styles.formError}>{formError}</FeedbackMessage>}
           {["username", "email", "first_name", "last_name"].map((field) => (
             <FormField key={field} label={fieldLabels[field]}>
               <Input
+                name={field}
+                autoComplete={autoCompleteByField[field]}
                 required={!editing || field !== "username"}
                 disabled={editing && field === "username"}
                 type={field === "email" ? "email" : "text"}
@@ -444,23 +461,27 @@ export default function UsuariosPage() {
             </FormField>
           )}
           {needsSchool && (
-            <FormField label={<>Escuela <span className={styles.requiredMark}>*</span></>} className="sm:col-span-2">
+            <FormField label={<>Escuela <span className={styles.requiredMark}>*</span></>} className={styles.fieldSpan2}>
               <Select required value={form.escuela} onChange={(event) => setForm({ ...form, escuela: event.target.value })} disabled={!form.municipio}>
                 <option value="">Selecciona una escuela</option>
                 {schools.map((school) => <option key={school.id} value={school.id}>{school.nombre}</option>)}
               </Select>
             </FormField>
           )}
-          <label className={`${styles.activeCheckboxRow} sm:col-span-2`}>
+          <label className={styles.activeCheckboxRow}>
             <input type="checkbox" checked={form.is_active} onChange={(event) => setForm({ ...form, is_active: event.target.checked })} className={styles.checkbox} />
             Usuario activo
           </label>
           <FormField
-            label={<>Contraseña{editing && <span className="font-normal text-slate-500"> (dejar vacía para conservarla)</span>}</>}
-            className="sm:col-span-2"
+            htmlFor="usuario-password"
+            label={<>Contraseña{editing && <span className={styles.passwordHint}> (dejar vacía para conservarla)</span>}</>}
+            className={styles.fieldSpan2}
           >
             <div className={styles.passwordFieldWrapper}>
               <Input
+                id="usuario-password"
+                name="password"
+                autoComplete="new-password"
                 required={!editing}
                 minLength="8"
                 type={showPassword ? "text" : "password"}

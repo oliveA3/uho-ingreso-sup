@@ -2,11 +2,23 @@ from django.db import transaction
 from django.utils import timezone
 
 from apps.authentication.models import Usuario
+from apps.gestion_escuela.models import EscalafonItem
 from apps.gestion_provincial.models import ETAPAS_NOMBRES, Etapa, PlanPlaza
 from apps.gestion_personal.models import BoletaSolicitud, BoletaSolicitudItem, BoletaSolicitudItemAnterior
 
 MAX_ITEMS = 10
 EDITABLE_STATES = {"por_enviar", "pendiente", "modificada"}
+
+
+def has_stage_one_escalafon_entry(student, process):
+	if not process:
+		return False
+	return EscalafonItem.objects.filter(
+		estudiante=student,
+		escalafon__escuela=student.escuela,
+		escalafon__proceso__anio=process.anio,
+		escalafon__proceso__etapa__nombre=ETAPAS_NOMBRES[1],
+	).exists()
 
 
 class SolicitudError(Exception):
@@ -65,6 +77,11 @@ def submit(student, process, stage, raw_plan_ids, confirm=False, modification=Fa
 	"""
 	if not process or not stage_is_active(stage):
 		raise SolicitudError("La boleta no está disponible para edición. Solo puede modificarse durante la etapa 3.", 403)
+	if not has_stage_one_escalafon_entry(student, process):
+		raise SolicitudError(
+			f"No puedes llenar la boleta: no apareces en el escalafón del proceso {process.anio.year}.",
+			403,
+		)
 	with transaction.atomic():
 		ballot, _ = BoletaSolicitud.objects.select_for_update().get_or_create(estudiante=student, proceso=process)
 		requesting = False

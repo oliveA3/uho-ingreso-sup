@@ -24,18 +24,18 @@ export default function SecretarioNotificacionesPage() {
   }
 
   return (
-    <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
-      <p className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-700">Cuenta</p>
-      <h1 className="mt-2 text-2xl font-semibold text-slate-900">Notificaciones</h1>
-      <p className="mt-3 text-sm text-slate-600">Consulta los avisos de tu cuenta.</p>
-      {error && <FeedbackMessage type="error" className="mt-5 rounded-xl">{error}</FeedbackMessage>}
-      <div className="mt-6 space-y-3">
-        {!notifications.length && !error && <p className="rounded-2xl bg-slate-50 p-5 text-sm text-slate-500">No tienes notificaciones.</p>}
+    <section className={styles.section}>
+      <p className={styles.eyebrow}>Cuenta</p>
+      <h1 className={styles.title}>Notificaciones</h1>
+      <p className={styles.subtitle}>Consulta los avisos de tu cuenta.</p>
+      {error && <FeedbackMessage type="error" className={styles.feedbackMessage}>{error}</FeedbackMessage>}
+      <div className={styles.list}>
+        {!notifications.length && !error && <p className={styles.emptyState}>No tienes notificaciones.</p>}
         {notifications.map((notification) => (
           <button key={notification.id} type="button" onClick={() => readNotification(notification)} className={`${styles.notification} ${notification.leida ? styles.notificationRead : styles.notificationUnread}`}>
-            <p className="font-semibold text-slate-800">{notification.titulo}</p>
-            <p className="mt-1 text-sm text-slate-600">{notification.contenido}</p>
-            <p className="mt-2 text-xs text-slate-500">{new Date(notification.fecha).toLocaleString("es-CU")}</p>
+            <p className={styles.notificationTitle}>{notification.titulo}</p>
+            <p className={styles.notificationContent}>{notification.contenido}</p>
+            <p className={styles.notificationDate}>{new Date(notification.fecha).toLocaleString("es-CU")}</p>
           </button>
         ))}
       </div>

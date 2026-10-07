@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
 import SchoolConfirmationMetrics from "../../components/SchoolConfirmationMetrics/SchoolConfirmationMetrics";
 import { fetchSchoolExamConfirmationMetrics } from "../../api/school.service";
+import styles from "./ConfirmacionPruebasPage.module.css";
 
 export default function SecretarioConfirmacionPruebasPage() {
   const [data, setData] = useState(null);
@@ -11,7 +12,7 @@ export default function SecretarioConfirmacionPruebasPage() {
     fetchSchoolExamConfirmationMetrics().then(setData).catch((requestError) => setError(requestError.message));
   }, []);
 
-  if (error) return <FeedbackMessage type="error" className="rounded-2xl">{error}</FeedbackMessage>;
-  if (!data) return <div className="rounded-3xl border border-slate-200 bg-white p-6 text-sm text-slate-600 shadow-sm">Cargando confirmaciones...</div>;
+  if (error) return <FeedbackMessage type="error" className={styles.errorMessage}>{error}</FeedbackMessage>;
+  if (!data) return <div className={styles.loadingState}>Cargando confirmaciones...</div>;
   return <SchoolConfirmationMetrics data={data} title="Confirmación de Pruebas" />;
 }

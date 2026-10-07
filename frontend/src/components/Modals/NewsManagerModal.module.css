@@ -1,0 +1,24 @@
+.form {
+  display: grid;
+  gap: 1rem;
+}
+
+.formError {
+  border-radius: 0.5rem;
+}
+
+.passwordHint {
+  color: var(--gris-500);
+  font-weight: 400;
+}
+
+.activeToggle {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  border: 1px solid var(--gris-200);
+  border-radius: 0.5rem;
+  padding: 0.625rem 0.75rem;
+  color: var(--gris-700);
+  font-size: 0.875rem;
+}

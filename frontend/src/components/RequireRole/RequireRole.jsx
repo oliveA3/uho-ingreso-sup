@@ -1,4 +1,5 @@
 import { Card } from "../index";
+import styles from "./RequireRole.module.css";
 
 // Mirrors the role-string aliases used by SidebarSelector so a layout's
 // allowed-role list stays in sync with which sidebar the user sees.
@@ -8,15 +9,16 @@ const ROLE_ALIASES = {
   jefe_comision: ["jefe_comision", "jefe comisión", "jefe comision"],
   repr_provincial: ["repr_provincial", "repr provincial", "ingreso_provincial", "ingreso provincial"],
   repr_municipal: ["repr_municipal", "repr municipal", "ingreso_municipal", "ingreso municipal"],
+  gestor_noticias: ["gestor_noticias"],
   secretario: ["secretario", "secretario_escuela"],
   director: ["director_escuela"],
 };
 
 function AccessCard({ title, message }) {
   return (
-    <Card className="m-4" padding="p-6">
-      <h1 className="text-2xl font-semibold text-slate-900">{title}</h1>
-      <p className="mt-4 text-sm text-slate-600">{message}</p>
+    <Card className={styles.accessCard} padding="p-6">
+      <h1 className={styles.title}>{title}</h1>
+      <p className={styles.message}>{message}</p>
     </Card>
   );
 }

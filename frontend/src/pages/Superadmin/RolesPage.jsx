@@ -1,39 +1,41 @@
 import { Card, DataTable, PageHeader } from "../../components";
+import styles from "./RolesPage.module.css";
 
 const rolePermissions = [
-  ["Gestionar Provincias", ["✅", "❌", "❌", "❌", "❌", "❌", "❌"]],
-  ["Crear Usuarios", ["✅", "❌", "✅", "✅", "❌", "❌", "❌"]],
-  ["Activar Etapas", ["✅", "✅", "❌", "❌", "❌", "❌", "❌"]],
-  ["Importar Escalafón", ["✅", "✅", "✅", "✅", "❌", "✅", "❌"]],
-  ["Aprobar Boletas", ["✅", "✅", "✅", "✅", "❌", "✅", "❌"]],
-  ["Ver Reportes Escuela", ["✅", "✅", "✅", "✅", "✅", "✅", "❌"]],
-  ["Ver Logs Auditoría", ["✅", "✅", "❌", "❌", "❌", "❌", "❌"]],
-  ["Llenar Boleta Solicitud", ["❌", "❌", "❌", "❌", "❌", "❌", "✅"]],
-  ["Modificar Índice (excep.)", ["✅", "✅", "❌", "❌", "❌", "❌", "❌"]],
-  ["Gestionar API Keys", ["✅", "❌", "❌", "❌", "❌", "❌", "❌"]],
+  ["Gestionar Provincias", ["✅", "❌", "❌", "❌", "❌", "❌", "❌", "❌"]],
+  ["Crear Usuarios", ["✅", "❌", "✅", "✅", "❌", "❌", "❌", "❌"]],
+  ["Activar Etapas", ["✅", "✅", "❌", "❌", "❌", "❌", "❌", "❌"]],
+  ["Importar Escalafón", ["✅", "✅", "✅", "✅", "❌", "✅", "❌", "❌"]],
+  ["Aprobar Boletas", ["✅", "✅", "✅", "✅", "❌", "✅", "❌", "❌"]],
+  ["Ver Reportes Escuela", ["✅", "✅", "✅", "✅", "✅", "✅", "❌", "❌"]],
+  ["Ver Logs Auditoría", ["✅", "✅", "❌", "❌", "❌", "❌", "❌", "❌"]],
+  ["Llenar Boleta Solicitud", ["❌", "❌", "❌", "❌", "❌", "❌", "✅", "❌"]],
+  ["Modificar Índice (excep.)", ["✅", "✅", "❌", "❌", "❌", "❌", "❌", "❌"]],
+  ["Gestionar API Keys", ["✅", "❌", "❌", "❌", "❌", "❌", "❌", "❌"]],
+  ["Gestionar Noticias", ["❌", "✅", "❌", "❌", "❌", "❌", "❌", "✅"]],
 ];
 
-const roleLabels = ["SuperAdmin", "Jefe Com.", "Repr.Prov", "Repr.Mun", "Director", "Secretario", "Estudiante"];
+const roleLabels = ["SuperAdmin", "Jefe Com.", "Repr.Prov", "Repr.Mun", "Director", "Secretario", "Estudiante", "Gestor Noticias"];
 
 const columns = [
-  { key: "permiso", header: "Permiso", className: "font-semibold text-slate-900", render: ([permission]) => permission },
+  { key: "permiso", header: "Permiso", className: styles.permissionCell, render: ([permission]) => permission },
   ...roleLabels.map((label, index) => ({
     key: label,
     header: label,
-    className: "text-center text-slate-700",
+    className: styles.roleCell,
     render: ([, states]) => states[index],
   })),
 ];
 
 export default function RolesPage() {
   return (
-    <div className="space-y-6">
+    <div className={styles.page}>
       <Card padding="p-6">
         <PageHeader
           title="🔐 Roles y Permisos"
           subtitle="Matriz de control de acceso. Los permisos se verifican en el servidor en cada petición."
         />
-        <DataTable className="table-scroll mt-6" columns={columns} data={rolePermissions} getRowKey={([permission]) => permission} />
+        <DataTable className={`table-scroll ${styles.table}`} columns={columns} data={rolePermissions} getRowKey={([permission]) => permission} />
       </Card>
     </div>
   );

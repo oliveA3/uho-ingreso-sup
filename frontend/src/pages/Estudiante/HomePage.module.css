@@ -161,3 +161,18 @@
 .navLinkInactive:hover {
   background-color: var(--gris-50);
 }
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.feedbackMessage {
+  margin-top: 1.5rem;
+  border-radius: 1rem;
+}
+
+.statsGrid {
+  margin-top: 1.5rem;
+}

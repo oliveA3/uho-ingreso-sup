@@ -242,7 +242,7 @@ export default function RegisterPage() {
 
     return (
         <Card as="div" className={styles.wrapper} padding="p-6">
-            <div className="mb-6">
+            <div className={styles.backRow}>
                 <button type="button" onClick={() => navigate("/")} className={styles.backLink}>
                     ← Volver al inicio
                 </button>
@@ -261,9 +261,9 @@ export default function RegisterPage() {
                     La cuenta permanecerá inactiva hasta que confirmes ese código y aceptes la política de privacidad.
                 </p>
             </div>}
-            {registrationDisabled && <FeedbackMessage type="warning" className="mt-6 rounded-2xl">El registro estudiantil solo está disponible durante la Etapa 1 del proceso de ingreso.</FeedbackMessage>}
-            {error && <FeedbackMessage type="error" className="mt-6 rounded-2xl">{error}</FeedbackMessage>}
-            {success && <FeedbackMessage type="success" className="mt-6 rounded-2xl">{success}</FeedbackMessage>}
+            {registrationDisabled && <FeedbackMessage type="warning" className={styles.feedbackMessage}>El registro estudiantil solo está disponible durante la Etapa 1 del proceso de ingreso.</FeedbackMessage>}
+            {error && <FeedbackMessage type="error" className={styles.feedbackMessage}>{error}</FeedbackMessage>}
+            {success && <FeedbackMessage type="success" className={styles.feedbackMessage}>{success}</FeedbackMessage>}
             {pendingVerification ? (
                 <form onSubmit={handleVerification} className={styles.verificationForm} noValidate>
                     <p className={styles.verificationHint}>

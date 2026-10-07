@@ -64,6 +64,8 @@ import DirectorBoletasSolicitudPage from "./pages/Director/BoletasSolicitudPage"
 import DirectorConfirmacionPruebasPage from "./pages/Director/ConfirmacionPruebasPage";
 import DirectorOtorgamientosPage from "./pages/Director/OtorgamientosPage";
 import DirectorResultadosPage from "./pages/Director/ResultadosPage";
+import GestorNoticiasLayout from "./pages/GestorNoticias/GestorNoticiasLayout";
+import GestorNoticiasPage from "./pages/GestorNoticias/NoticiasPage";
 
 function AppContent() {
   const [user, setUser] = useState(null);
@@ -182,18 +184,23 @@ function AppContent() {
                 <Route path="etapas" element={<JefeComisionEtapas />} />
                 <Route path="escalafones" element={<StageOneGuard allowCompleted panelName="Escalafones"><JefeComisionEscalafones /></StageOneGuard>} />
                 <Route path="plazas" element={<StageOneGuard allowCompleted stageNumber={3} stageName="Plan de plazas y boleta de solicitud" panelName="Plan de Plazas"><JefeComisionPlazas /></StageOneGuard>} />
-                <Route path="solicitudes" element={<StageOneGuard stageNumber={3} stageName="Plan de plazas y boleta de solicitud" panelName="Solicitudes"><JefeComisionSolicitudes /></StageOneGuard>} />
+                <Route path="solicitudes" element={<StageOneGuard allowCompleted stageNumber={3} stageName="Plan de plazas y boleta de solicitud" panelName="Solicitudes"><JefeComisionSolicitudes /></StageOneGuard>} />
                 <Route path="resultados" element={<StageOneGuard allowCompleted stageNumber={5} stageName="Publicación de resultados en las pruebas de ingreso" panelName="Gestión de Resultados"><JefeComisionResultados /></StageOneGuard>} />
                 <Route path="otorgamiento" element={<StageOneGuard allowCompleted stageNumber={6} stageName="Otorgamiento de carreras" panelName="Gestión de Otorgamientos"><JefeComisionOtorgamiento /></StageOneGuard>} />
                 <Route path="api" element={<JefeComisionApi />} />
                 <Route path="logs" element={<JefeComisionLogs />} />
                 <Route path="carreras" element={<JefeComisionCarreras />} />
+                <Route path="noticias" element={<GestorNoticiasPage user={user} />} />
               </Route>
               <Route path="/repr_provincial/*" element={<RepresentanteProvincialLayout user={user} onLogout={handleLogout} />}>
                 <Route index element={<ReprProvMunicipios user={user} />} />
                 <Route path="dashboard" element={<Navigate to="/repr_provincial/municipios" replace />} />
                 <Route path="municipios" element={<ReprProvMunicipios user={user} />} />
                 <Route path="usuarios" element={<ReprProvUsuarios />} />
+              </Route>
+              <Route path="/gestor_noticias/*" element={<GestorNoticiasLayout user={user} />}>
+                <Route index element={<Navigate to="noticias" replace />} />
+                <Route path="noticias" element={<GestorNoticiasPage user={user} />} />
               </Route>
               <Route path="/repr_municipal/*" element={<RepresentanteMunicipalLayout user={user} onLogout={handleLogout} />}>
                 <Route index element={<Navigate to="escuelas" replace />} />

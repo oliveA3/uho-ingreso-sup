@@ -96,12 +96,12 @@ export default function IdentidadPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className={styles.page}>
       <Card as="form" padding="p-6" onSubmit={handleSubmit}>
         <PageHeader title="🎨 Identidad Visual" subtitle="Configura la apariencia global de IngresoSUP." />
 
-        {error && <FeedbackMessage type="error" className="mt-5 rounded-2xl">{error}</FeedbackMessage>}
-        {message && <FeedbackMessage type="success" className="mt-5 rounded-2xl">{message}</FeedbackMessage>}
+        {error && <FeedbackMessage type="error" className={styles.feedbackMessage}>{error}</FeedbackMessage>}
+        {message && <FeedbackMessage type="success" className={styles.feedbackMessage}>{message}</FeedbackMessage>}
 
         <div className={styles.colorGrid}>
           {colorFields.map(([field, label]) => (

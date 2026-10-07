@@ -1,11 +1,167 @@
 from datetime import date
 
+from django.core.validators import validate_email
+from django.test import SimpleTestCase
 from rest_framework.test import APITestCase
 
-from apps.authentication.models import Estudiante, Usuario
+from apps.authentication.models import Estudiante, ROLES, Usuario
 from apps.gestion_escuela.models import Escalafon, EscalafonItem
 from apps.gestion_provincial.models import ETAPAS_NOMBRES, Etapa, Proceso
-from .models import Escuela, IdentidadVisual, Municipio, Provincia
+from apps.superadmin.management.commands.seed_initial_data import (
+    CUBA_TERRITORIES,
+    ROLE_UNIQUE_SCOPES,
+    ROLE_USERS,
+    get_or_create_named_catalog,
+    get_or_create_territory,
+)
+from apps.superadmin.management.commands.seed_plan_de_plazas import DEMO_CAREERS
+from .models import (
+    Asignatura,
+    Ces,
+    Escuela,
+    IdentidadVisual,
+    Municipio,
+    Provincia,
+    normalize_territorial_name,
+)
+from .serializers import EscuelaSerializer, MunicipioSerializer, ProvinciaSerializer
+
+
+class TerritorialNameUniquenessTests(APITestCase):
+    def setUp(self):
+        self.province = Provincia.objects.create(nombre="Provincia Única")
+        self.other_province = Provincia.objects.create(nombre="Otra Provincia")
+        self.municipality = Municipio.objects.create(
+            nombre="Plaza de la Revolución",
+            provincia=self.province,
+        )
+        self.other_municipality = Municipio.objects.create(
+            nombre="Otro Municipio",
+            provincia=self.other_province,
+        )
+        self.school = Escuela.objects.create(
+            nombre="Preuniversitario Centro",
+            municipio=self.municipality,
+        )
+
+    def test_provinces_are_unique_without_accent_or_case_differences(self):
+        serializer = ProvinciaSerializer(data={"nombre": "PROVINCIA unica"})
+
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("nombre", serializer.errors)
+
+    def test_municipality_name_is_unique_only_within_its_province(self):
+        duplicate = MunicipioSerializer(data={
+            "nombre": "Plaza de la Revolucion",
+            "provincia": self.province.pk,
+        })
+        same_name_elsewhere = MunicipioSerializer(data={
+            "nombre": "Plaza de la Revolucion",
+            "provincia": self.other_province.pk,
+        })
+
+        self.assertFalse(duplicate.is_valid())
+        self.assertIn("nombre", duplicate.errors)
+        self.assertTrue(same_name_elsewhere.is_valid(), same_name_elsewhere.errors)
+
+    def test_school_name_is_unique_only_within_its_municipality(self):
+        duplicate = EscuelaSerializer(data={
+            "nombre": "Preuniversitario  CENTRO",
+            "municipio": self.municipality.pk,
+        })
+        same_name_elsewhere = EscuelaSerializer(data={
+            "nombre": "Preuniversitario Centro",
+            "municipio": self.other_municipality.pk,
+        })
+
+        self.assertFalse(duplicate.is_valid())
+        self.assertIn("nombre", duplicate.errors)
+        self.assertTrue(same_name_elsewhere.is_valid(), same_name_elsewhere.errors)
+
+    def test_seed_reuses_and_canonicalizes_equivalent_territorial_names(self):
+        province = Provincia.objects.create(nombre="Holguin")
+        municipality = Municipio.objects.create(
+            nombre="Plaza de la Revolucion",
+            provincia=province,
+        )
+        school = Escuela.objects.create(
+            nombre="Preuniversitario Gibara",
+            municipio=municipality,
+        )
+
+        canonical_province, province_created = get_or_create_territory(
+            Provincia, "Holguín", defaults={"activa": True}
+        )
+        canonical_municipality, municipality_created = get_or_create_territory(
+            Municipio,
+            "Plaza de la Revolución",
+            provincia=province,
+            defaults={"activo": True},
+        )
+        canonical_school, school_created = get_or_create_territory(
+            Escuela,
+            "Preuniversitario Gibara",
+            municipio=municipality,
+            defaults={"activa": True},
+        )
+
+        self.assertFalse(province_created)
+        self.assertFalse(municipality_created)
+        self.assertFalse(school_created)
+        self.assertEqual(canonical_province.pk, province.pk)
+        self.assertEqual(canonical_province.nombre, "Holguín")
+        self.assertEqual(canonical_municipality.pk, municipality.pk)
+        self.assertEqual(canonical_municipality.nombre, "Plaza de la Revolución")
+        self.assertEqual(canonical_school.pk, school.pk)
+        self.assertEqual(Escuela.objects.filter(municipio=municipality).count(), 1)
+
+    def test_seed_reuses_equivalent_ces_and_subject_catalog_names(self):
+        ces = Ces.objects.create(nombre="Universidad de Holguin")
+        subject = Asignatura.objects.create(nombre="Matematica")
+
+        canonical_ces, ces_created = get_or_create_named_catalog(
+            Ces, "Universidad de Holguín", defaults={"activa": True}
+        )
+        canonical_subject, subject_created = get_or_create_named_catalog(
+            Asignatura, "Matemática", defaults={"activa": True}
+        )
+
+        self.assertFalse(ces_created)
+        self.assertFalse(subject_created)
+        self.assertEqual(canonical_ces.pk, ces.pk)
+        self.assertEqual(canonical_ces.nombre, "Universidad de Holguín")
+        self.assertEqual(canonical_subject.pk, subject.pk)
+        self.assertEqual(canonical_subject.nombre, "Matemática")
+
+
+class SeedConfigurationTests(SimpleTestCase):
+    def test_initial_territory_names_are_canonical_and_unique(self):
+        provinces = [normalize_territorial_name(name) for name in CUBA_TERRITORIES]
+        self.assertEqual(len(provinces), 16)
+        self.assertEqual(len(provinces), len(set(provinces)))
+        for municipality_names in CUBA_TERRITORIES.values():
+            normalized = [normalize_territorial_name(name) for name in municipality_names]
+            self.assertEqual(len(normalized), len(set(normalized)))
+
+    def test_seed_users_have_valid_profiles_and_known_roles(self):
+        usernames = set()
+        known_roles = {role for role, _ in ROLES}
+        for role, username, email, first_name, last_name in ROLE_USERS:
+            self.assertIn(role, known_roles)
+            self.assertNotIn(username, usernames)
+            self.assertTrue(first_name.strip())
+            self.assertTrue(last_name.strip())
+            validate_email(email)
+            usernames.add(username)
+
+        self.assertTrue({"jefe_comision", "ingreso_provincial"} <= ROLE_UNIQUE_SCOPES.keys())
+        self.assertIn("gestor_noticias", known_roles)
+
+    def test_plan_seed_uses_named_careers_instead_of_placeholders(self):
+        normalized = [normalize_territorial_name(name) for name in DEMO_CAREERS]
+        self.assertGreaterEqual(len(DEMO_CAREERS), 20)
+        self.assertEqual(len(normalized), len(set(normalized)))
+        self.assertFalse(any("prueba" in name for name in normalized))
 
 
 class IdentidadVisualConfigTests(APITestCase):

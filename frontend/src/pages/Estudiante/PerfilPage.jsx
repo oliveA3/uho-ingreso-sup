@@ -49,7 +49,7 @@ export default function EstudiantePerfilPage() {
     }
   };
 
-  if (!profile) return <Card padding="p-6" className="text-sm text-slate-600">Cargando perfil...</Card>;
+  if (!profile) return <Card padding="p-6" className={styles.loadingCard}>Cargando perfil...</Card>;
 
   const fixedFields = [
     ["Nombre", profile.nombre],
@@ -61,16 +61,16 @@ export default function EstudiantePerfilPage() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className={styles.page}>
       <Card padding="p-6 sm:p-8">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Mi Perfil</h1>
-          <p className="mt-2 text-sm text-slate-600">Datos personales y de contacto.</p>
+          <h1 className={styles.title}>Mi Perfil</h1>
+          <p className={styles.subtitle}>Datos personales y de contacto.</p>
         </div>
 
-        {message && <FeedbackMessage type={message.type} className="mt-5 rounded-2xl">{message.text}</FeedbackMessage>}
+        {message && <FeedbackMessage type={message.type} className={styles.feedbackMessage}>{message.text}</FeedbackMessage>}
 
-        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className={styles.fixedFieldsGrid}>
           {fixedFields.map(([label, value]) => (
             <div key={label} className={styles.fixedFieldCard}>
               <p className={styles.fixedFieldLabel}>{label}</p>
@@ -80,15 +80,15 @@ export default function EstudiantePerfilPage() {
         </div>
 
         <form onSubmit={handleSubmit} className={styles.editableForm}>
-          <h2 className="text-base font-semibold text-slate-900">Datos editables</h2>
-          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <h2 className={styles.editableFormTitle}>Datos editables</h2>
+          <div className={styles.editableFieldsGrid}>
             {editableFields.map(({ name, label, type }) => (
               <FormField key={name} htmlFor={name} label={<span className={styles.editableFieldLabel}>{label}</span>}>
                 <Input id={name} name={name} type={type} value={form[name] || ""} onChange={handleChange} />
               </FormField>
             ))}
           </div>
-          <PrimaryButton type="submit" disabled={saving} className="mt-6">
+          <PrimaryButton type="submit" disabled={saving} className={styles.submitButton}>
             {saving ? "Guardando..." : "Guardar cambios"}
           </PrimaryButton>
         </form>

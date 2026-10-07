@@ -19,6 +19,18 @@
   color: var(--gris-900);
 }
 
+.statsGrid {
+  margin-top: 1.5rem;
+}
+
+.feedbackMessage {
+  border-radius: 1rem;
+}
+
+.table {
+  margin-top: 1.5rem;
+}
+
 .actionsCell {
   display: flex;
   flex-wrap: wrap;

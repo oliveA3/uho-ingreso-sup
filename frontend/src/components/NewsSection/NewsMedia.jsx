@@ -12,7 +12,7 @@ const EMBED_HOSTS = {
   },
 };
 
-const DOCUMENT_LABELS = { pdf: "PDF", doc: "DOC", docx: "DOC" };
+const DOCUMENT_LABELS = { pdf: "PDF", doc: "DOC", docx: "DOC", xls: "XLS", xlsx: "XLSX" };
 
 function parseUrl(value) {
   try {
@@ -33,7 +33,8 @@ export function toEmbedUrl(value) {
 
 export function documentFormat(item) {
   const declared = (item.documentFormat || "").toLowerCase();
-  const extension = (item.mediaUrl || "").split("?")[0].split(".").pop().toLowerCase();
+  const fileName = item.mediaName || item.media_name || item.mediaUrl || item.media_url || "";
+  const extension = fileName.split("?")[0].split("/").pop().split(".").pop().toLowerCase();
   return DOCUMENT_LABELS[declared] || DOCUMENT_LABELS[extension] || "DOC";
 }
 
@@ -42,14 +43,15 @@ function Placeholder({ children }) {
 }
 
 export default function NewsMedia({ item }) {
-  const url = parseUrl(item.mediaUrl);
+  const mediaType = item.mediaType || item.media_type;
+  const url = parseUrl(item.mediaUrl || item.media_url);
 
-  if (item.mediaType === "imagen" && url) {
+  if (mediaType === "imagen" && url) {
     return <img className={styles.mediaImage} src={url.href} alt={item.imageAlt || item.title} loading="lazy" />;
   }
 
-  if (item.mediaType === "video") {
-    const embed = toEmbedUrl(item.mediaUrl);
+  if (mediaType === "video") {
+    const embed = toEmbedUrl(item.mediaUrl || item.media_url);
     if (embed) {
       return (
         <iframe
@@ -63,7 +65,8 @@ export default function NewsMedia({ item }) {
         />
       );
     }
-    if (url && /\.(mp4|webm|ogg)$/i.test(url.pathname)) {
+    const fileName = item.mediaName || item.media_name || url?.pathname || "";
+    if (url && /\.(mp4|webm|ogg)$/i.test(fileName)) {
       return (
         <video className={styles.mediaVideo} controls preload="metadata" aria-label={item.title}>
           <source src={url.href} />
@@ -74,14 +77,14 @@ export default function NewsMedia({ item }) {
     return <Placeholder>Video próximamente</Placeholder>;
   }
 
-  if (item.mediaType === "documento") {
-    const format = documentFormat(item);
+  if (mediaType === "documento") {
+    const format = documentFormat({ ...item, mediaUrl: item.mediaUrl || item.media_url });
     if (!url || item.mediaUrl === "#") return <Placeholder>Documento {format} próximamente</Placeholder>;
     return (
-      <a className={styles.documentLink} href={url.href} download target="_blank" rel="noopener noreferrer">
+      <a className={styles.documentLink} href={item.mediaDownloadUrl || item.media_download_url || url.href} download>
         <span className={styles.documentBadge}>{format}</span>
         <span>
-          <strong>{item.documentName || "Descargar documento"}</strong>
+          <strong>{item.mediaName || item.media_name || "Descargar documento"}</strong>
           <small>Descargar archivo {format}</small>
         </span>
       </a>

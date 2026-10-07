@@ -72,7 +72,7 @@ export default function EstudianteBoletaInteresPage() {
   };
 
   if (!ballot) {
-    return <Card padding="p-6" className="text-sm text-slate-600">Cargando boleta de interés...</Card>;
+    return <Card padding="p-6" className={styles.loadingCard}>Cargando boleta de interés...</Card>;
   }
 
   const editing = ballot.puede_editar;
@@ -80,7 +80,7 @@ export default function EstudianteBoletaInteresPage() {
   const selectedIds = new Set(ballot.items.map((item) => item.carrera));
   const careersToAdd = ballot.available_careers.filter((career) => !selectedIds.has(career.id));
   return (
-    <div className="space-y-6">
+    <div className={styles.page}>
       <Card padding="p-6">
         <p className={styles.eyebrow}>Boleta de Interés</p>
         <div className={styles.headerRow}>
@@ -94,8 +94,8 @@ export default function EstudianteBoletaInteresPage() {
           </div>
         </div>
         <StageStatusNotice stageNumber={2} />
-        {error && <FeedbackMessage type="error" className="mt-6 rounded-2xl">{error}</FeedbackMessage>}
-        {message && <FeedbackMessage type="success" className="mt-6 rounded-2xl">{message}</FeedbackMessage>}
+        {error && <FeedbackMessage type="error" className={styles.feedbackMessage}>{error}</FeedbackMessage>}
+        {message && <FeedbackMessage type="success" className={styles.feedbackMessage}>{message}</FeedbackMessage>}
         <div className={styles.preferencesBox}>
           <div className={styles.preferencesHeader}>
             <h2 className={styles.preferencesTitle}>Mis preferencias <span className={styles.preferencesCount}>{ballot.items.length} / {maxItems}</span></h2>
@@ -124,7 +124,7 @@ export default function EstudianteBoletaInteresPage() {
             {ballot.enviada ? (
               <PrimaryButton disabled={!ballot.puede_reabrir} onClick={reopenBallot}>Editar</PrimaryButton>
             ) : (
-              <PrimaryButton className="!bg-brand-success hover:!brightness-90" disabled={!editing || ballot.items.length !== maxItems} onClick={() => update(async () => { await sendStudentInterest(); setMessage("Tu boleta fue enviada correctamente."); })}>Enviar boleta</PrimaryButton>
+              <PrimaryButton className={styles.submitButton} disabled={!editing || ballot.items.length !== maxItems} onClick={() => update(async () => { await sendStudentInterest(); setMessage("Tu boleta fue enviada correctamente."); })}>Enviar boleta</PrimaryButton>
             )}
             {ballot.enviada && <span className={styles.sentNote}>Boleta enviada el {ballot.fecha_enviada}</span>}
             {!ballot.enviada && <span className={styles.pendingNote}>Debes seleccionar las {maxItems} carreras para enviarla.</span>}

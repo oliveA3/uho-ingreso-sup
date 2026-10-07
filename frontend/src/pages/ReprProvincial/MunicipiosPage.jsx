@@ -15,6 +15,7 @@ import PrimaryButton from "../../components/Buttons/PrimaryButton";
 import SecondaryButton from "../../components/Buttons/SecondaryButton";
 import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
 import { Card, DataTable, FormField, Input, Modal, Select, StatCard, StatsGrid, useConfirm } from "../../components";
+import styles from "./MunicipiosPage.module.css";
 
 const emptySchool = {
   nombre: "",
@@ -38,6 +39,8 @@ export default function MunicipiosPage({ user }) {
   const [municipioSearch, setMunicipioSearch] = useState("");
   const [schoolSearch, setSchoolSearch] = useState("");
   const [error, setError] = useState("");
+  const [formError, setFormError] = useState("");
+  const [notice, setNotice] = useState("");
   const [loading, setLoading] = useState(true);
 
   async function loadData() {
@@ -89,6 +92,7 @@ export default function MunicipiosPage({ user }) {
           : "",
       municipio: selectedMunicipio ? String(selectedMunicipio.id) : "",
     });
+    setFormError("");
     setModalOpen(true);
   }
 
@@ -105,6 +109,7 @@ export default function MunicipiosPage({ user }) {
       municipio: String(school.municipio || ""),
       activa: school.activa,
     });
+    setFormError("");
     setModalOpen(true);
   }
 
@@ -119,15 +124,16 @@ export default function MunicipiosPage({ user }) {
   async function handleSubmit(event) {
     event.preventDefault();
     try {
-      setError("");
+      setFormError("");
       const { provincia, ...schoolFields } = form;
       const payload = { ...schoolFields, municipio: Number(form.municipio) };
       if (editing) await updateProvincialSchool(editing.id, payload);
       else await createProvincialSchool(payload);
       setModalOpen(false);
+      setNotice(editing ? "La escuela se actualizó correctamente." : "La escuela se creó correctamente.");
       await loadData();
     } catch (requestError) {
-      setError(requestError.message);
+      setFormError(requestError.message);
     }
   }
 
@@ -174,7 +180,7 @@ export default function MunicipiosPage({ user }) {
     : [];
 
   const municipioColumns = [
-    { key: "nombre", header: "Municipio", className: "font-medium text-slate-900", render: (m) => m.nombre },
+    { key: "nombre", header: "Municipio", className: styles.strongCell, render: (m) => m.nombre },
     { key: "escuelas", header: "Escuelas", render: (m) => m.escuelas_count },
     { key: "representante", header: "Representante Municipal", render: (m) => m.representante?.nombre || "Sin representante" },
     { key: "estado", header: "Estado", render: (m) => (m.activo ? "Activo" : "Inactivo") },
@@ -182,7 +188,7 @@ export default function MunicipiosPage({ user }) {
       key: "acciones",
       header: "Acciones",
       render: (m) => (
-        <SecondaryButton className="" onClick={() => setSelectedMunicipio(m)}>
+        <SecondaryButton onClick={() => setSelectedMunicipio(m)}>
           👁 Ver escuelas
         </SecondaryButton>
       ),
@@ -190,7 +196,7 @@ export default function MunicipiosPage({ user }) {
   ];
 
   const schoolColumns = [
-    { key: "nombre", header: "Escuela", className: "font-medium text-slate-900", render: (s) => s.nombre },
+    { key: "nombre", header: "Escuela", className: styles.strongCell, render: (s) => s.nombre },
     { key: "codigo", header: "Código", render: (s) => s.codigo || "-" },
     { key: "estado", header: "Estado", render: (s) => <StatusToggle active={s.activa} onClick={() => toggleSchool(s)} /> },
     {
@@ -199,57 +205,58 @@ export default function MunicipiosPage({ user }) {
       render: (s) => (
         <>
           <EntityActionButton variant="edit" onClick={() => openEdit(s)}>Editar</EntityActionButton>
-          <EntityActionButton variant="delete" className="ml-2" onClick={() => handleDelete(s)}>Eliminar</EntityActionButton>
+          <EntityActionButton variant="delete" className={styles.deleteAction} onClick={() => handleDelete(s)}>Eliminar</EntityActionButton>
         </>
       ),
     },
   ];
 
   return (
-    <div className="space-y-6">
+    <div className={styles.page}>
       <Card padding="p-6">
-        <p className="mb-4 text-sm font-semibold text-slate-600">Provincia: {user?.provincia_nombre || "No asignada"}</p>
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <p className={styles.provinceLabel}>Provincia: {user?.provincia_nombre || "No asignada"}</p>
+        <div className={styles.headerRow}>
           <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-700">Municipios y Escuelas</p>
-            <h1 className="mt-2 text-2xl font-semibold text-slate-900">Estructura territorial de la provincia</h1>
-            <p className="mt-2 text-sm text-slate-600">Gestiona las escuelas de tu provincia.</p>
+            <p className={styles.eyebrow}>Municipios y Escuelas</p>
+            <h1 className={styles.title}>Estructura territorial de la provincia</h1>
+            <p className={styles.subtitle}>Gestiona las escuelas de tu provincia.</p>
           </div>
         </div>
-        {error && <FeedbackMessage type="error" className="mt-5 rounded-2xl">{error}</FeedbackMessage>}
-        <StatsGrid className="mt-6">
+        {notice && <FeedbackMessage type="success" className={styles.feedbackMessage}>{notice}</FeedbackMessage>}
+        {error && <FeedbackMessage type="error" className={styles.feedbackMessage}>{error}</FeedbackMessage>}
+        <StatsGrid className={styles.statsGrid}>
           {stats.map(([value, label]) => (
             <StatCard key={label} label={label} value={value} />
           ))}
         </StatsGrid>
       </Card>
 
-      <Card padding="p-6" className="overflow-x-auto">
-        <div className="flex items-center justify-between gap-4">
+      <Card padding="p-6" className={styles.tableCard}>
+        <div className={styles.sectionHeaderRow}>
           <div>
-            <h2 className="text-xl font-semibold text-slate-900">Municipios</h2>
-            <p className="mt-1 text-sm text-slate-600">Selecciona un municipio para ver sus escuelas.</p>
+            <h2 className={styles.sectionTitle}>Municipios</h2>
+            <p className={styles.sectionSubtitle}>Selecciona un municipio para ver sus escuelas.</p>
           </div>
         </div>
-        <FormField label="Buscar municipio" className="mt-5 max-w-md">
+        <FormField label="Buscar municipio" className={styles.searchField}>
           <Input type="search" value={municipioSearch} onChange={(event) => setMunicipioSearch(event.target.value)} placeholder="Nombre del municipio" />
         </FormField>
-        <DataTable className="table-scroll mt-5" columns={municipioColumns} data={filteredMunicipios} loading={loading} />
+        <DataTable className={`table-scroll ${styles.table}`} columns={municipioColumns} data={filteredMunicipios} loading={loading} />
       </Card>
 
       {selectedMunicipio && (
         <Card padding="p-6">
-          <div className="flex items-center justify-between gap-4">
+          <div className={styles.sectionHeaderRow}>
             <div>
-              <h2 className="text-xl font-semibold text-slate-900">Escuelas de {selectedMunicipio.nombre}</h2>
-              <p className="mt-1 text-sm text-slate-600">Las escuelas sí pueden editarse.</p>
+              <h2 className={styles.sectionTitle}>Escuelas de {selectedMunicipio.nombre}</h2>
+              <p className={styles.sectionSubtitle}>Las escuelas sí pueden editarse.</p>
             </div>
             <PrimaryButton onClick={openCreate}>+ Agregar Escuela</PrimaryButton>
           </div>
-          <FormField label="Buscar escuela" className="mt-5 max-w-md">
+          <FormField label="Buscar escuela" className={styles.searchField}>
             <Input type="search" value={schoolSearch} onChange={(event) => setSchoolSearch(event.target.value)} placeholder="Nombre o código" />
           </FormField>
-          <DataTable className="table-scroll mt-5" columns={schoolColumns} data={filteredSchools} />
+          <DataTable className={`table-scroll ${styles.table}`} columns={schoolColumns} data={filteredSchools} />
         </Card>
       )}
 
@@ -264,7 +271,8 @@ export default function MunicipiosPage({ user }) {
           </>
         }
       >
-        <form id="repr-provincial-escuela-form" onSubmit={handleSubmit} className="space-y-4">
+        <form id="repr-provincial-escuela-form" onSubmit={handleSubmit} className={styles.form}>
+          {formError && <FeedbackMessage type="error" className={styles.formError}>{formError}</FeedbackMessage>}
           <FormField label="Nombre">
             <Input required value={form.nombre} onChange={(event) => setForm({ ...form, nombre: event.target.value })} />
           </FormField>
@@ -280,8 +288,8 @@ export default function MunicipiosPage({ user }) {
               {municipalities.map((municipio) => <option key={municipio.id} value={municipio.id}>{municipio.nombre}</option>)}
             </Select>
           </FormField>
-          <label className="flex items-center gap-3 text-sm font-semibold text-slate-700">
-            <input type="checkbox" checked={form.activa} onChange={(event) => setForm({ ...form, activa: event.target.checked })} className="h-5 w-5" /> Escuela activa
+          <label className={styles.activeCheckboxRow}>
+            <input type="checkbox" checked={form.activa} onChange={(event) => setForm({ ...form, activa: event.target.checked })} className={styles.checkbox} /> Escuela activa
           </label>
         </form>
       </Modal>

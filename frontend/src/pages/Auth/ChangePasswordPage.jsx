@@ -39,7 +39,7 @@ export default function ChangePasswordPage({ onChanged, onLogout }) {
         <p className={styles.description}>
           Tu cuenta fue creada por un administrador con una contraseña temporal. Por seguridad, debes definir una propia para continuar.
         </p>
-        {error && <FeedbackMessage type="error" className="mt-4 rounded-2xl">{error}</FeedbackMessage>}
+        {error && <FeedbackMessage type="error" className={styles.feedbackMessage}>{error}</FeedbackMessage>}
         <form onSubmit={handleSubmit} className={styles.form}>
           <FormField label="Contraseña actual (temporal)" required>
             <Input type="password" autoComplete="current-password" value={form.current_password} onChange={update("current_password")} required />

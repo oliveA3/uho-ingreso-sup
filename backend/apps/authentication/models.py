@@ -9,6 +9,7 @@ ROLES = [
     ('superadmin', 'Super Administrador'),
     ('jefe_comision', 'Jefe de Comisión de Ingreso'),
     ('ingreso_provincial', 'Repr. Ingreso Provincial'),
+    ('gestor_noticias', 'Gestor de Noticias'),
     ('ingreso_municipal', 'Repr. Ingreso Municipal'),
     ('director_escuela', 'Director de Escuela'),
     ('secretario_escuela', 'Secretario de Escuela'),

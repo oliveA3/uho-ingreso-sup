@@ -1,3 +1,18 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.serviceCell {
+  font-weight: 600;
+  color: var(--gris-900);
+}
+
+.table {
+  margin-top: 1.5rem;
+}
+
 .referenceBox {
   border-radius: 1.5rem;
   background-color: var(--gris-50);

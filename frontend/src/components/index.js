@@ -1,4 +1,6 @@
 export { default as Modal } from "./Modals/Modal";
+export { default as NewsModal } from "./Modals/NewsModal";
+export { default as NewsManagerModal } from "./Modals/NewsManagerModal";
 export { ConfirmDialogProvider, useConfirm } from "./ConfirmDialog/ConfirmDialogProvider";
 export { default as DataTable } from "./DataTable/DataTable";
 export { default as Card } from "./Card/Card";

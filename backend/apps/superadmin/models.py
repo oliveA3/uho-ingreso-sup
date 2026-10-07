@@ -1,30 +1,68 @@
 from django.db import models
+import unicodedata
 
 
-class Provincia(models.Model):
+def normalize_territorial_name(value):
+    decomposed = unicodedata.normalize("NFKD", value or "").casefold()
+    without_marks = "".join(
+        character for character in decomposed
+        if unicodedata.category(character) != "Mn"
+    )
+    return " ".join(without_marks.split())
+
+
+class NormalizedTerritorialNameMixin:
+    def save(self, *args, **kwargs):
+        self.nombre_normalizado = normalize_territorial_name(self.nombre)
+        update_fields = kwargs.get("update_fields")
+        if update_fields is not None:
+            kwargs["update_fields"] = set(update_fields) | {"nombre_normalizado"}
+        return super().save(*args, **kwargs)
+
+
+class Provincia(NormalizedTerritorialNameMixin, models.Model):
     nombre = models.CharField(max_length=150, unique=True)
+    nombre_normalizado = models.CharField(max_length=150, default="", editable=False)
     descripcion = models.TextField(blank=True, null=True)
     activa = models.BooleanField(default=True)
     fecha_ultima_modificacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["nombre_normalizado"],
+                name="unique_provincia_nombre_normalizado",
+            ),
+        ]
 
     def __str__(self):
         return self.nombre
 
 
-class Municipio(models.Model):
+class Municipio(NormalizedTerritorialNameMixin, models.Model):
     nombre = models.CharField(max_length=128)
+    nombre_normalizado = models.CharField(max_length=128, default="", editable=False)
     descripcion = models.TextField(blank=True, null=True)
     provincia = models.ForeignKey(
         Provincia, on_delete=models.PROTECT, related_name="municipios")
     activo = models.BooleanField(default=True)
     fecha_ultima_modificacion = models.DateTimeField(auto_now=True)
 
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["provincia", "nombre_normalizado"],
+                name="unique_municipio_nombre_provincia_normalizado",
+            ),
+        ]
+
     def __str__(self):
         return f"{self.nombre} ({self.provincia.nombre})"
 
 
-class Escuela(models.Model):
+class Escuela(NormalizedTerritorialNameMixin, models.Model):
     nombre = models.CharField(max_length=300)
+    nombre_normalizado = models.CharField(max_length=300, default="", editable=False)
     codigo = models.CharField(max_length=150, null=True, blank=True)
     descripcion = models.CharField(max_length=150, null=True, blank=True)
     municipio = models.ForeignKey(
@@ -38,6 +76,12 @@ class Escuela(models.Model):
     class Meta:
         verbose_name = "Preuniversitario"
         verbose_name_plural = "Preuniversitarios"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["municipio", "nombre_normalizado"],
+                name="unique_escuela_nombre_municipio_normalizado",
+            ),
+        ]
 
 
 class Ces(models.Model):
@@ -60,6 +104,9 @@ class Carrera(models.Model):
     codigo = models.CharField(max_length=150, unique=True)
     nombre = models.CharField(max_length=150)
     descripcion = models.TextField(blank=True, null=True)
+    campo_laboral = models.TextField(blank=True, default="")
+    requisitos = models.TextField(blank=True, default="")
+    perfil_egresado = models.TextField(blank=True, default="")
     ces = models.ForeignKey(
         Ces, on_delete=models.PROTECT, related_name="carreras")
     provincia = models.ForeignKey(

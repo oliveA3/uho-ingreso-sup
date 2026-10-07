@@ -71,8 +71,8 @@ export default function LoginPage({ onLogin }) {
 
   return (
     <div className={styles.wrapper}>
-      <Card className="w-full max-w-xl" padding="p-6">
-        <div className="mb-6">
+      <Card className={styles.card} padding="p-6">
+        <div className={styles.backRow}>
           <button type="button" onClick={() => navigate("/")} className={styles.backLink}>
             ← Volver al inicio
           </button>
@@ -83,7 +83,7 @@ export default function LoginPage({ onLogin }) {
           Accede con tu usuario y contraseña para entrar al sistema IngresoSUP.
         </p>
 
-        {error && <FeedbackMessage type="error" className="mt-6 rounded-2xl">{error}</FeedbackMessage>}
+        {error && <FeedbackMessage type="error" className={styles.feedbackMessage}>{error}</FeedbackMessage>}
 
         <form className={styles.form} onSubmit={handleSubmit} noValidate>
           <FormField

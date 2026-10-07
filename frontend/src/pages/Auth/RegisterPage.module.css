@@ -234,3 +234,12 @@
     grid-column: span 2 / span 2;
   }
 }
+
+.backRow {
+  margin-bottom: 1.5rem;
+}
+
+.feedbackMessage {
+  margin-top: 1.5rem;
+  border-radius: 1rem;
+}

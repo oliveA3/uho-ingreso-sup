@@ -32,3 +32,9 @@
     padding-right: 2rem;
   }
 }
+
+.contentInner {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}

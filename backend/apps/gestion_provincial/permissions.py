@@ -65,3 +65,16 @@ class IsCareerManager(BasePermission):
                 or user.rol in {"superadmin", "jefe_comision", "ingreso_provincial"}
             )
         )
+
+
+class IsNewsManager(BasePermission):
+    message = "Solo un gestor de noticias o jefe de comisión con provincia asignada puede gestionar noticias."
+
+    def has_permission(self, request, view):
+        user = request.user
+        return bool(
+            user
+            and user.is_authenticated
+            and user.rol in {"gestor_noticias", "jefe_comision"}
+            and user.provincia_id
+        )

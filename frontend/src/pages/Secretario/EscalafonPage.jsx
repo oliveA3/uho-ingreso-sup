@@ -26,9 +26,9 @@ function statusLabel(status) {
 }
 
 function statusClass(status) {
-  if (status === "aceptado") return "bg-emerald-100 text-emerald-700";
-  if (status === "por_revisar") return "bg-amber-100 text-amber-700";
-  return "bg-slate-100 text-slate-600";
+  if (status === "aceptado") return styles.statusAceptado;
+  if (status === "por_revisar") return styles.statusPorRevisar;
+  return styles.statusDefault;
 }
 
 function TextInput({ value, onChange, className = "", ariaLabel }) {
@@ -37,7 +37,7 @@ function TextInput({ value, onChange, className = "", ariaLabel }) {
       value={value ?? ""}
       onChange={onChange}
       aria-label={ariaLabel}
-      className={`w-full min-w-0 rounded-lg border border-slate-300 px-2 py-1 text-sm ${className}`}
+      className={`${styles.textInput} ${className}`}
     />
   );
 }
@@ -174,13 +174,13 @@ export default function SecretarioEscalafonPage() {
   const change = (field) => (event) => changeDraft(field, event.target.value);
   const isEditing = (entry) => editingId === entry.id;
   const columns = [
-    { key: "posicion", header: "#", render: (entry) => <span className="font-semibold text-slate-700">{entry.posicion}</span> },
-    { key: "ci", header: "CI", render: (entry) => <span className="whitespace-nowrap font-medium text-slate-700">{entry.ci}</span> },
+    { key: "posicion", header: "#", render: (entry) => <span className={styles.positionCell}>{entry.posicion}</span> },
+    { key: "ci", header: "CI", render: (entry) => <span className={styles.ciCell}>{entry.ci}</span> },
     {
       key: "estudiante",
       header: "Estudiante",
       render: (entry) => isEditing(entry) ? (
-        <div className="flex min-w-40 flex-col gap-2">
+        <div className={styles.nameEditGroup}>
           <TextInput value={draft.nombre} onChange={change("nombre")} ariaLabel={`Nombre de ${entry.ci}`} />
           <TextInput value={draft.apellidos} onChange={change("apellidos")} ariaLabel={`Apellidos de ${entry.ci}`} />
         </div>
@@ -190,7 +190,7 @@ export default function SecretarioEscalafonPage() {
       key: "sexo",
       header: "Sexo",
       render: (entry) => isEditing(entry) ? (
-        <select value={draft.sexo} onChange={change("sexo")} aria-label={`Sexo de ${entry.ci}`} className="rounded-lg border border-slate-300 px-2 py-1 text-sm">
+        <select value={draft.sexo} onChange={change("sexo")} aria-label={`Sexo de ${entry.ci}`} className={styles.selectInput}>
           <option value="M">M</option>
           <option value="F">F</option>
         </select>
@@ -200,21 +200,21 @@ export default function SecretarioEscalafonPage() {
       key: "direccion",
       header: "Dirección",
       render: (entry) => isEditing(entry)
-        ? <TextInput value={draft.direccion} onChange={change("direccion")} className="min-w-40" ariaLabel={`Dirección de ${entry.ci}`} />
+        ? <TextInput value={draft.direccion} onChange={change("direccion")} className={styles.minWidthMedium} ariaLabel={`Dirección de ${entry.ci}`} />
         : entry.direccion,
     },
     ...[["indice_10", "10mo"], ["indice_11", "11mo"], ["indice_12", "12mo"], ["indice_general", "Índice general"]].map(([field, header]) => ({
       key: field,
       header,
       render: (entry) => isEditing(entry)
-        ? <TextInput value={draft[field]} onChange={change(field)} className="min-w-16" ariaLabel={`${header} de ${entry.ci}`} />
+        ? <TextInput value={draft[field]} onChange={change(field)} className={styles.minWidthSmall} ariaLabel={`${header} de ${entry.ci}`} />
         : entry[field],
     })),
     {
       key: "estado",
       header: "Estado",
       render: (entry) => (
-        <span className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold ${statusClass(entry.estado)}`}>
+        <span className={`${styles.statusBadge} ${statusClass(entry.estado)}`}>
           {statusLabel(entry.estado)}
         </span>
       ),
@@ -231,7 +231,7 @@ export default function SecretarioEscalafonPage() {
           ) : (
             <>
               <EntityActionButton variant="edit" onClick={() => startEditing(entry)}>Editar</EntityActionButton>
-              {entry.estado === "por_revisar" && <SecondaryButton className="ml-2 " onClick={() => setComplaintEntry(entry)}>Ver reclamación</SecondaryButton>}
+              {entry.estado === "por_revisar" && <SecondaryButton className={styles.complaintButton} onClick={() => setComplaintEntry(entry)}>Ver reclamación</SecondaryButton>}
             </>
           ),
         }]
@@ -244,10 +244,10 @@ export default function SecretarioEscalafonPage() {
       <div className={styles.headerRow}>
         <div>
           <p className={styles.eyebrow}>Escalafón</p>
-          <div className="mt-2 flex flex-wrap items-center gap-3">
+          <div className={styles.titleRow}>
             <h1 className={styles.title}>Escalafón de la escuela {summary?.year ? `(${summary.year})` : ""}</h1>
             {entries.length > 0 && (
-              <span className={`rounded-full px-3 py-1 text-xs font-semibold ${entries[0].estado_escalafon === "enviado" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
+              <span className={`${styles.statusBadge} ${entries[0].estado_escalafon === "enviado" ? styles.statusAceptado : styles.statusPorRevisar}`}>
                 {entries[0].estado_escalafon === "enviado" ? "Enviado" : "Pendiente"}
               </span>
             )}
@@ -258,22 +258,22 @@ export default function SecretarioEscalafonPage() {
 
       <StageStatusNotice stageNumber={1} />
 
-      <StatsGrid className="my-5">
+      <StatsGrid className={styles.statsGrid}>
         <StatCard label="Aceptado" value={summary?.estudiantes_aceptaron ?? "-"} tone="success" />
         <StatCard label="Pendientes" value={summary?.estudiantes_pendientes ?? "-"} tone="warning" />
         <StatCard label="Total estudiantes" value={summary?.total_estudiantes ?? "-"} tone="neutral" />
       </StatsGrid>
 
-      <div className="mb-4 flex flex-wrap gap-2">
-        <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden" disabled={!permissions.importar || importing} onChange={handleImport} />
+      <div className={styles.toolbar}>
+        <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className={styles.hiddenInput} disabled={!permissions.importar || importing} onChange={handleImport} />
         <PrimaryButton type="button" onClick={() => fileInputRef.current?.click()} disabled={!permissions.importar || importing}>{importing ? "Importando..." : "Importar Excel"}</PrimaryButton>
         <SecondaryButton onClick={exportExcel} disabled={!entries.length}>Exportar Excel</SecondaryButton>
         <PrimaryButton type="button" onClick={sendToCommission} disabled={!permissions.enviar || sending}>{sending ? "Enviando..." : "Enviar índices a la Comisión"}</PrimaryButton>
       </div>
 
 
-      {error && <FeedbackMessage type="error" className="mb-4 rounded-xl">{error}</FeedbackMessage>}
-      {notice && <FeedbackMessage type="success" className="mb-4 rounded-xl">{notice}</FeedbackMessage>}
+      {error && <FeedbackMessage type="error" className={styles.feedbackMessage}>{error}</FeedbackMessage>}
+      {notice && <FeedbackMessage type="success" className={styles.feedbackMessage}>{notice}</FeedbackMessage>}
 
       <DataTable
         className="table-scroll"
@@ -297,9 +297,9 @@ export default function SecretarioEscalafonPage() {
         }
       >
         {complaintEntry && (
-          <FeedbackMessage type="warning" className="rounded-xl">
+          <FeedbackMessage type="warning" className={styles.modalWarning}>
             <p>{complaintEntry.causa_revision || "El estudiante no indicó una causa."}</p>
-            {complaintEntry.fecha_revision && <p className="mt-1 text-xs opacity-75">Solicitada el {new Date(complaintEntry.fecha_revision).toLocaleString("es-CU")}</p>}
+            {complaintEntry.fecha_revision && <p className={styles.revisionDate}>Solicitada el {new Date(complaintEntry.fecha_revision).toLocaleString("es-CU")}</p>}
           </FeedbackMessage>
         )}
       </Modal>

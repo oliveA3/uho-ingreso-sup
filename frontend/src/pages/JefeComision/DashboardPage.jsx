@@ -49,7 +49,7 @@ export default function DashboardPage({ user }) {
 
         <StageStatusNotice />
 
-        <StatsGrid className="mt-6">
+        <StatsGrid className={styles.statsGrid}>
           {stats.map((stat) => (
             <StatCard key={stat.label} label={stat.label} value={stat.value} />
           ))}

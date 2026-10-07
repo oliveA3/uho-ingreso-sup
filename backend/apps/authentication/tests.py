@@ -4,6 +4,10 @@ from django.core.cache import cache
 from django.utils import timezone
 from datetime import timedelta
 
+from unittest.mock import patch
+from django.urls import reverse
+from rest_framework.test import APIClient
+
 from apps.authentication.models import EmailVerificationCode, LoginAttempt, Usuario
 from apps.authentication.serializers import SuperAdminUserSerializer, UserSerializer
 from apps.superadmin.models import Escuela, Municipio, Provincia
@@ -31,6 +35,25 @@ class AutheticationSmokeTests(TestCase):
 
         self.assertEqual(response.status_code, 403)
         self.assertIn("verificar tu correo", response.json()["error"]["detail"])
+
+    def test_deactivated_verified_user_cannot_login(self):
+        user = Usuario.objects.create_user(
+            username="deactivated.user",
+            email="deactivated@example.com",
+            password="secret1234",
+            is_active=False,
+            email_verificado=True,
+        )
+
+        response = self.client.post(
+            "/api/v1/authentication/login/",
+            data={"username": user.username, "password": "secret1234"},
+        )
+
+        self.assertEqual(response.status_code, 403)
+        detail = response.json()["error"]["detail"]
+        self.assertIn("desactivada", detail)
+        self.assertNotIn("verificar tu correo", detail)
 
     def test_verification_code_activates_user(self):
         user = Usuario.objects.create_user(
@@ -304,6 +327,25 @@ class SuperAdminUserScopeTests(TestCase):
                 })
                 self.assertFalse(serializer.is_valid())
 
+    def test_news_manager_requires_province_and_allows_multiple_users(self):
+        missing_province = SuperAdminUserSerializer(data={
+            "username": "news.manager.no.province",
+            "email": "news.manager.no.province@example.com",
+            "password": "secret1234",
+            "rol": "gestor_noticias",
+        })
+        self.assertFalse(missing_province.is_valid())
+
+        self.create_user("news-manager-existing", "gestor_noticias", provincia=self.province)
+        another_manager = SuperAdminUserSerializer(data={
+            "username": "news-manager-another",
+            "email": "news-manager-another@example.com",
+            "password": "secret1234",
+            "rol": "gestor_noticias",
+            "provincia": self.province.pk,
+        })
+        self.assertTrue(another_manager.is_valid(), another_manager.errors)
+
     def test_can_edit_user_without_conflicting_with_itself(self):
         user = self.create_user(
             "secretary", "secretario_escuela",
@@ -338,10 +380,38 @@ class SuperAdminUserScopeTests(TestCase):
         })
 
         self.assertTrue(serializer.is_valid(), serializer.errors)
-        user = serializer.save()
+        with self.captureOnCommitCallbacks(execute=True):
+            user = serializer.save()
 
         self.assertEqual(user.rol, "superadmin")
         self.assertEqual(len(mail.outbox), 1)
         self.assertEqual(mail.outbox[0].to, ["welcome@example.com"])
         self.assertIn("Usuario: welcome.user", mail.outbox[0].body)
         self.assertIn("Contraseña temporal: secret1234", mail.outbox[0].body)
+
+    @patch("apps.authentication.serializers.send_email_async", side_effect=RuntimeError("SMTP unavailable"))
+    def test_email_failure_does_not_fail_user_creation_response(self, _send_email):
+        admin = Usuario.objects.create_user(
+            username="superadmin.email.failure",
+            email="superadmin.email.failure@example.com",
+            password="secret1234",
+            rol="superadmin",
+        )
+        client = APIClient()
+        client.force_authenticate(user=admin)
+        payload = {
+            "username": "created.despite.email.failure",
+            "email": "created.despite.email.failure@example.com",
+            "first_name": "María",
+            "last_name": "Pérez",
+            "password": "secret1234",
+            "rol": "superadmin",
+        }
+
+        with self.captureOnCommitCallbacks(execute=True):
+            response = client.post(reverse("superadmin-usuarios"), payload, format="json")
+
+        self.assertEqual(response.status_code, 201, response.data)
+        user = Usuario.objects.get(username=payload["username"])
+        self.assertTrue(user.check_password(payload["password"]))
+        self.assertTrue(user.debe_cambiar_password)

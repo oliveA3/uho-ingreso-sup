@@ -1,0 +1,73 @@
+.form {
+  display: grid;
+  gap: 1rem;
+}
+
+.formError {
+  border-radius: 0.5rem;
+}
+
+.permanentToggle {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  border: 1px solid var(--gris-200);
+  border-radius: 0.5rem;
+  padding: 0.625rem 0.75rem;
+  color: var(--gris-700);
+  font-size: 0.875rem;
+}
+
+.currentMedia {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border: 1px solid var(--gris-200);
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+}
+
+.currentMediaLink {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--gris-700);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  text-decoration: underline;
+  white-space: nowrap;
+}
+
+.removeMediaToggle {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--gris-600);
+}
+
+.coverPreview {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  border: 1px solid var(--gris-200);
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+}
+
+.coverImage {
+  width: 6rem;
+  height: 4rem;
+  flex-shrink: 0;
+  border-radius: 0.25rem;
+  object-fit: cover;
+}
+
+.coverDescription {
+  color: var(--gris-600);
+  font-size: 0.875rem;
+  overflow-wrap: anywhere;
+}

@@ -44,7 +44,7 @@ export default function ResultadosPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className={styles.page}>
       <Card padding="p-6">
         <div className={styles.headerRow}>
           <div>
@@ -55,8 +55,8 @@ export default function ResultadosPage() {
 
         <StageStatusNotice stageNumber={5} />
 
-        {error && <FeedbackMessage type="error" className="mt-6 rounded-xl">{error}</FeedbackMessage>}
-        <StatsGrid className="mt-6">
+        {error && <FeedbackMessage type="error" className={styles.feedbackMessage}>{error}</FeedbackMessage>}
+        <StatsGrid className={styles.statsGrid}>
           {resultados.map((item) => (
             <StatCard
               key={item.subject}
@@ -80,11 +80,11 @@ export default function ResultadosPage() {
                   <span className={`${styles.claimBadge} ${item.claim.status === "aprobada" ? styles.claimBadgeApproved : item.claim.status === "rechazada" ? styles.claimBadgeRejected : styles.claimBadgePending}`}>
                     {item.claim.status === "aprobada" ? "Reclamación aceptada" : item.claim.status === "rechazada" ? "Reclamación rechazada" : "Reclamación enviada"}
                   </span>
-                  {item.claim.status === "aprobada" && <SecondaryButton className="" onClick={() => setAcceptedClaim(item.claim)}>Ver detalles</SecondaryButton>}
+                  {item.claim.status === "aprobada" && <SecondaryButton onClick={() => setAcceptedClaim(item.claim)}>Ver detalles</SecondaryButton>}
                 </div>
               ) : canClaim && item.grade != null && (
                 <PrimaryButton
-                  className="!bg-orange-500 hover:!bg-orange-600"
+                  className={styles.claimButton}
                   onClick={() => { setClaimModal(item); setClaimDescription(""); }}
                   disabled={!item.puede_reclamar}
                 >
@@ -110,7 +110,7 @@ export default function ResultadosPage() {
           <>
             <SecondaryButton onClick={() => setClaimModal(null)}>Cancelar</SecondaryButton>
             <PrimaryButton
-              className="!bg-orange-500 hover:!bg-orange-600"
+              className={styles.claimButton}
               type="submit"
               form="claim-form"
               disabled={!claimDescription.trim() || claimingId === claimModal?.id}
@@ -123,10 +123,10 @@ export default function ResultadosPage() {
         {claimModal && (
           <form id="claim-form" onSubmit={(event) => { event.preventDefault(); handleClaim(claimModal); }}>
             <div className={styles.claimFormSummary}>
-              <p><span className="font-semibold">Nota obtenida:</span> {claimModal.grade}</p>
-              <p><span className="font-semibold">Plazo:</span> {claimModal.fecha_limite_reclamo || "No definido"}</p>
+              <p><span className={styles.strongText}>Nota obtenida:</span> {claimModal.grade}</p>
+              <p><span className={styles.strongText}>Plazo:</span> {claimModal.fecha_limite_reclamo || "No definido"}</p>
             </div>
-            <FormField label="Razón de la reclamación" className="mt-5">
+            <FormField label="Razón de la reclamación" className={styles.claimReasonField}>
               <TextArea value={claimDescription} onChange={(event) => setClaimDescription(event.target.value)} maxLength={500} required rows={5} placeholder="Explica por qué solicitas revisar esta nota." />
             </FormField>
           </form>
@@ -142,9 +142,9 @@ export default function ResultadosPage() {
       >
         {acceptedClaim && (
           <div className={styles.acceptedClaimBox}>
-            <p><span className="font-semibold">Razón:</span> {acceptedClaim.description}</p>
-            <p><span className="font-semibold">Día y hora:</span> {acceptedClaim.fecha_presentacion ? new Date(acceptedClaim.fecha_presentacion).toLocaleString("es-CU") : "No definido"}</p>
-            <p><span className="font-semibold">Lugar:</span> {acceptedClaim.lugar_presentacion || "No definido"}</p>
+            <p><span className={styles.strongText}>Razón:</span> {acceptedClaim.description}</p>
+            <p><span className={styles.strongText}>Día y hora:</span> {acceptedClaim.fecha_presentacion ? new Date(acceptedClaim.fecha_presentacion).toLocaleString("es-CU") : "No definido"}</p>
+            <p><span className={styles.strongText}>Lugar:</span> {acceptedClaim.lugar_presentacion || "No definido"}</p>
           </div>
         )}
       </Modal>

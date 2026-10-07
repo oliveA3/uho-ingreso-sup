@@ -38,35 +38,35 @@ export default function EstudianteEscalafonPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className={styles.page}>
       <Card padding="p-6">
         <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-700">Mi proceso académico</p>
-          <h1 className="mt-2 text-2xl font-semibold text-slate-900">Mi Escalafón</h1>
-          <p className="mt-1 text-sm text-slate-600">Consulta tus notas, tu posición en el escalafón y el estado de validación en el proceso de ingreso.</p>
+          <p className={styles.eyebrow}>Mi proceso académico</p>
+          <h1 className={styles.title}>Mi Escalafón</h1>
+          <p className={styles.subtitle}>Consulta tus notas, tu posición en el escalafón y el estado de validación en el proceso de ingreso.</p>
         </div>
 
         <StageStatusNotice stageNumber={1} />
 
-        <StatsGrid className="mt-6">
+        <StatsGrid className={styles.statsGrid}>
           <StatCard label="10mo Grado" value={current?.indice_10 ?? "--"} />
           <StatCard label="11no Grado" value={current?.indice_11 ?? "--"} />
           <StatCard label="12vo Grado" value={current?.indice_12 ?? "--"} />
           <StatCard label="Índice general" value={current?.indice_general ?? "--"} />
         </StatsGrid>
 
-        {error && <FeedbackMessage type="error" className="mt-6 rounded-2xl">{error}</FeedbackMessage>}
-        {notice && <FeedbackMessage type="success" className="mt-3 rounded-2xl">{notice}</FeedbackMessage>}
+        {error && <FeedbackMessage type="error" className={styles.feedbackMessage}>{error}</FeedbackMessage>}
+        {notice && <FeedbackMessage type="success" className={styles.noticeMessage}>{notice}</FeedbackMessage>}
 
-        {current && <div className="mt-6 space-y-4">
+        {current && <div className={styles.escalafonSection}>
           <EscalafonTable entries={entries} current={current} search={search} onSearchChange={(event) => setSearch(event.target.value)} />
           {(current.estado === "por_revisar" || (canRespond && current.estado === "sin_respuesta")) && <div className={styles.reviewBox}>
-            {current.estado === "por_revisar" && <FeedbackMessage type="warning" className="mt-2 rounded-xl">Tu solicitud de revisión fue enviada.</FeedbackMessage>}
+            {current.estado === "por_revisar" && <FeedbackMessage type="warning" className={styles.reviewPendingMessage}>Tu solicitud de revisión fue enviada.</FeedbackMessage>}
             {canRespond && current.estado === "sin_respuesta" && <>
               <p className={styles.reviewHint}>¿Aceptas tus índices o deseas solicitar una revisión?</p>
               <div className={styles.reviewActions}>
-                <PrimaryButton className="!bg-brand-success hover:!brightness-90" onClick={() => act("aceptar")}>Aceptar</PrimaryButton>
-                <PrimaryButton className="!bg-amber-500 hover:!bg-amber-600" onClick={() => setReviewModalOpen(true)}>Solicitar revisión</PrimaryButton>
+                <PrimaryButton className={styles.acceptButton} onClick={() => act("aceptar")}>Aceptar</PrimaryButton>
+                <PrimaryButton className={styles.reviewButton} onClick={() => setReviewModalOpen(true)}>Solicitar revisión</PrimaryButton>
               </div>
             </>}
           </div>}

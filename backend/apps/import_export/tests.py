@@ -1,7 +1,7 @@
 from datetime import date
 from io import BytesIO
 
-from openpyxl import load_workbook
+from openpyxl import Workbook, load_workbook
 from rest_framework.test import APIRequestFactory, APITestCase
 from django.contrib.auth.models import AnonymousUser
 from django.contrib.auth import get_user_model
@@ -10,6 +10,7 @@ from django.utils import timezone
 from apps.authentication.models import Estudiante
 from apps.gestion_personal.models import BoletaInteres, BoletaInteresItem, BoletaSolicitud, BoletaSolicitudItem
 from apps.gestion_provincial.models import ETAPAS_NOMBRES, CorteCarrera, Etapa, PlanPlaza, Proceso
+from apps.import_export.services.carreras_service import CareerExcelService
 from apps.superadmin.models import Carrera, Ces, Escuela, IdentidadVisual, Municipio, Provincia, TipoOtorgamiento
 
 
@@ -204,3 +205,42 @@ class ImportTaskStatusTests(APITestCase):
         other_client.force_authenticate(self.other)
         self.assertEqual(other_client.get(url).status_code, 404)
         self.assertEqual(self.client.get("/api/v1/import-export/tareas/inexistente/").status_code, 404)
+
+class CareerCatalogSpreadsheetTests(APITestCase):
+    def test_import_preserves_manual_information_and_export_keeps_four_columns(self):
+        province = Provincia.objects.create(nombre="Provincia catálogo")
+        ces = Ces.objects.create(nombre="CES catálogo")
+        career = Carrera.objects.create(
+            codigo="CAT-1",
+            nombre="Carrera catálogo",
+            descripcion="Descripción inicial",
+            campo_laboral="Campo inicial",
+            requisitos="Requisitos iniciales",
+            perfil_egresado="Perfil inicial",
+            ces=ces,
+            provincia=province,
+        )
+        service = CareerExcelService()
+
+        workbook = Workbook()
+        worksheet = workbook.active
+        worksheet.append(["Código", "Nombre", "CES", "Provincia"])
+        worksheet.append([career.codigo, "Carrera actualizada", ces.nombre, province.nombre])
+        upload = BytesIO()
+        workbook.save(upload)
+        upload.seek(0)
+
+        result = service.import_file(upload)
+
+        self.assertEqual(result.errors, [])
+        career.refresh_from_db()
+        self.assertEqual(career.nombre, "Carrera actualizada")
+        self.assertEqual(career.descripcion, "Descripción inicial")
+        self.assertEqual(career.campo_laboral, "Campo inicial")
+        self.assertEqual(career.requisitos, "Requisitos iniciales")
+        self.assertEqual(career.perfil_egresado, "Perfil inicial")
+
+        exported = load_workbook(BytesIO(service.export_file(Carrera.objects.filter(pk=career.pk))))
+        exported_sheet = exported.active
+        self.assertEqual([cell.value for cell in exported_sheet[1]], ["Código", "Nombre", "CES", "Provincia"])
+        self.assertEqual(exported_sheet.max_column, 4)

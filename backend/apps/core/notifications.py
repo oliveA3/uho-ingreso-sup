@@ -1,7 +1,9 @@
 from .models import NotificationOutbox
+from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 import logging
+import threading
 
 
 logger = logging.getLogger(__name__)
@@ -39,12 +41,20 @@ def notify_users(users, title, content, filter_students=True):
     ])
     entry_ids = [entry.id for entry in entries]
 
-    def enqueue_notifications():
+    def publish():
         from .tasks import process_notification_batch
         try:
             process_notification_batch.delay(entry_ids)
         except Exception:
             logger.exception("No se pudo encolar el lote de notificaciones %s", entry_ids)
+
+    def enqueue_notifications():
+        # Se despacha en un hilo aparte (salvo en modo eager, usado en los tests) para que la
+        # petición HTTP que disparó la notificación no quede bloqueada si el broker no responde.
+        if settings.CELERY_TASK_ALWAYS_EAGER:
+            publish()
+        else:
+            threading.Thread(target=publish, daemon=True).start()
 
     transaction.on_commit(enqueue_notifications)
     return len(entry_ids)

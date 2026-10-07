@@ -19,3 +19,18 @@
   font-size: 0.875rem;
   color: var(--gris-700);
 }
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.feedbackMessage {
+  margin-top: 1rem;
+  border-radius: 1rem;
+}
+
+.statsGrid {
+  margin-top: 1.5rem;
+}

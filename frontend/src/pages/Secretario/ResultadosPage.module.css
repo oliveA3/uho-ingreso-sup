@@ -1,0 +1,40 @@
+.studentCell {
+  font-weight: 500;
+  color: var(--gris-900);
+}
+
+.title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--gris-900);
+}
+
+.subtitle {
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--gris-600);
+}
+
+.feedbackMessage {
+  margin-top: 1rem;
+  border-radius: 0.75rem;
+}
+
+.table {
+  margin-top: 1.5rem;
+}
+
+.actionsRow {
+  margin-top: 1rem;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.exportButton {
+  border-radius: 9999px !important;
+  background-color: var(--gris-900) !important;
+}
+
+.exportButton:hover {
+  background-color: var(--gris-700) !important;
+}

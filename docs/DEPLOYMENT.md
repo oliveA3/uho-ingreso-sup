@@ -157,6 +157,10 @@ npm run build
 
 El proxy debe reenviar `X-Forwarded-Proto: https`. En modo producción Django activa HTTPS y cookies seguras.
 
+## Archivos multimedia de noticias
+
+Las imágenes, videos y documentos adjuntos se guardan bajo `MEDIA_ROOT` (por defecto `backend/media`). En producción, configura `MEDIA_ROOT` en un volumen persistente con espacio, permisos de escritura para el usuario del backend y copias de seguridad junto con la base de datos. Los archivos públicos se sirven mediante los endpoints de descarga de la API, que aplican alcance provincial y fecha de expiración; no publiques el directorio de subidas como contenido ejecutable ni lo incluyas en `frontend/dist`.
+
 ## Redis y Celery
 
 Las notificaciones masivas de `apps/core` se escriben primero en `NotificationOutbox` y se procesan en segundo plano. Redis debe estar disponible antes del worker. Mantén ambos procesos supervisados y con reinicio automático:

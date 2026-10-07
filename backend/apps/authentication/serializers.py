@@ -1,3 +1,5 @@
+import logging
+
 from rest_framework import serializers
 import secrets
 from datetime import timedelta
@@ -9,6 +11,25 @@ from apps.authentication.models import EmailVerificationCode, PRIVACY_POLICY_VER
 from apps.gestion_escuela.models import EscalafonItem
 from apps.gestion_provincial.models import ETAPAS_NOMBRES
 from apps.superadmin.models import Escuela
+
+logger = logging.getLogger(__name__)
+
+
+def _send_superadmin_welcome_email(user, generated_password):
+    try:
+        send_email_async(
+            subject="Bienvenido a IngresoSUP",
+            message=(
+                f"Hola {user.first_name or user.username},\n\n"
+                "Tu cuenta de IngresoSUP ha sido creada por el Super Administrador.\n"
+                f"Usuario: {user.username}\n"
+                f"Contraseña temporal: {generated_password}\n\n"
+                "Por seguridad, cambia esta contraseña después de iniciar sesión."
+            ),
+            recipient_list=[user.email],
+        )
+    except Exception:
+        logger.exception("No se pudo enviar el correo de bienvenida para el usuario %s.", user.pk)
 
 
 class LoginSerializer(serializers.Serializer):
@@ -61,7 +82,8 @@ class UserSerializer(serializers.ModelSerializer):
         return self._get_student_field(obj, "tutor_email")
 
     def get_tutor_telefono(self, obj) -> str | None:
-        return self._get_student_field(obj, "tutor_telefono")
+        value = self._get_student_field(obj, "tutor_telefono")
+        return str(value) if value else None
 
 
 class SuperAdminUserSerializer(serializers.ModelSerializer):
@@ -93,7 +115,7 @@ class SuperAdminUserSerializer(serializers.ModelSerializer):
                 "rol": "El rol de estudiante no está permitido en la gestión de usuarios del superadministrador."
             })
 
-        if role in {"jefe_comision", "ingreso_provincial"} and not province:
+        if role in {"jefe_comision", "ingreso_provincial", "gestor_noticias"} and not province:
             raise serializers.ValidationError(
                 "Este rol debe tener una provincia asignada."
             )
@@ -132,6 +154,7 @@ class SuperAdminUserSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError(duplicate_message)
         return attrs
 
+    @transaction.atomic
     def create(self, validated_data):
         password = validated_data.pop("password", None)
         generated_password = password or Usuario.objects.make_random_password()
@@ -139,16 +162,8 @@ class SuperAdminUserSerializer(serializers.ModelSerializer):
         user.set_password(generated_password)
         user.debe_cambiar_password = True
         user.save()
-        send_email_async(
-            subject="Bienvenido a IngresoSUP",
-            message=(
-                f"Hola {user.first_name or user.username},\n\n"
-                "Tu cuenta de IngresoSUP ha sido creada por el Super Administrador.\n"
-                f"Usuario: {user.username}\n"
-                f"Contraseña temporal: {generated_password}\n\n"
-                "Por seguridad, cambia esta contraseña después de iniciar sesión."
-            ),
-            recipient_list=[user.email],
+        transaction.on_commit(
+            lambda: _send_superadmin_welcome_email(user, generated_password)
         )
         return user
 

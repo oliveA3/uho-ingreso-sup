@@ -72,6 +72,10 @@ const groups = [
       item("GET, PATCH, DELETE", "/gestion-provincial/escuelas/{id}/", "Consulta, edita o desactiva escuela."),
       item("GET, POST", "/gestion-provincial/usuarios/", "Lista o crea usuarios provinciales."),
       item("GET, PATCH, DELETE", "/gestion-provincial/usuarios/{id}/", "Consulta, edita o desactiva usuario."),
+      item("GET, POST", "/gestion-provincial/noticias/", "Lista o crea noticias de la provincia del gestor de noticias o jefe de comisión."),
+      item("GET, PATCH, DELETE", "/gestion-provincial/noticias/{id}/", "Consulta, edita o elimina una noticia provincial."),
+      item("GET", "/gestion-provincial/noticias/landing/", "Noticias vigentes de la provincia de la landing.", "Consulta pública configurada"),
+      item("GET", "/gestion-provincial/noticias/{id}/descargar/", "Descarga multimedia o portada de una noticia."),
       item("GET, POST", "/gestion-provincial/carreras/", "Lista o crea carreras provinciales."),
       item("GET, PATCH, DELETE", "/gestion-provincial/carreras/{id}/", "Consulta, edita o desactiva carrera."),
       item("GET", "/gestion-provincial/ces/", "Lista CES provinciales."),
@@ -243,7 +247,7 @@ export default function ApiPage() {
         <div className={styles.filterBar}>
           <div className={styles.filterRow}>
             <label className={styles.searchField}>
-              <span className="sr-only">Buscar endpoint</span>
+              <span className={styles.srOnly}>Buscar endpoint</span>
               <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar por ruta, método o descripción..." />
             </label>
             <Select value={selectedGroup} onChange={(event) => setSelectedGroup(event.target.value)}>

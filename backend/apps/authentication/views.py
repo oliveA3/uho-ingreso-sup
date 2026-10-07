@@ -85,10 +85,12 @@ class LoginView(APIView):
             attempt.save(update_fields=["failed_attempts", "locked_until", "updated_at"])
             pending_user = Usuario.objects.filter(username=username).first()
             if pending_user and pending_user.check_password(password) and not pending_user.is_active:
-                return api_error(
-                    {"detail": "Debes verificar tu correo antes de iniciar sesión."},
-                    status=status.HTTP_403_FORBIDDEN,
+                detail = (
+                    "Debes verificar tu correo antes de iniciar sesión."
+                    if not pending_user.email_verificado
+                    else "Tu cuenta está desactivada. Contacta al administrador."
                 )
+                return api_error({"detail": detail}, status=status.HTTP_403_FORBIDDEN)
             return api_error(
                 {"detail": "Credenciales inválidas."},
                 status=status.HTTP_401_UNAUTHORIZED,

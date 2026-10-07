@@ -1,0 +1,34 @@
+.section {
+  margin-top: 1.5rem;
+  border-top: 1px solid var(--gris-200);
+  padding-top: 1.5rem;
+}
+
+.headerRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.title {
+  color: var(--gris-900);
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.subtitle {
+  margin-top: 0.25rem;
+  color: var(--gris-600);
+  font-size: 0.875rem;
+}
+
+.feedbackMessage {
+  margin-top: 1.25rem;
+  border-radius: 0.75rem;
+}
+
+.table {
+  margin-top: 1rem;
+}

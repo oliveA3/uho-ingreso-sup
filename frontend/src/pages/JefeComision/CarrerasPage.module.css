@@ -68,6 +68,10 @@
   gap: 1rem;
 }
 
+.formError {
+  border-radius: 0.5rem;
+}
+
 .importText {
   font-size: 0.875rem;
   color: var(--gris-600);
@@ -86,4 +90,13 @@
 .strongCell {
   font-weight: 500;
   color: var(--gris-900);
+}
+
+.deleteAction {
+  margin-left: 0.5rem;
+}
+
+.feedbackMessage {
+  margin-top: 1.25rem;
+  border-radius: 1rem;
 }

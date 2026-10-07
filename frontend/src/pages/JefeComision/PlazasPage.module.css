@@ -51,6 +51,23 @@
   background-color: var(--color-secundario, #2e75b6) !important;
 }
 
+.deleteAction {
+  margin-left: 0.5rem;
+}
+
+.feedbackMessage {
+  margin-top: 1.25rem;
+  border-radius: 0.75rem;
+}
+
+.submitButton {
+  background-color: var(--gris-900) !important;
+}
+
+.submitButton:hover {
+  background-color: var(--gris-800) !important;
+}
+
 .tableCard {
   overflow: hidden;
 }

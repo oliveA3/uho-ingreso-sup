@@ -45,7 +45,7 @@ export default function EstudianteHomePage() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className={styles.page}>
       <Card padding="p-6 sm:p-8">
         <header>
           <p className={styles.greeting}>¡Hola, {studentName}!</p>
@@ -54,10 +54,10 @@ export default function EstudianteHomePage() {
           </p>
         </header>
 
-        {error && <FeedbackMessage type="error" className="mt-6 rounded-2xl">{error}</FeedbackMessage>}
+        {error && <FeedbackMessage type="error" className={styles.feedbackMessage}>{error}</FeedbackMessage>}
         <StageStatusNotice />
 
-        <StatsGrid className="mt-6">
+        <StatsGrid className={styles.statsGrid}>
           {stats.map(([value, label, tone]) => (
             <StatCard key={label} label={label} value={value} tone={tone} />
           ))}

@@ -1,6 +1,8 @@
 import json
 import logging
 
+from django.http import RawPostDataException
+
 from .models import LogAuditoria
 
 logger = logging.getLogger("audit")
@@ -50,13 +52,17 @@ def build_audit_action(request):
     }
 
     if "usuarios" in path_parts and request.method == "POST":
-        request_data = getattr(request, "data", None)
+        request_data = getattr(request, "_audit_data", None)
         if request_data is None:
             request_data = request.POST
-            if not request_data and request.body:
+            try:
+                request_body = request.body if not request_data else b""
+            except RawPostDataException:
+                request_body = b""
+            if request_body:
                 try:
-                    request_data = json.loads(request.body)
-                except (TypeError, ValueError):
+                    request_data = json.loads(request_body)
+                except (RawPostDataException, TypeError, ValueError, UnicodeDecodeError):
                     request_data = {}
         role = request_data.get("rol", "sin rol")
         return f"Creación de usuario con rol {role}"

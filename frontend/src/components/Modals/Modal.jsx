@@ -18,6 +18,7 @@ export default function Modal({
   description,
   children,
   footer,
+  bodyClassName = "",
   size = "md",
   closeOnOverlayClick = true,
 }) {
@@ -91,7 +92,7 @@ export default function Modal({
           </div>
         )}
 
-        <div className={title || description ? styles.bodyWithHeader : styles.body}>{children}</div>
+        <div className={`${title || description ? styles.bodyWithHeader : styles.body} ${bodyClassName}`.trim()}>{children}</div>
 
         {footer && <div className={styles.footer}>{footer}</div>}
       </div>

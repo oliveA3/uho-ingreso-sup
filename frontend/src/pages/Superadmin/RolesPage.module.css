@@ -1,0 +1,19 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.table {
+  margin-top: 1.5rem;
+}
+
+.permissionCell {
+  font-weight: 600;
+  color: var(--gris-900);
+}
+
+.roleCell {
+  text-align: center;
+  color: var(--gris-700);
+}

@@ -22,7 +22,7 @@ export default function DashboardPage({ user }) {
     { value: "v2.0", label: "Versión" },
   ];
   return (
-    <div className="space-y-6">
+    <div className={styles.page}>
       <Card padding="p-6">
         <PageHeader
           title="Panel de Administración Global"
@@ -35,9 +35,9 @@ export default function DashboardPage({ user }) {
           }
         />
 
-        {error && <FeedbackMessage type="error" className="mt-4 rounded-2xl">{error}</FeedbackMessage>}
+        {error && <FeedbackMessage type="error" className={styles.feedbackMessage}>{error}</FeedbackMessage>}
         <StageStatusNotice />
-        <StatsGrid className="mt-6">
+        <StatsGrid className={styles.statsGrid}>
           {cards.map((stat) => (
             <StatCard key={stat.label} label={stat.label} value={stat.value} />
           ))}

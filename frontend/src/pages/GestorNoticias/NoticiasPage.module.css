@@ -1,0 +1,185 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  min-width: 0;
+}
+
+.errorMessage {
+  margin-top: 1.25rem;
+  border-radius: 0.75rem;
+}
+
+.formError {
+  border-radius: 0.5rem;
+}
+
+.fileLink {
+  color: var(--gris-700);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+.loadingState {
+  border-left: 3px solid var(--color-acento, #5ba3d9);
+  padding: 0.75rem 1rem;
+  color: var(--gris-600);
+  background: var(--gris-100);
+}
+
+.emptyState {
+  padding: 0.25rem 0;
+  color: var(--gris-600);
+  font-size: 1rem;
+}
+
+.newsGrid {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+}
+
+@media (min-width: 640px) {
+  .newsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.25rem;
+  }
+}
+
+@media (min-width: 1280px) {
+  .newsGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.newsCard {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.newsCardPadding {
+  padding: 0;
+}
+
+.newsThumbnail {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 8;
+  object-fit: cover;
+  background: var(--gris-100);
+}
+
+.newsCardBody {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+}
+
+@media (min-width: 640px) {
+  .newsCardBody {
+    padding: 1.25rem;
+  }
+}
+
+.newsCardHeader {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.headerActions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.externalLinkButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  flex-shrink: 0;
+  border-radius: 9999px;
+  border: 1px solid var(--gris-200);
+  color: var(--gris-600);
+  background: var(--blanco);
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.externalLinkButton:hover {
+  color: var(--color-primario, #1f4e79);
+  border-color: var(--color-primario, #1f4e79);
+}
+
+.newsCardTitle {
+  min-width: 0;
+  color: var(--gris-900);
+  font-size: 1.125rem;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.statusBadge {
+  flex-shrink: 0;
+  border-radius: 9999px;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.statusPublished {
+  color: var(--color-exito, #1a7a4a);
+  background: color-mix(in srgb, var(--color-exito, #1a7a4a) 10%, var(--blanco));
+}
+
+.statusPermanent {
+  color: var(--color-primario, #1f4e79);
+  background: color-mix(in srgb, var(--color-primario, #1f4e79) 10%, var(--blanco));
+}
+
+.statusExpired {
+  color: var(--color-error, #c0392b);
+  background: color-mix(in srgb, var(--color-error, #c0392b) 10%, var(--blanco));
+}
+
+.newsSummary {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--gris-600);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+}
+
+.newsMetadata {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.875rem;
+  margin-top: auto;
+  color: var(--gris-500);
+  font-size: 0.8125rem;
+}
+
+.cardActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  border-top: 1px solid var(--gris-100);
+  padding-top: 0.75rem;
+}
+

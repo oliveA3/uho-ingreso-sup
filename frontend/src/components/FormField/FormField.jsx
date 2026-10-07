@@ -21,9 +21,14 @@ export default function FormField({
   const singleChild = Children.count(children) === 1 && isValidElement(children) ? children : null;
   const resolvedHtmlFor = htmlFor || (singleChild ? singleChild.props.id || generatedId : undefined);
 
+  // Si el caller ya indicó `htmlFor` explícito, asumimos que también puso el
+  // `id` correspondiente en el control real (puede estar anidado, p.ej. un
+  // input de contraseña envuelto en un <div> con botón de mostrar/ocultar).
+  // Forzar el id aquí duplicaría el id en el wrapper y rompería la asociación
+  // del <label>.
   const content = singleChild
     ? cloneElement(singleChild, {
-        id: singleChild.props.id || resolvedHtmlFor,
+        ...(htmlFor ? {} : { id: singleChild.props.id || resolvedHtmlFor }),
         "aria-describedby": error
           ? [singleChild.props["aria-describedby"], resolvedErrorId].filter(Boolean).join(" ")
           : singleChild.props["aria-describedby"],

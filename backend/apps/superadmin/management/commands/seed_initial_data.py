@@ -1,104 +1,163 @@
 import os
+import unicodedata
 
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
 from apps.authentication.models import Estudiante, Usuario
-from apps.superadmin.models import Asignatura, Ces, Escuela, Municipio, Provincia
+from apps.superadmin.models import (
+    Asignatura,
+    Ces,
+    Escuela,
+    Municipio,
+    Provincia,
+    normalize_territorial_name,
+)
 
 
 CUBA_TERRITORIES = {
-    "Pinar del Rio": [
-        "Consolacion del Sur", "Guane", "La Palma", "Los Palacios", "Mantua",
-        "Minas de Matahambre", "Pinar del Rio", "San Cristobal", "San Luis",
-        "Sandino", "Vinales",
+    "Pinar del Río": [
+        "Consolación del Sur", "Guane", "La Palma", "Los Palacios", "Mantua",
+        "Minas de Matahambre", "Pinar del Río", "San Cristóbal", "San Luis",
+        "Sandino", "Viñales",
     ],
     "Artemisa": [
-        "Alquizar", "Artemisa", "Bahia Honda", "Bauta", "Caimito", "Candelaria",
-        "Guanajay", "Guira de Melena", "Mariel", "San Antonio de los Banos",
-        "San Cristobal",
+        "Alquízar", "Artemisa", "Bahía Honda", "Bauta", "Caimito", "Candelaria",
+        "Guanajay", "Güira de Melena", "Mariel", "San Antonio de los Baños",
+        "San Cristóbal",
     ],
     "La Habana": [
         "Arroyo Naranjo", "Boyeros", "Centro Habana", "Cerro", "Cotorro",
         "Diez de Octubre", "Guanabacoa", "Habana del Este", "Habana Vieja",
-        "La Lisa", "Marianao", "Playa", "Plaza de la Revolucion", "Regla",
-        "San Miguel del Padron",
+        "La Lisa", "Marianao", "Playa", "Plaza de la Revolución", "Regla",
+        "San Miguel del Padrón",
     ],
     "Mayabeque": [
-        "Batabano", "Bejucal", "Güines", "Jaruco", "Madruga", "Melena del Sur",
-        "Nueva Paz", "Quivican", "San Jose de las Lajas", "San Nicolas",
+        "Batabanó", "Bejucal", "Güines", "Jaruco", "Madruga", "Melena del Sur",
+        "Nueva Paz", "Quivicán", "San José de las Lajas", "San Nicolás",
         "Santa Cruz del Norte",
     ],
     "Matanzas": [
-        "Agramonte", "Calimete", "Cardenas", "Cienaga de Zapata", "Colon",
-        "Jaguey Grande", "Jovellanos", "Limonar", "Los Arabos", "Marti",
-        "Matanzas", "Pedro Betancourt", "Perico", "Union de Reyes",
+        "Agramonte", "Calimete", "Cárdenas", "Ciénaga de Zapata", "Colón",
+        "Jagüey Grande", "Jovellanos", "Limonar", "Los Arabos", "Martí",
+        "Matanzas", "Pedro Betancourt", "Perico", "Unión de Reyes",
     ],
     "Cienfuegos": [
         "Abreus", "Aguada de Pasajeros", "Cienfuegos", "Cruces", "Cumanayagua",
         "Lajas", "Palmira", "Rodas",
     ],
     "Villa Clara": [
-        "Caibarien", "Camajuani", "Cifuentes", "Corralillo", "Encrucijada",
-        "Manicaragua", "Placetas", "Quemado de Guines", "Ranchuelo", "Remedios",
+        "Caibarién", "Camajuaní", "Cifuentes", "Corralillo", "Encrucijada",
+        "Manicaragua", "Placetas", "Quemado de Güines", "Ranchuelo", "Remedios",
         "Sagua la Grande", "Santa Clara", "Santo Domingo",
     ],
-    "Sancti Spiritus": [
-        "Cabaiguan", "Fomento", "Jatibonico", "La Sierpe", "Sancti Spiritus",
+    "Sancti Spíritus": [
+        "Cabaiguán", "Fomento", "Jatibonico", "La Sierpe", "Sancti Spíritus",
         "Taguasco", "Trinidad", "Yaguajay",
     ],
-    "Ciego de Avila": [
-        "Baragua", "Bolivia", "Chambas", "Ciego de Avila", "Ciro Redondo",
-        "Florencia", "Majagua", "Moron", "Primero de Enero", "Venezuela",
+    "Ciego de Ávila": [
+        "Baraguá", "Bolivia", "Chambas", "Ciego de Ávila", "Ciro Redondo",
+        "Florencia", "Majagua", "Morón", "Primero de Enero", "Venezuela",
     ],
-    "Camaguey": [
-        "Camaguey", "Carlos Manuel de Cespedes", "Esmeralda", "Florida", "Guáimaro",
-        "Jimaguayu", "Minas", "Najasa", "Nuevitas", "Santa Cruz del Sur",
-        "Sibanicu", "Sierra de Cubitas", "Vertientes",
+    "Camagüey": [
+        "Camagüey", "Carlos Manuel de Céspedes", "Esmeralda", "Florida", "Guáimaro",
+        "Jimaguayú", "Minas", "Najasa", "Nuevitas", "Santa Cruz del Sur",
+        "Sibanicú", "Sierra de Cubitas", "Vertientes",
     ],
     "Las Tunas": [
-        "Amancio", "Colombia", "Jesus Menendez", "Jobabo", "Las Tunas",
-        "Majibacoa", "Manati", "Puerto Padre",
+        "Amancio", "Colombia", "Jesús Menéndez", "Jobabo", "Las Tunas",
+        "Majibacoa", "Manatí", "Puerto Padre",
     ],
-    "Holguin": [
-        "Antilla", "Baguanos", "Banes", "Cacocum", "Calixto Garcia", "Cueto",
-        "Frank Pais", "Gibara", "Holguin", "Mayari", "Moa", "Rafael Freyre",
-        "Sagua de Tanamo", "Urbano Noris",
+    "Holguín": [
+        "Antilla", "Báguanos", "Banes", "Cacocum", "Calixto García", "Cueto",
+        "Frank País", "Gibara", "Holguín", "Mayarí", "Moa", "Rafael Freyre",
+        "Sagua de Tánamo", "Urbano Noris",
     ],
     "Granma": [
-        "Bartolome Maso", "Bayamo", "Buey Arriba", "Campechuela", "Cauto Cristo",
-        "Guisa", "Jiguani", "Manzanillo", "Media Luna", "Niquero", "Pilon",
-        "Rio Cauto", "Yara",
+        "Bartolomé Masó", "Bayamo", "Buey Arriba", "Campechuela", "Cauto Cristo",
+        "Guisa", "Jiguaní", "Manzanillo", "Media Luna", "Niquero", "Pilón",
+        "Río Cauto", "Yara",
     ],
     "Santiago de Cuba": [
-        "Contramaestre", "Guama", "Mella", "Palma Soriano", "San Luis",
+        "Contramaestre", "Guamá", "Mella", "Palma Soriano", "San Luis",
         "Santiago de Cuba", "Segundo Frente", "Songo-La Maya", "Tercer Frente",
     ],
-    "Guantanamo": [
-        "Baracoa", "Caimanera", "El Salvador", "Guantanamo", "Imias", "Maisi",
-        "Manuel Tames", "Niceto Perez", "San Antonio del Sur", "Yateras",
+    "Guantánamo": [
+        "Baracoa", "Caimanera", "El Salvador", "Guantánamo", "Imías", "Maisí",
+        "Manuel Tames", "Niceto Pérez", "San Antonio del Sur", "Yateras",
     ],
     # Cuba has 15 provinces and the special municipality Isla de la Juventud.
     "Isla de la Juventud": ["Isla de la Juventud"],
 }
 
 ROLE_USERS = (
-    ("superadmin", "seed_superadmin", "seed_superadmin@example.invalid"),
-    ("jefe_comision", "seed_jefe_comision", "seed_jefe_comision@example.invalid"),
-    ("ingreso_provincial", "seed_ingreso_provincial", "seed_ingreso_provincial@example.invalid"),
-    ("ingreso_municipal", "seed_ingreso_municipal", "seed_ingreso_municipal@example.invalid"),
-    ("director_escuela", "seed_director_escuela", "seed_director_escuela@example.invalid"),
-    ("secretario_escuela", "seed_secretario_escuela", "seed_secretario_escuela@example.invalid"),
-    ("estudiante", "seed_estudiante", "seed_estudiante@example.invalid"),
+    ("superadmin", "seed_superadmin", "elena.garcia@example.com", "Elena", "García"),
+    ("jefe_comision", "seed_jefe_comision", "raul.hernandez@example.com", "Raúl", "Hernández"),
+    ("ingreso_provincial", "seed_ingreso_provincial", "marta.perez@example.com", "Marta", "Pérez"),
+    ("gestor_noticias", "seed_gestor_noticias", "laura.rodriguez@example.com", "Laura", "Rodríguez"),
+    ("ingreso_municipal", "seed_ingreso_municipal", "carlos.gonzalez@example.com", "Carlos", "González"),
+    ("director_escuela", "seed_director_escuela", "ana.morales@example.com", "Ana", "Morales"),
+    ("secretario_escuela", "seed_secretario_escuela", "luis.martinez@example.com", "Luis", "Martínez"),
+    ("estudiante", "seed_estudiante", "daniel.fernandez@example.com", "Daniel", "Fernández"),
 )
+
+ROLE_UNIQUE_SCOPES = {
+    "jefe_comision": "provincia",
+    "ingreso_provincial": "provincia",
+    "ingreso_municipal": "municipio",
+    "director_escuela": "escuela",
+    "secretario_escuela": "escuela",
+}
 
 INITIAL_CES = (
-    "Universidad de Holguin",
-    "Universidad de Ciencias Medicas de Holguin",
-    "Instituto Superior Minero Metalurgico de Moa",
+    "Universidad de Holguín",
+    "Universidad de Ciencias Médicas de Holguín",
+    "Instituto Superior Minero Metalúrgico de Moa",
 )
 
-INITIAL_SUBJECTS = ("Matematica", "Español", "Historia")
+INITIAL_SUBJECTS = ("Matemática", "Español", "Historia de Cuba")
+
+
+def get_or_create_named_catalog(model, name, defaults=None):
+    normalized_name = normalize_territorial_name(name)
+    matches = [
+        item for item in model.objects.all().order_by("pk")
+        if normalize_territorial_name(item.nombre) == normalized_name
+    ]
+    if matches:
+        canonical = max(
+            matches,
+            key=lambda item: (
+                sum(
+                    unicodedata.category(character) == "Mn"
+                    for character in unicodedata.normalize("NFD", item.nombre)
+                ),
+                -item.pk,
+            ),
+        )
+        if canonical.nombre != name:
+            canonical.nombre = name
+            canonical.save(update_fields=["nombre"])
+        return canonical, False
+    return model.objects.get_or_create(nombre=name, defaults=defaults or {})
+
+
+def get_or_create_territory(model, name, defaults=None, **scope):
+    normalized_name = normalize_territorial_name(name)
+    existing = model.objects.filter(
+        nombre_normalizado=normalized_name,
+        **scope,
+    ).order_by("pk").first()
+    if existing:
+        if existing.nombre != name:
+            existing.nombre = name
+            existing.save(update_fields=["nombre"])
+        return existing, False
+    return model.objects.get_or_create(
+        nombre=name,
+        defaults=defaults or {},
+        **scope,
+    )
 
 
 class Command(BaseCommand):
@@ -126,16 +185,21 @@ class Command(BaseCommand):
         provinces_created = municipalities_created = schools_created = 0
         ces_created = subjects_created = 0
         for ces_name in INITIAL_CES:
-            _, created = Ces.objects.get_or_create(nombre=ces_name, defaults={"activa": True})
+            _, created = get_or_create_named_catalog(
+                Ces, ces_name, defaults={"activa": True}
+            )
             ces_created += int(created)
         for subject_name in INITIAL_SUBJECTS:
-            _, created = Asignatura.objects.get_or_create(nombre=subject_name, defaults={"activa": True})
+            _, created = get_or_create_named_catalog(
+                Asignatura, subject_name, defaults={"activa": True}
+            )
             subjects_created += int(created)
 
         territories = {}
         for province_name, municipality_names in CUBA_TERRITORIES.items():
-            province, province_created = Provincia.objects.get_or_create(
-                nombre=province_name,
+            province, province_created = get_or_create_territory(
+                Provincia,
+                province_name,
                 defaults={"activa": True},
             )
             provinces_created += int(province_created)
@@ -144,15 +208,17 @@ class Command(BaseCommand):
                 "municipalities": {},
             }
             for municipality_name in municipality_names:
-                municipality, municipality_created = Municipio.objects.get_or_create(
+                municipality, municipality_created = get_or_create_territory(
+                    Municipio,
+                    municipality_name,
                     provincia=province,
-                    nombre=municipality_name,
                     defaults={"activo": True},
                 )
                 municipalities_created += int(municipality_created)
-                school, school_created = Escuela.objects.get_or_create(
+                school, school_created = get_or_create_territory(
+                    Escuela,
+                    f"Preuniversitario {municipality.nombre}",
                     municipio=municipality,
-                    nombre=f"Preuniversitario {municipality_name}",
                     defaults={
                         "codigo": f"SEED-{province.id}-{municipality.id}",
                         "descripcion": "Escuela inicial creada por la semilla territorial.",
@@ -169,9 +235,10 @@ class Command(BaseCommand):
         for municipality in Municipio.objects.all().iterator():
             if municipality.escuelas.exists():
                 continue
-            _, school_created = Escuela.objects.get_or_create(
+            _, school_created = get_or_create_territory(
+                Escuela,
+                f"Preuniversitario {municipality.nombre}",
                 municipio=municipality,
-                nombre=f"Preuniversitario {municipality.nombre}",
                 defaults={
                     "codigo": f"SEED-{municipality.provincia_id}-{municipality.id}",
                     "descripcion": "Escuela inicial creada por la semilla territorial.",
@@ -180,13 +247,14 @@ class Command(BaseCommand):
             )
             schools_created += int(school_created)
 
-        first_province = territories["Pinar del Rio"]["province"]
-        first_municipality = territories["Pinar del Rio"]["municipalities"]["Pinar del Rio"]["municipality"]
-        first_school = territories["Pinar del Rio"]["municipalities"]["Pinar del Rio"]["school"]
+        first_province = territories["Pinar del Río"]["province"]
+        first_municipality = territories["Pinar del Río"]["municipalities"]["Pinar del Río"]["municipality"]
+        first_school = territories["Pinar del Río"]["municipalities"]["Pinar del Río"]["school"]
         scopes = {
             "superadmin": {},
             "jefe_comision": {"provincia": first_province},
             "ingreso_provincial": {"provincia": first_province},
+            "gestor_noticias": {"provincia": first_province},
             "ingreso_municipal": {"municipio": first_municipality, "provincia": first_province},
             "director_escuela": {"escuela": first_school, "municipio": first_municipality, "provincia": first_province},
             "secretario_escuela": {"escuela": first_school, "municipio": first_municipality, "provincia": first_province},
@@ -194,12 +262,44 @@ class Command(BaseCommand):
         }
 
         users_created = 0
-        for role, username, email in ROLE_USERS:
-            user, created = self._get_role_user(role, username, email, scopes[role])
+        skipped_roles = []
+        for role, username, email, first_name, last_name in ROLE_USERS:
+            user, created, is_seed_user = self._get_role_user(
+                role, username, email, scopes[role]
+            )
+            if not is_seed_user:
+                skipped_roles.append(role)
+                self.stdout.write(
+                    self.style.WARNING(
+                        f"No se modificó un usuario existente que ya cubre el rol {role}."
+                    )
+                )
+                continue
+
+            unique_scope = ROLE_UNIQUE_SCOPES.get(role)
+            if unique_scope and scopes[role].get(unique_scope):
+                scope_value = scopes[role][unique_scope]
+                has_conflict = Usuario.objects.filter(
+                    rol=role,
+                    **{f"{unique_scope}_id": scope_value.pk},
+                ).exclude(pk=user.pk).exists()
+                if has_conflict:
+                    skipped_roles.append(role)
+                    self.stdout.write(
+                        self.style.WARNING(
+                            f"No se creó la cuenta seed de {role}: ya existe una cuenta para ese alcance."
+                        )
+                    )
+                    continue
+
             if created:
                 users_created += 1
+            for scope_field in ("provincia", "municipio", "escuela"):
+                setattr(user, scope_field, scopes[role].get(scope_field))
             user.email = email
             user.rol = role
+            user.first_name = first_name
+            user.last_name = last_name
             user.is_active = True
             user.email_verificado = True
             user.is_staff = role == "superadmin"
@@ -208,17 +308,29 @@ class Command(BaseCommand):
                 user.set_password(password)
             user.save()
             if role == "estudiante":
-                Estudiante.objects.get_or_create(
+                student, _ = Estudiante.objects.get_or_create(
                     usuario=user,
                     defaults={
-                        "ci": "99010100001",
-                        "nombre": "Estudiante",
-                        "apellidos": "Demo",
+                        "ci": "08051212345",
+                        "nombre": first_name,
+                        "apellidos": last_name,
                         "sexo": "M",
-                        "direccion": "Direccion de prueba",
+                        "direccion": "Calle Martí No. 12, Pinar del Río",
                         "escuela": first_school,
                     },
                 )
+                demo_ci = "08051212345"
+                if Estudiante.objects.filter(ci=demo_ci).exclude(pk=student.pk).exists():
+                    raise CommandError(
+                        f"El CI demo {demo_ci} ya pertenece a otro estudiante; no se modificaron los datos seed."
+                    )
+                student.ci = demo_ci
+                student.nombre = first_name
+                student.apellidos = last_name
+                student.sexo = "M"
+                student.escuela = first_school
+                student.direccion = "Calle Martí No. 12, Pinar del Río"
+                student.save(update_fields=["ci", "nombre", "apellidos", "sexo", "escuela", "direccion"])
 
         self.stdout.write(self.style.SUCCESS("Semilla inicial completada."))
         self.stdout.write(f"Provincias creadas: {provinces_created} de {len(CUBA_TERRITORIES)} territorios cargados.")
@@ -226,16 +338,28 @@ class Command(BaseCommand):
         self.stdout.write(f"Escuelas creadas: {schools_created}.")
         self.stdout.write(f"CES creados: {ces_created} de {len(INITIAL_CES)}.")
         self.stdout.write(f"Asignaturas creadas: {subjects_created} de {len(INITIAL_SUBJECTS)}.")
-        self.stdout.write(f"Usuarios seed creados: {users_created}; roles cubiertos: {len(ROLE_USERS)}.")
-        self.stdout.write("Cuentas seed: seed_superadmin, seed_jefe_comision, seed_ingreso_provincial, seed_ingreso_municipal, seed_director_escuela, seed_secretario_escuela y seed_estudiante.")
+        self.stdout.write(f"Usuarios seed creados: {users_created}; roles configurados: {len(ROLE_USERS) - len(skipped_roles)}.")
+        self.stdout.write("Cuentas seed: seed_superadmin, seed_jefe_comision, seed_ingreso_provincial, seed_gestor_noticias, seed_ingreso_municipal, seed_director_escuela, seed_secretario_escuela y seed_estudiante.")
         self.stdout.write("Cambia INGRESOSUP_SEED_PASSWORD antes de usar la semilla fuera de desarrollo.")
 
     @staticmethod
     def _get_role_user(role, username, email, scope):
-        filters = {"rol": role}
-        filters.update({f"{field}_id": value.id for field, value in scope.items()})
-        if scope:
-            user = Usuario.objects.filter(**filters).first()
-            if user:
-                return user, False
-        return Usuario.objects.get_or_create(username=username, defaults={"email": email, "rol": role})
+        seed_user = Usuario.objects.filter(username=username).first()
+        if seed_user:
+            return seed_user, False, True
+
+        unique_scope = ROLE_UNIQUE_SCOPES.get(role)
+        if unique_scope:
+            scope_value = scope.get(unique_scope)
+            if scope_value:
+                existing = Usuario.objects.filter(
+                    rol=role,
+                    **{f"{unique_scope}_id": scope_value.id},
+                ).first()
+                if existing:
+                    return existing, False, False
+        user, created = Usuario.objects.get_or_create(
+            username=username,
+            defaults={"email": email, "rol": role},
+        )
+        return user, created, True

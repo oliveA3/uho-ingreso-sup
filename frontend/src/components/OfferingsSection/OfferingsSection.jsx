@@ -20,13 +20,13 @@ export default function OfferingsSection({ items = [] }) {
     setQuery("");
   };
   return (
-    <section id="ofertas" className={styles.section}>
+    <section className={styles.section}>
       <div className={styles.header}>
         <div>
-          <p className={styles.eyebrow}>Centros de Educación Superior</p>
+          <p id="ofertas" className={styles.eyebrow}>Centros de Educación Superior</p>
           <h2 className={styles.title}>Instituciones del proceso de ingreso</h2>
         </div>
-        {items.length > 3 && <SecondaryButton onClick={() => setModalOpen(true)}>Ver más</SecondaryButton>}
+        {items.length > 3 && <SecondaryButton className={styles.moreTop} onClick={() => setModalOpen(true)}>Ver más</SecondaryButton>}
       </div>
       <div className={styles.grid}>
         {visibleItems.map((rawItem) => {
@@ -40,6 +40,7 @@ export default function OfferingsSection({ items = [] }) {
           );
         })}
       </div>
+      {items.length > 3 && <SecondaryButton className={styles.moreBottom} onClick={() => setModalOpen(true)}>Ver más</SecondaryButton>}
       <Modal
         open={modalOpen}
         onClose={closeModal}
@@ -48,7 +49,7 @@ export default function OfferingsSection({ items = [] }) {
         size="lg"
       >
         <div className={styles.searchRow}>
-          <label className="sr-only" htmlFor="ces-search">Buscar universidad por nombre</label>
+          <label className={styles.srOnly} htmlFor="ces-search">Buscar universidad por nombre</label>
           <Input
             id="ces-search"
             type="search"

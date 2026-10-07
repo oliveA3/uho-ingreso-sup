@@ -6,7 +6,7 @@ export default function SuperAdminLayout({ user, onLogout }) {
   return (
     <RequireRole user={user} allow={["superadmin"]} panelTitle="Panel Super Administrador">
       <div className={styles.layout}>
-        <div className="space-y-6">
+        <div className={styles.contentInner}>
           <Outlet context={{ user }} />
         </div>
       </div>

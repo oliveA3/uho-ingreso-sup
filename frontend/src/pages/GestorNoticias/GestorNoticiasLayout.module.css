@@ -1,0 +1,35 @@
+.content {
+  flex: 1 1 0%;
+  padding: 1.5rem 1rem;
+}
+
+@media (min-width: 640px) {
+  .content {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .content {
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
+}
+
+.contentInner {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+@media (max-width: 639px) {
+  .content {
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+  }
+
+  .contentInner {
+    gap: 1rem;
+  }
+}

@@ -16,8 +16,8 @@ export default function EstudianteOtorgamientoPage() {
       .catch((requestError) => setError(requestError.message));
   }, [year]);
 
-  if (error && !data) return <FeedbackMessage type="error" className="rounded-2xl">{error}</FeedbackMessage>;
-  if (!data) return <Card padding="p-6" className="text-sm text-slate-600">Cargando otorgamiento...</Card>;
+  if (error && !data) return <FeedbackMessage type="error" className={styles.errorMessage}>{error}</FeedbackMessage>;
+  if (!data) return <Card padding="p-6" className={styles.loadingCard}>Cargando otorgamiento...</Card>;
 
   const award = data.award;
   const awardedCareerQualified = award?.cut_index != null
@@ -25,11 +25,11 @@ export default function EstudianteOtorgamientoPage() {
   const awardedPriority = award?.awarded_priority;
   const priorityLabel = awardedPriority === 1 ? "1ra" : awardedPriority === 2 ? "2da" : awardedPriority === 3 ? "3ra" : `${awardedPriority}ta`;
   return (
-    <div className="space-y-6">
+    <div className={styles.page}>
       <Card padding="p-6">
         <p className={styles.eyebrow}>Mi Otorgamiento</p>
-        <h1 className="mt-2 text-2xl font-semibold text-slate-900">Carrera otorgada</h1>
-        <p className="mt-3 text-sm text-slate-600">Resultado final del proceso {data.year}.</p>
+        <h1 className={styles.title}>Carrera otorgada</h1>
+        <p className={styles.subtitle}>Resultado final del proceso {data.year}.</p>
         <StageStatusNotice stageNumber={6} />
         {!award ? (
           <div className={styles.pendingBox}>
@@ -46,7 +46,7 @@ export default function EstudianteOtorgamientoPage() {
               <p className={styles.awardIndex}>Índice de otorgamiento: {award.award_index}</p>
             </div>
             <div className={styles.summaryBox}>
-              <h2 className="text-xl font-semibold text-slate-900">Resumen completo</h2>
+              <h2 className={styles.summaryTitle}>Resumen completo</h2>
               <div className={styles.summaryGrid}>
                 <div className={`${styles.summaryTile} ${styles.summaryTileGeneral}`}>
                   <p className={`${styles.summaryTileLabel} ${styles.summaryTileLabelGeneral}`}>Índice general</p>

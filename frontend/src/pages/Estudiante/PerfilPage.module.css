@@ -1,3 +1,71 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.loadingCard {
+  font-size: 0.875rem;
+  color: var(--gris-600);
+}
+
+.title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--gris-900);
+}
+
+.subtitle {
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--gris-600);
+}
+
+.feedbackMessage {
+  margin-top: 1.25rem;
+  border-radius: 1rem;
+}
+
+.fixedFieldsGrid {
+  margin-top: 1.5rem;
+  display: grid;
+  gap: 1rem;
+}
+
+@media (min-width: 640px) {
+  .fixedFieldsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .fixedFieldsGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.editableFormTitle {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--gris-900);
+}
+
+.editableFieldsGrid {
+  margin-top: 1rem;
+  display: grid;
+  gap: 1rem;
+}
+
+@media (min-width: 640px) {
+  .editableFieldsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.submitButton {
+  margin-top: 1.5rem;
+}
+
 .fixedFieldCard {
   border-radius: 1rem;
   border: 1px solid var(--border-color, var(--gris-200));

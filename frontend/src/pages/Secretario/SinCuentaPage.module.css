@@ -1,0 +1,23 @@
+.ciCell {
+  white-space: nowrap;
+  color: var(--gris-600);
+}
+
+.nameCell {
+  font-weight: 500;
+  color: var(--gris-900);
+}
+
+.warningMessage {
+  margin: 1rem 0;
+  border-radius: 0.75rem;
+}
+
+.errorMessage {
+  margin-bottom: 1rem;
+  border-radius: 0.75rem;
+}
+
+.table {
+  margin-top: 0.5rem;
+}

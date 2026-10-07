@@ -19,6 +19,7 @@ export default function JefeComisionSidebar({ scope, onLogout, activeStageLabel 
         { label: "Otorgamiento", icon: "🎓", to: "/jefe_comision/otorgamiento" },
         { label: "API REST", icon: "🔌", to: "/jefe_comision/api" },
         { label: "Registros", icon: "📜", to: "/jefe_comision/logs" },
+        { label: "Noticias", icon: "📰", to: "/jefe_comision/noticias" },
       ],
     },
     {

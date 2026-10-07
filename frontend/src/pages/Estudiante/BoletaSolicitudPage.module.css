@@ -1,3 +1,27 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.loadingCard {
+  font-size: 0.875rem;
+  color: var(--gris-600);
+}
+
+.feedbackMessage {
+  margin-top: 1.5rem;
+  border-radius: 1rem;
+}
+
+.submitButton {
+  background-color: var(--color-exito, #1a7a4a) !important;
+}
+
+.submitButton:hover {
+  filter: brightness(0.9);
+}
+
 .headerRow {
   display: flex;
   flex-direction: column;

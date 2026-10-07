@@ -2,6 +2,7 @@ from rest_framework import serializers
 
 from apps.authentication.models import ROLES, Usuario
 from apps.superadmin.models import Carrera, Ces, Escuela, Municipio, Provincia, TipoOtorgamiento
+from apps.superadmin.serializers import NormalizedTerritorialNameValidationMixin
 
 from .models import ETAPAS_NOMBRES, Etapa, Proceso
 
@@ -73,9 +74,22 @@ class ProvincialCarreraSerializer(serializers.ModelSerializer):
     class Meta:
         model = Carrera
         fields = [
-            "id", "codigo", "nombre", "ces", "ces_nombre",
+            "id", "codigo", "nombre", "descripcion", "campo_laboral", "requisitos",
+            "perfil_egresado", "ces", "ces_nombre",
             "provincia", "provincia_nombre", "activa",
         ]
+
+
+class PublicCareerInformationSerializer(serializers.ModelSerializer):
+    ces_nombre = serializers.CharField(source="ces.nombre", read_only=True)
+
+    class Meta:
+        model = Carrera
+        fields = [
+            "id", "codigo", "nombre", "ces_nombre", "descripcion",
+            "campo_laboral", "requisitos", "perfil_egresado",
+        ]
+        read_only_fields = fields
 
 
 class ProvincialMunicipioSerializer(serializers.ModelSerializer):
@@ -97,12 +111,16 @@ class ProvincialMunicipioSerializer(serializers.ModelSerializer):
         }
 
 
-class ProvincialEscuelaSerializer(serializers.ModelSerializer):
+class ProvincialEscuelaSerializer(NormalizedTerritorialNameValidationMixin, serializers.ModelSerializer):
     municipio_nombre = serializers.CharField(source="municipio.nombre", read_only=True)
 
     class Meta:
         model = Escuela
         fields = ["id", "nombre", "codigo", "descripcion", "municipio", "municipio_nombre", "activa"]
+
+    def validate(self, attrs):
+        self.validate_normalized_territorial_name(attrs, ("municipio",))
+        return attrs
 
 
 class ProvincialUserSerializer(serializers.ModelSerializer):

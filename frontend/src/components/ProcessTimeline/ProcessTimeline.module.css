@@ -1,14 +1,13 @@
 .section {
   margin-bottom: 1rem;
-  border-radius: 1.5rem;
-  border: 1px solid var(--gris-200);
-  background-color: var(--blanco);
-  padding: 1.5rem;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+}
+
+.panel {
+  padding: 0;
 }
 
 .header {
-  margin-bottom: 1.5rem;
+  margin-bottom: 0.75rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -16,6 +15,7 @@
 }
 
 .eyebrow {
+  scroll-margin-top: 6rem;
   font-size: 0.875rem;
   font-weight: 600;
   text-transform: uppercase;
@@ -37,14 +37,21 @@
 
 @media (min-width: 640px) {
   .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
 .step {
-  border-radius: 1.5rem;
+  min-width: 0;
+  border-radius: 1rem;
   border: 1px solid var(--gris-200);
-  padding: 1.25rem;
+  padding: 1rem;
 }
 
 .stepDone {
@@ -72,14 +79,20 @@
 
 .stepContent {
   display: flex;
+  min-width: 0;
   align-items: center;
   gap: 0.75rem;
 }
 
+.stepContent > div:last-child {
+  min-width: 0;
+}
+
 .stepNumber {
   display: flex;
-  height: 2.5rem;
-  width: 2.5rem;
+  height: 2.75rem;
+  width: 2.75rem;
+  flex: 0 0 2.75rem;
   align-items: center;
   justify-content: center;
   border-radius: 9999px;
@@ -95,12 +108,14 @@
 }
 
 .stepTitle {
-  font-size: 0.875rem;
+  font-size: 1rem;
   font-weight: 600;
   color: var(--gris-900);
+  overflow-wrap: anywhere;
 }
 
 .stepDate {
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   color: var(--gris-500);
+  overflow-wrap: anywhere;
 }

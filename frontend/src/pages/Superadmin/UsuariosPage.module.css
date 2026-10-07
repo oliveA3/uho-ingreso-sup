@@ -1,3 +1,53 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.deleteAction {
+  margin-left: 0.5rem;
+}
+
+.errorMessage,
+.noticeMessage {
+  margin-top: 1.25rem;
+  border-radius: 1rem;
+}
+
+.formError {
+  border-radius: 0.5rem;
+}
+
+.usersTable {
+  margin-top: 1.5rem;
+}
+
+.form {
+  display: grid;
+  gap: 1rem;
+}
+
+@media (min-width: 640px) {
+  .form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.fieldSpan2 {
+  grid-column: auto;
+}
+
+@media (min-width: 640px) {
+  .fieldSpan2 {
+    grid-column: span 2 / span 2;
+  }
+}
+
+.passwordHint {
+  font-weight: 400;
+  color: var(--gris-500);
+}
+
 .headerActions {
   display: flex;
   flex-wrap: wrap;
@@ -37,6 +87,12 @@
   font-size: 0.875rem;
   font-weight: 600;
   color: var(--gris-700);
+}
+
+@media (min-width: 640px) {
+  .activeCheckboxRow {
+    grid-column: span 2 / span 2;
+  }
 }
 
 .checkbox {
@@ -86,6 +142,7 @@
 }
 
 .studentTable {
+  margin-top: 0.5rem;
   max-height: 18rem;
   overflow-y: auto;
 }

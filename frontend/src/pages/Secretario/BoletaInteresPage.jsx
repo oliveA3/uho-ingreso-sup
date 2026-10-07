@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
 import InterestMetricsView from "../../components/InterestMetricsView/InterestMetricsView";
 import { fetchSchoolInterestMetrics } from "../../api/school.service";
+import styles from "./BoletaInteresPage.module.css";
 
 export default function SecretarioBoletaInteresPage({ user }) {
   const [metrics, setMetrics] = useState(null);
@@ -14,7 +15,7 @@ export default function SecretarioBoletaInteresPage({ user }) {
   }, []);
 
   if (error) {
-    return <FeedbackMessage type="error" className="rounded-2xl">{error}</FeedbackMessage>;
+    return <FeedbackMessage type="error" className={styles.errorMessage}>{error}</FeedbackMessage>;
   }
 
   if (!metrics) {
@@ -31,5 +32,5 @@ export default function SecretarioBoletaInteresPage({ user }) {
 }
 
 function LoadingState() {
-  return <div className="rounded-3xl border border-slate-200 bg-white p-8 text-sm text-slate-600 shadow-sm">Cargando métricas...</div>;
+  return <div className={styles.loadingState}>Cargando métricas...</div>;
 }

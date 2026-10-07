@@ -205,7 +205,7 @@ export default function PlazasPage() {
             render: (item) => (
               <>
                 <EntityActionButton variant="edit" onClick={() => edit(item)}>Editar</EntityActionButton>
-                <EntityActionButton variant="delete" className="ml-2" onClick={() => remove(item)}>Eliminar</EntityActionButton>
+                <EntityActionButton variant="delete" className={styles.deleteAction} onClick={() => remove(item)}>Eliminar</EntityActionButton>
               </>
             ),
           },
@@ -244,8 +244,8 @@ export default function PlazasPage() {
             </PrimaryButton>
           </div>
         </div>
-        {error && <FeedbackMessage type="error" className="mt-5 rounded-xl">{error}</FeedbackMessage>}
-        {notice && <FeedbackMessage type="success" className="mt-5 rounded-xl">{notice}</FeedbackMessage>}
+        {error && <FeedbackMessage type="error" className={styles.feedbackMessage}>{error}</FeedbackMessage>}
+        {notice && <FeedbackMessage type="success" className={styles.feedbackMessage}>{notice}</FeedbackMessage>}
         <StageStatusNotice stageNumber={3} onStatusChange={setStageStatus} />
       </Card>
       <Card padding="p-0" className={styles.tableCard}>
@@ -267,7 +267,7 @@ export default function PlazasPage() {
         footer={
           <>
             <SecondaryButton onClick={closeForm}>Cancelar</SecondaryButton>
-            <PrimaryButton className="!bg-slate-900 hover:!bg-slate-800" type="submit" form="plaza-form" disabled={stageFinished}>
+            <PrimaryButton className={styles.submitButton} type="submit" form="plaza-form" disabled={stageFinished}>
               {editingId ? "Actualizar" : "Añadir"}
             </PrimaryButton>
           </>

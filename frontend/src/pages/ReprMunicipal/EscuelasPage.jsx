@@ -12,6 +12,7 @@ import PrimaryButton from "../../components/Buttons/PrimaryButton";
 import SecondaryButton from "../../components/Buttons/SecondaryButton";
 import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
 import { Card, DataTable, FormField, Input, Modal, StatCard, StatsGrid, useConfirm } from "../../components";
+import styles from "./EscuelasPage.module.css";
 
 const emptyForm = { nombre: "", codigo: "", descripcion: "", activa: true };
 
@@ -25,6 +26,8 @@ export default function EscuelasPage({ user }) {
   const [modalOpen, setModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [formError, setFormError] = useState("");
+  const [notice, setNotice] = useState("");
 
   async function loadData(showLoading = true) {
     try {
@@ -42,20 +45,22 @@ export default function EscuelasPage({ user }) {
 
   useEffect(() => { loadData(); }, []);
 
-  function openCreate() { setEditing(null); setForm({ ...emptyForm }); setModalOpen(true); }
+  function openCreate() { setEditing(null); setForm({ ...emptyForm }); setFormError(""); setModalOpen(true); }
   function openEdit(school) {
     setEditing(school);
     setForm({ nombre: school.nombre || "", codigo: school.codigo || "", descripcion: school.descripcion || "", activa: school.activa });
+    setFormError("");
     setModalOpen(true);
   }
   async function handleSubmit(event) {
     event.preventDefault();
     try {
-      setError("");
+      setFormError("");
       if (editing) await updateMunicipalSchool(editing.id, form); else await createMunicipalSchool(form);
       setModalOpen(false);
+      setNotice(editing ? "La escuela se actualizó correctamente." : "La escuela se creó correctamente.");
       await loadData(false);
-    } catch (requestError) { setError(requestError.message); }
+    } catch (requestError) { setFormError(requestError.message); }
   }
   async function toggleSchool(school) {
     try { await updateMunicipalSchool(school.id, { activa: !school.activa }); await loadData(false); }
@@ -86,7 +91,7 @@ export default function EscuelasPage({ user }) {
   ];
 
   const columns = [
-    { key: "nombre", header: "Escuela", className: "font-medium text-slate-900", render: (s) => s.nombre },
+    { key: "nombre", header: "Escuela", className: styles.strongCell, render: (s) => s.nombre },
     { key: "codigo", header: "Código", render: (s) => s.codigo || "-" },
     { key: "estado", header: "Estado", render: (s) => <StatusToggle active={s.activa} activeLabel="Activa" inactiveLabel="Inactiva" onClick={() => toggleSchool(s)} /> },
     {
@@ -95,34 +100,35 @@ export default function EscuelasPage({ user }) {
       render: (s) => (
         <>
           <EntityActionButton variant="edit" onClick={() => openEdit(s)}>Editar</EntityActionButton>
-          <EntityActionButton variant="delete" className="ml-2" onClick={() => handleDelete(s)}>Eliminar</EntityActionButton>
+          <EntityActionButton variant="delete" className={styles.deleteAction} onClick={() => handleDelete(s)}>Eliminar</EntityActionButton>
         </>
       ),
     },
   ];
 
   return (
-    <div className="space-y-6">
+    <div className={styles.page}>
       <Card padding="p-6">
-        <p className="mb-4 text-sm font-semibold text-slate-600">Municipio: {user?.municipio_nombre || "No asignado"}</p>
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <p className={styles.municipioLabel}>Municipio: {user?.municipio_nombre || "No asignado"}</p>
+        <div className={styles.headerRow}>
           <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-700">Gestión municipal</p>
-            <h1 className="mt-2 text-2xl font-semibold text-slate-900">Escuelas</h1>
-            <p className="mt-2 text-sm text-slate-600">Crea y gestiona las escuelas de tu municipio.</p>
+            <p className={styles.eyebrow}>Gestión municipal</p>
+            <h1 className={styles.title}>Escuelas</h1>
+            <p className={styles.subtitle}>Crea y gestiona las escuelas de tu municipio.</p>
           </div>
           <PrimaryButton onClick={openCreate}>+ Nueva escuela</PrimaryButton>
         </div>
-        {error && <FeedbackMessage type="error" className="mt-5 rounded-2xl">{error}</FeedbackMessage>}
-        <StatsGrid className="mt-6">
+        {notice && <FeedbackMessage type="success" className={styles.feedbackMessage}>{notice}</FeedbackMessage>}
+        {error && <FeedbackMessage type="error" className={styles.feedbackMessage}>{error}</FeedbackMessage>}
+        <StatsGrid className={styles.statsGrid}>
           {stats.map(([label, value]) => (
             <StatCard key={label} label={label} value={value} />
           ))}
         </StatsGrid>
       </Card>
       <Card padding="p-6">
-        <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por nombre o código" className="!mt-0 max-w-md" />
-        <DataTable className="mt-6" columns={columns} data={filteredSchools} loading={loading} emptyMessage="No hay escuelas para mostrar." />
+        <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por nombre o código" className={styles.searchInput} />
+        <DataTable className={styles.table} columns={columns} data={filteredSchools} loading={loading} emptyMessage="No hay escuelas para mostrar." />
       </Card>
       <Modal
         open={modalOpen}
@@ -135,13 +141,14 @@ export default function EscuelasPage({ user }) {
           </>
         }
       >
-        <form id="repr-municipal-escuela-form" onSubmit={handleSubmit} className="space-y-4">
+        <form id="repr-municipal-escuela-form" onSubmit={handleSubmit} className={styles.form}>
+          {formError && <FeedbackMessage type="error" className={styles.formError}>{formError}</FeedbackMessage>}
           {[["Nombre", "nombre"], ["Código", "codigo"], ["Descripción", "descripcion"]].map(([label, field]) => (
             <FormField key={field} label={label}>
               <Input required={field === "nombre"} value={form[field]} onChange={(event) => setForm({ ...form, [field]: event.target.value })} />
             </FormField>
           ))}
-          <label className="flex items-center gap-3 text-sm font-semibold text-slate-700">
+          <label className={styles.activeCheckboxRow}>
             <input type="checkbox" checked={form.activa} onChange={(event) => setForm({ ...form, activa: event.target.checked })} /> Escuela activa
           </label>
         </form>

@@ -10,7 +10,7 @@ const dockerServices = [
 ];
 
 const columns = [
-  { key: "servicio", header: "Servicio", className: "font-semibold text-slate-900", render: ([service]) => service },
+  { key: "servicio", header: "Servicio", className: styles.serviceCell, render: ([service]) => service },
   { key: "imagen", header: "Imagen", render: ([, image]) => image },
   { key: "puerto", header: "Puerto", render: ([, , port]) => port },
   { key: "funcion", header: "Función", render: ([, , , purpose]) => purpose },
@@ -18,7 +18,7 @@ const columns = [
 
 export default function DesplieguePage() {
   return (
-    <div className="space-y-6">
+    <div className={styles.page}>
       <Card padding="p-6">
         <PageHeader
           title="🐳 Despliegue Docker"
@@ -43,7 +43,7 @@ export default function DesplieguePage() {
           <div className={styles.success}>✅ Correo (dev) en http://localhost:8025 (MailHog)</div>
         </div>
 
-        <DataTable className="table-scroll mt-6" columns={columns} data={dockerServices} getRowKey={([service]) => service} />
+        <DataTable className={`table-scroll ${styles.table}`} columns={columns} data={dockerServices} getRowKey={([service]) => service} />
       </Card>
     </div>
   );

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
 import SolicitudOverviewView from "../../components/SolicitudOverviewView/SolicitudOverviewView";
 import { approveSchoolSolicitud, downloadSchoolSolicitudPdf, fetchSchoolSolicitudes } from "../../api/school.service";
+import styles from "./BoletasSolicitudPage.module.css";
 
 export default function SecretarioBoletasSolicitudPage() {
   const [data, setData] = useState(null);
@@ -28,7 +29,7 @@ export default function SecretarioBoletasSolicitudPage() {
     } catch (requestError) { setError(requestError.message); }
   };
 
-  if (error) return <FeedbackMessage type="error" className="rounded-2xl">{error}</FeedbackMessage>;
-  if (!data) return <div className="rounded-3xl border border-slate-200 bg-white p-8 text-sm text-slate-600 shadow-sm">Cargando boletas de solicitud...</div>;
+  if (error) return <FeedbackMessage type="error" className={styles.errorMessage}>{error}</FeedbackMessage>;
+  if (!data) return <div className={styles.loadingState}>Cargando boletas de solicitud...</div>;
   return <SolicitudOverviewView data={data} title="Gestión de boletas de solicitud" canManage canApprove={Boolean(data.puede_aprobar)} canDownload onApprove={approve} onDownload={download} />;
 }

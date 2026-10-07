@@ -1,0 +1,169 @@
+.section {
+  margin-bottom: 1.5rem;
+  scroll-margin-top: 6rem;
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+@media (min-width: 640px) {
+  .header {
+    flex-direction: row;
+    align-items: flex-end;
+    justify-content: space-between;
+  }
+}
+
+.eyebrow {
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.24em;
+  color: var(--color-primario, #1f4e79);
+}
+
+.title {
+  margin-top: 0.5rem;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--gris-900);
+}
+
+.province {
+  border-radius: 999px;
+  background: var(--color-acento, #5ba3d9);
+  color: var(--blanco, #fff);
+  padding: 0.35rem 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.panel {
+  border: 1px solid var(--gris-200);
+  border-radius: 1rem;
+  background-color: var(--blanco, #fff);
+  padding: 1.25rem;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+}
+
+.search {
+  display: grid;
+  width: 100%;
+  gap: 0.35rem;
+  color: var(--gris-700);
+  font-size: 0.85rem;
+}
+
+.detailsButton {
+  min-height: 2rem;
+  padding: 0.35rem 0.7rem;
+  border-radius: 0.5rem;
+  box-shadow: none;
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.listViewport {
+  max-height: 16.75rem;
+  margin-top: 0.5rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+.careerList {
+  display: grid;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.careerRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  height: 4rem;
+  min-height: 4rem;
+  align-items: center;
+  gap: 0.75rem;
+  border-bottom: 1px solid var(--gris-200);
+  padding: 0.25rem 0.35rem;
+}
+
+.careerIdentity {
+  display: grid;
+  min-width: 0;
+  gap: 0.15rem;
+}
+
+.code {
+  color: var(--color-primario, #1f4e79);
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.careerName {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--gris-900);
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.status {
+  margin-top: 1rem;
+  color: var(--gris-600);
+  font-size: 0.9rem;
+}
+
+.details {
+  display: grid;
+  gap: 0.8rem;
+  margin-top: 10px;
+  border-top: 1px solid var(--gris-200);
+  padding-top: 0.5rem;
+}
+
+.detailsModalBody {
+  margin-top: 0.35rem;
+}
+
+.detail dt {
+  color: var(--color-primario, #1f4e79);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.detail dd {
+  margin-top: 0.2rem;
+  color: var(--gris-700);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  white-space: pre-line;
+}
+
+.ballotAction {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+  border-top: 1px solid var(--gris-200);
+  padding-top: 1rem;
+}
+
+.ballotAction p {
+  color: var(--gris-600);
+  font-size: 0.85rem;
+}

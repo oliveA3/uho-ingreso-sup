@@ -6,6 +6,7 @@ import styles from "./LandingNav.module.css";
 const NAV_LINKS = [
   { href: "#cronograma", label: "Cronograma" },
   { href: "#noticias", label: "Noticias" },
+  { href: "#carreras", label: "Carreras" },
   { href: "#cortes", label: "Índices Corte" },
   { href: "#ofertas", label: "Universidades" },
 ];
@@ -43,7 +44,7 @@ export default function LandingNav({ user, visualConfig, onLogout }) {
             aria-label={isMobileMenuOpen ? "Cerrar menú" : "Abrir menú"}
             aria-expanded={isMobileMenuOpen}
           >
-            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+            <svg className={styles.menuIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
               {isMobileMenuOpen ? (
                 <path d="M6 6l12 12M18 6L6 18" />
               ) : (

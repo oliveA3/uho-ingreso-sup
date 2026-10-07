@@ -4,6 +4,7 @@ import StageStatusNotice from "../../components/StageStatusNotice/StageStatusNot
 import PrimaryButton from "../../components/Buttons/PrimaryButton";
 import { Card, DataTable } from "../../components";
 import { downloadResultsExport, fetchResults } from "../../api/results.service";
+import styles from "./ResultadosPage.module.css";
 
 export default function SecretarioResultadosPage() {
   const year = new Date().getFullYear();
@@ -33,7 +34,7 @@ export default function SecretarioResultadosPage() {
   }
 
   const columns = [
-    { key: "estudiante", header: "Estudiante", className: "font-medium text-slate-900", render: (r) => r.student },
+    { key: "estudiante", header: "Estudiante", className: styles.studentCell, render: (r) => r.student },
     { key: "matematica", header: "Matemática", render: (r) => r.matematica ?? "-" },
     { key: "espanol", header: "Español", render: (r) => r.espanol ?? "-" },
     { key: "historia", header: "Historia", render: (r) => r.historia ?? "-" },
@@ -41,13 +42,13 @@ export default function SecretarioResultadosPage() {
 
   return (
     <Card>
-      <h1 className="text-2xl font-semibold text-slate-900">Resultados</h1>
-      <p className="mt-2 text-sm text-slate-600">Estudiantes del escalafón y notas publicadas del proceso {year}.</p>
+      <h1 className={styles.title}>Resultados</h1>
+      <p className={styles.subtitle}>Estudiantes del escalafón y notas publicadas del proceso {year}.</p>
       <StageStatusNotice stageNumber={5} />
-      {error && <FeedbackMessage type="error" className="mt-4 rounded-xl">{error}</FeedbackMessage>}
+      {error && <FeedbackMessage type="error" className={styles.feedbackMessage}>{error}</FeedbackMessage>}
 
       <DataTable
-        className="mt-6"
+        className={styles.table}
         columns={columns}
         data={results}
         loading={loading}
@@ -55,8 +56,8 @@ export default function SecretarioResultadosPage() {
         emptyMessage="No existe un escalafón publicado para este año."
       />
 
-      <div className="mt-4 flex justify-end">
-        <PrimaryButton className="!rounded-full !bg-slate-900 hover:!bg-slate-700" onClick={handleExport} disabled={!results.length}>Exportar Excel</PrimaryButton>
+      <div className={styles.actionsRow}>
+        <PrimaryButton className={styles.exportButton} onClick={handleExport} disabled={!results.length}>Exportar Excel</PrimaryButton>
       </div>
     </Card>
   );

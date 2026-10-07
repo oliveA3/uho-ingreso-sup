@@ -8,8 +8,8 @@ import ResultadosModal from "../components/Modals/ResultadosModal";
 import OtorgamientosModal from "../components/Modals/OtorgamientosModal";
 import CutoffSection from "../components/CutoffSection/CutoffSection";
 import OfferingsSection from "../components/OfferingsSection/OfferingsSection";
-import { newsItems } from "../data/landingData";
-import { fetchLandingData, fetchLandingCortes } from "../api/landing.service";
+import CareerInformationSection from "../components/CareerInformationSection/CareerInformationSection";
+import { fetchLandingCareerInformation, fetchLandingData, fetchLandingCortes, fetchLandingNews } from "../api/landing.service";
 import styles from "./LandingPage.module.css";
 
 const stageTitles = {
@@ -39,6 +39,9 @@ export default function LandingPage({ user }) {
   const [otorgamientosModalOpen, setOtorgamientosModalOpen] = useState(false);
   const [cortesData, setCortesData] = useState({ items: [], year: null });
   const [cortesModalOpen, setCortesModalOpen] = useState(false);
+  const [careerInformation, setCareerInformation] = useState({ items: [], provincia_nombre: "Holguín" });
+  const [careerInformationLoading, setCareerInformationLoading] = useState(true);
+  const [newsData, setNewsData] = useState({ items: [], provincia_nombre: "Holguín" });
 
   useEffect(() => {
     let active = true;
@@ -58,6 +61,38 @@ export default function LandingPage({ user }) {
   useEffect(() => {
     fetchLandingCortes().then(setCortesData).catch(() => setCortesData({ items: [], year: null }));
   }, []);
+
+  useEffect(() => {
+    let active = true;
+    setCareerInformationLoading(true);
+    fetchLandingCareerInformation()
+      .then((data) => {
+        if (active) setCareerInformation(data);
+      })
+      .catch(() => {
+        if (active) setCareerInformation({ items: [], provincia_nombre: "Holguín" });
+      })
+      .finally(() => {
+        if (active) setCareerInformationLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [user?.id, user?.provincia]);
+
+  useEffect(() => {
+    let active = true;
+    fetchLandingNews()
+      .then((data) => {
+        if (active) setNewsData(data);
+      })
+      .catch(() => {
+        if (active) setNewsData({ items: [], provincia_nombre: "Holguín" });
+      });
+    return () => {
+      active = false;
+    };
+  }, [user?.id, user?.provincia]);
 
   useEffect(() => {
     const openPlanModal = () => setPlanModalOpen(true);
@@ -103,7 +138,15 @@ export default function LandingPage({ user }) {
         {stages.length > 0 && <ProcessTimeline steps={stages.map(toTimelineStep)} />}
 
         <div className={styles.sectionsGroup}>
-          <NewsSection items={newsItems} />
+          <NewsSection items={newsData.items || []} provinceName={newsData.provincia_nombre} />
+          {!careerInformationLoading && careerInformation.items.length > 0 && (
+            <CareerInformationSection
+              items={careerInformation.items}
+              provinceName={careerInformation.provincia_nombre}
+              user={user}
+              activeStageNumber={activeStage?.numero}
+            />
+          )}
           {cortesData.items.length > 0 && <CutoffSection items={cortesData.items.slice(0, 4)} year={cortesData.year} onViewMore={() => setCortesModalOpen(true)} />}
           <OfferingsSection items={ces} />
         </div>

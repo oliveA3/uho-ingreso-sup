@@ -29,3 +29,111 @@
   font-size: 0.875rem;
   color: var(--gris-600);
 }
+
+.titleRow {
+  margin-top: 0.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.statsGrid {
+  margin: 1.25rem 0;
+}
+
+.toolbar {
+  margin-bottom: 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.hiddenInput {
+  display: none;
+}
+
+.feedbackMessage {
+  margin-bottom: 1rem;
+  border-radius: 0.75rem;
+}
+
+.modalWarning {
+  border-radius: 0.75rem;
+}
+
+.revisionDate {
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  opacity: 0.75;
+}
+
+.complaintButton {
+  margin-left: 0.5rem;
+}
+
+.positionCell {
+  font-weight: 600;
+  color: var(--gris-700);
+}
+
+.ciCell {
+  white-space: nowrap;
+  font-weight: 500;
+  color: var(--gris-700);
+}
+
+.nameEditGroup {
+  display: flex;
+  min-width: 10rem;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.textInput {
+  width: 100%;
+  min-width: 0;
+  border-radius: 0.5rem;
+  border: 1px solid var(--gris-300);
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
+}
+
+.selectInput {
+  border-radius: 0.5rem;
+  border: 1px solid var(--gris-300);
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
+}
+
+.minWidthMedium {
+  min-width: 10rem;
+}
+
+.minWidthSmall {
+  min-width: 4rem;
+}
+
+.statusBadge {
+  display: inline-flex;
+  white-space: nowrap;
+  border-radius: 9999px;
+  padding: 0.25rem 0.625rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.statusAceptado {
+  background-color: color-mix(in srgb, var(--color-exito, #1a7a4a) 14%, var(--blanco));
+  color: var(--color-exito, #1a7a4a);
+}
+
+.statusPorRevisar {
+  background-color: var(--advertencia-100);
+  color: var(--advertencia-800);
+}
+
+.statusDefault {
+  background-color: var(--gris-100);
+  color: var(--gris-600);
+}

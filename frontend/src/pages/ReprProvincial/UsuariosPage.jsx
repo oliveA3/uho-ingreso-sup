@@ -13,6 +13,7 @@ import PrimaryButton from "../../components/Buttons/PrimaryButton";
 import SecondaryButton from "../../components/Buttons/SecondaryButton";
 import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
 import { Card, DataTable, FormField, Input, Modal, Select, useConfirm } from "../../components";
+import styles from "./UsuariosPage.module.css";
 
 const emptyForm = {
   username: "",
@@ -45,6 +46,8 @@ export default function UsuariosPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [formError, setFormError] = useState("");
+  const [notice, setNotice] = useState("");
 
   async function loadUsers() {
     try {
@@ -68,6 +71,7 @@ export default function UsuariosPage() {
   function openCreate() {
     setEditing(null);
     setForm({ ...emptyForm });
+    setFormError("");
     setModalOpen(true);
   }
 
@@ -81,21 +85,23 @@ export default function UsuariosPage() {
       municipio: String(user.municipio || ""),
       password: "",
     });
+    setFormError("");
     setModalOpen(true);
   }
 
   async function handleSubmit(event) {
     event.preventDefault();
     try {
-      setError("");
+      setFormError("");
       const payload = { ...form, municipio: Number(form.municipio) };
       if (!payload.password) delete payload.password;
       if (editing) await updateProvincialUser(editing.id, payload);
       else await createProvincialUser(payload);
       setModalOpen(false);
+      setNotice(editing ? "El representante se actualizó correctamente." : "El representante se creó correctamente.");
       await loadUsers();
     } catch (requestError) {
-      setError(requestError.message);
+      setFormError(requestError.message);
     }
   }
 
@@ -135,7 +141,7 @@ export default function UsuariosPage() {
   });
 
   const columns = [
-    { key: "nombre", header: "Nombre", className: "font-medium text-slate-900", render: displayName },
+    { key: "nombre", header: "Nombre", className: styles.strongCell, render: displayName },
     { key: "municipio", header: "Municipio", render: (user) => user.municipio_nombre || "-" },
     { key: "correo", header: "Correo", render: (user) => user.email },
     { key: "estado", header: "Estado", render: (user) => <StatusToggle active={user.is_active} onClick={() => toggleUser(user)} /> },
@@ -145,37 +151,38 @@ export default function UsuariosPage() {
       render: (user) => (
         <>
           <EntityActionButton variant="edit" onClick={() => openEdit(user)}>Editar</EntityActionButton>
-          <EntityActionButton variant="delete" className="ml-2" onClick={() => handleDelete(user)}>Eliminar</EntityActionButton>
+          <EntityActionButton variant="delete" className={styles.deleteAction} onClick={() => handleDelete(user)}>Eliminar</EntityActionButton>
         </>
       ),
     },
   ];
 
   return (
-    <div className="space-y-6">
+    <div className={styles.page}>
       <Card padding="p-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className={styles.headerRow}>
           <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-700">Usuarios</p>
-            <h1 className="mt-2 text-2xl font-semibold text-slate-900">Representantes municipales</h1>
-            <p className="mt-2 text-sm text-slate-600">Gestiona los usuarios de los municipios de tu provincia.</p>
+            <p className={styles.eyebrow}>Usuarios</p>
+            <h1 className={styles.title}>Representantes municipales</h1>
+            <p className={styles.subtitle}>Gestiona los usuarios de los municipios de tu provincia.</p>
           </div>
           <PrimaryButton onClick={openCreate}>+ Nuevo</PrimaryButton>
         </div>
-        {error && <FeedbackMessage type="error" className="mt-5 rounded-2xl">{error}</FeedbackMessage>}
+        {notice && <FeedbackMessage type="success" className={styles.feedbackMessage}>{notice}</FeedbackMessage>}
+        {error && <FeedbackMessage type="error" className={styles.feedbackMessage}>{error}</FeedbackMessage>}
       </Card>
 
       <Card padding="p-6">
-        <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_220px]">
-          <Input className="!mt-0" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por nombre, usuario, correo o municipio" />
-          <Select className="!mt-0" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+        <div className={styles.filtersGrid}>
+          <Input className={styles.filterInput} value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por nombre, usuario, correo o municipio" />
+          <Select className={styles.filterInput} value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
             <option value="">Todos los estados</option>
             <option value="activo">Activos</option>
             <option value="inactivo">Inactivos</option>
           </Select>
         </div>
         <DataTable
-          className="mt-6"
+          className={styles.table}
           columns={columns}
           data={filteredUsers}
           loading={loading}
@@ -194,10 +201,23 @@ export default function UsuariosPage() {
           </>
         }
       >
-        <form id="repr-provincial-usuario-form" onSubmit={handleSubmit} className="space-y-4">
-          {[["Nombre", "first_name"], ["Apellidos", "last_name"], ["Usuario", "username"], ["Correo", "email"]].map(([label, field]) => (
+        <form id="repr-provincial-usuario-form" onSubmit={handleSubmit} className={styles.form}>
+          {formError && <FeedbackMessage type="error" className={styles.formError}>{formError}</FeedbackMessage>}
+          {[
+            ["Nombre", "first_name", "given-name"],
+            ["Apellidos", "last_name", "family-name"],
+            ["Usuario", "username", "username"],
+            ["Correo", "email", "email"],
+          ].map(([label, field, autoComplete]) => (
             <FormField key={field} label={label}>
-              <Input required value={form[field]} type={field === "email" ? "email" : "text"} onChange={(event) => setForm({ ...form, [field]: event.target.value })} />
+              <Input
+                name={field}
+                autoComplete={autoComplete}
+                required
+                value={form[field]}
+                type={field === "email" ? "email" : "text"}
+                onChange={(event) => setForm({ ...form, [field]: event.target.value })}
+              />
             </FormField>
           ))}
           <FormField label="Municipio">
@@ -206,8 +226,8 @@ export default function UsuariosPage() {
               {municipios.map((municipio) => <option key={municipio.id} value={municipio.id}>{municipio.nombre}</option>)}
             </Select>
           </FormField>
-          <FormField label={<>Contraseña{editing && <span className="font-normal text-slate-500"> (dejar vacía para conservarla)</span>}</>}>
-            <Input required={!editing} minLength="8" type="password" value={form.password} onChange={(event) => setForm({ ...form, password: event.target.value })} />
+          <FormField label={<>Contraseña{editing && <span className={styles.passwordHint}> (dejar vacía para conservarla)</span>}</>}>
+            <Input name="password" autoComplete="new-password" required={!editing} minLength="8" type="password" value={form.password} onChange={(event) => setForm({ ...form, password: event.target.value })} />
           </FormField>
         </form>
       </Modal>

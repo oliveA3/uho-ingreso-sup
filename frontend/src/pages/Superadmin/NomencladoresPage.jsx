@@ -104,6 +104,7 @@ export default function NomencladoresPage() {
   const [editing, setEditing] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [error, setError] = useState("");
+  const [formError, setFormError] = useState("");
   const [notice, setNotice] = useState("");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("todos");
@@ -188,6 +189,7 @@ export default function NomencladoresPage() {
   function openCreate() {
     setEditing(null);
     setForm(emptyForm(config));
+    setFormError("");
     setModalOpen(true);
   }
 
@@ -199,13 +201,14 @@ export default function NomencladoresPage() {
       [config.activeField]: item[config.activeField],
       provincia: municipality?.provincia ?? "",
     });
+    setFormError("");
     setModalOpen(true);
   }
 
   async function handleSubmit(event) {
     event.preventDefault();
     try {
-      setError("");
+      setFormError("");
       const payload = { ...form };
       if (resource === "escuelas") delete payload.provincia;
       config.fields.filter((field) => field.type === "number" || field.type === "select").forEach((field) => {
@@ -217,11 +220,10 @@ export default function NomencladoresPage() {
         await createSuperAdminCatalogItem(resource, payload);
       }
       setModalOpen(false);
-      setNotice(`El registro de ${config.title.toLowerCase()} se creó correctamente.`);
+      setNotice(`El registro de ${config.title.toLowerCase()} se ${editing ? "actualizó" : "creó"} correctamente.`);
       await loadItems();
     } catch (requestError) {
-      setError(requestError.message);
-      setNotice("");
+      setFormError(requestError.message);
     }
   }
 
@@ -283,7 +285,7 @@ export default function NomencladoresPage() {
   }
 
   const columns = [
-    { key: "registro", header: "Registro", className: "font-medium text-slate-900", render: (item) => item.nombre || item.codigo },
+    { key: "registro", header: "Registro", className: styles.registroCell, render: (item) => item.nombre || item.codigo },
     {
       key: "descripcion",
       header: "Descripción",
@@ -317,14 +319,14 @@ export default function NomencladoresPage() {
       render: (item) => (
         <>
           <EntityActionButton variant="edit" onClick={() => openEdit(item)}>Editar</EntityActionButton>
-          <EntityActionButton variant="delete" className="ml-2" onClick={() => handleDelete(item)}>Eliminar</EntityActionButton>
+          <EntityActionButton variant="delete" className={styles.deleteAction} onClick={() => handleDelete(item)}>Eliminar</EntityActionButton>
         </>
       ),
     },
   ];
 
   return (
-    <div className="space-y-6">
+    <div className={styles.page}>
       <Card>
         <PageHeader
           title="📚 Nomencladores"
@@ -352,14 +354,14 @@ export default function NomencladoresPage() {
       <Card>
         <div className={styles.listHeader}>
           <h2 className={styles.listTitle}>{config.title}</h2>
-          <div className="flex items-center gap-3">
+          <div className={styles.listCountRow}>
             <span className={styles.listCount}>
               {filteredItems.length} registrados / {activeItems} activados
             </span>
           </div>
         </div>
-        {error && <FeedbackMessage type="error" className="mt-4 rounded-2xl">{error}</FeedbackMessage>}
-        {notice && <FeedbackMessage type="success" className="mt-4 rounded-2xl">{notice}</FeedbackMessage>}
+        {error && <FeedbackMessage type="error" className={styles.feedbackMessage}>{error}</FeedbackMessage>}
+        {notice && <FeedbackMessage type="success" className={styles.feedbackMessage}>{notice}</FeedbackMessage>}
         <div className={styles.searchField}>
           <label htmlFor="nomenclador-search" className={styles.searchLabel}>Buscar nomenclador</label>
           <Input
@@ -368,31 +370,31 @@ export default function NomencladoresPage() {
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder={`Buscar en ${config.title.toLowerCase()}...`}
-            className="!mt-0"
+            className={styles.searchInput}
           />
         </div>
-        <div className="mt-4 flex flex-wrap items-center gap-3">
-          <label className="text-sm font-medium text-slate-700">Filtrar por estado</label>
+        <div className={styles.statusFilterRow}>
+          <label className={styles.statusFilterLabel}>Filtrar por estado</label>
           <select
             value={statusFilter}
             onChange={(event) => setStatusFilter(event.target.value)}
-            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm focus:border-sky-500 focus:outline-none"
+            className={styles.statusFilterSelect}
           >
             <option value="todos">Todos</option>
             <option value="activos">Activos</option>
             <option value="inactivos">Inactivos</option>
           </select>
-          <span className="ml-auto text-sm text-slate-600">
+          <span className={styles.pageSummary}>
             Página {page} de {pageCount} · {totalItems} registros
           </span>
         </div>
         <DataTable
-          className="table-scroll mt-5"
+          className={`table-scroll ${styles.table}`}
           columns={columns}
           data={filteredItems}
           emptyMessage={items.length ? "No se encontraron registros." : "No hay registros."}
         />
-        <div className="mt-4 flex items-center justify-end gap-2">
+        <div className={styles.paginationRow}>
           <SecondaryButton type="button" onClick={() => loadItems(Math.max(1, page - 1))} disabled={page <= 1}>Anterior</SecondaryButton>
           <SecondaryButton type="button" onClick={() => loadItems(Math.min(pageCount, page + 1))} disabled={page >= pageCount}>Siguiente</SecondaryButton>
         </div>
@@ -409,7 +411,8 @@ export default function NomencladoresPage() {
           </>
         }
       >
-        <form id="nomenclador-form" onSubmit={handleSubmit} className="space-y-4">
+        <form id="nomenclador-form" onSubmit={handleSubmit} className={styles.form}>
+          {formError && <FeedbackMessage type="error" className={styles.formError}>{formError}</FeedbackMessage>}
           {config.fields.map((field) => (
             <FormField
               key={field.name}

@@ -3,13 +3,13 @@ import styles from "./CutoffSection.module.css";
 
 export default function CutoffSection({ items, year, onViewMore }) {
   return (
-    <section id="cortes" className={styles.section}>
+    <section className={styles.section}>
       <div className={styles.header}>
         <div>
-          <p className={styles.eyebrow}>Índices de corte</p>
+          <p id="cortes" className={styles.eyebrow}>Índices de corte</p>
           <h2 className={styles.title}>Más solicitadas {year ? `(${year})` : ""}</h2>
         </div>
-        {onViewMore && <SecondaryButton onClick={onViewMore}>Ver más</SecondaryButton>}
+        {onViewMore && <SecondaryButton className={styles.moreTop} onClick={onViewMore}>Ver más</SecondaryButton>}
       </div>
       <div className={styles.grid}>
         {items.map((item) => (
@@ -19,6 +19,7 @@ export default function CutoffSection({ items, year, onViewMore }) {
           </article>
         ))}
       </div>
+      {onViewMore && <SecondaryButton className={styles.moreBottom} onClick={onViewMore}>Ver más</SecondaryButton>}
     </section>
   );
 }

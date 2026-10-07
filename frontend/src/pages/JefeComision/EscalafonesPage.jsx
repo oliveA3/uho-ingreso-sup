@@ -94,7 +94,7 @@ export default function EscalafonesPage() {
           </PrimaryButton>
         </div>
 
-        {error && <FeedbackMessage type="error" className="mt-5 rounded-2xl">{error}</FeedbackMessage>}
+        {error && <FeedbackMessage type="error" className={styles.feedbackMessage}>{error}</FeedbackMessage>}
 
         <StageStatusNotice stageNumber={1} />
 

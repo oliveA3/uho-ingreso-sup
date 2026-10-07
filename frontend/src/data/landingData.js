@@ -15,47 +15,6 @@ export const timelineSteps = [
   { id: 6, number: 6, title: "Otorgamiento", status: "pending", date: "10 Mar" },
 ];
 
-export const newsItems = [
-  {
-    id: 1,
-    title: "Inicio del proceso de Ingreso 2025",
-    category: "Comunicado",
-    date: "08 Ene 2025",
-    description: "El proceso da inicio con la publicación del escalafón en todas las escuelas.",
-    mediaType: "imagen",
-    mediaUrl: "https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=900&q=80",
-  },
-  {
-    id: 2,
-    title: "Requisitos para estudiantes de 12mo",
-    category: "Guía",
-    date: "05 Ene 2025",
-    description: "Conozca los pasos para inscribirse en el proceso de ingreso a la Educación Superior.",
-    mediaType: "video",
-    mediaUrl: "#",
-  },
-  {
-    id: 3,
-    title: "Oferta de carreras 2025",
-    category: "Oferta",
-    date: "03 Ene 2025",
-    description: "La UHo y otras instituciones ofrecen 47 carreras para el curso diurno 2025-2026.",
-    mediaType: "documento",
-    documentFormat: "PDF",
-    documentName: "Oferta de carreras 2025 (PDF)",
-    mediaUrl: "#",
-  },
-  {
-    id: 4,
-    title: "Índices de corte 2024",
-    category: "Reporte",
-    date: "15 Dic 2024",
-    description: "Consulte los índices de corte del proceso anterior por carrera.",
-    mediaType: "imagen",
-    mediaUrl: "https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&w=900&q=80",
-  },
-];
-
 export const planPlazas = [
   { id: 1, carrera: "Ingeniería Informática", municipio: "Holguín", ces: "UHo", sexo: "A", plazas: 60, year: 2025 },
   { id: 2, carrera: "Medicina", municipio: "Holguín", ces: "UCMH", sexo: "A", plazas: 45, year: 2025 },
