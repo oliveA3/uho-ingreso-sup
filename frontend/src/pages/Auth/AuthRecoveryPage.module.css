@@ -1,0 +1,50 @@
+.wrapper {
+  display: flex;
+  justify-content: center;
+  margin: 3rem 1rem;
+}
+
+.card {
+  width: 100%;
+  max-width: 36rem;
+}
+
+.backLink {
+  color: var(--gris-600);
+  font-size: 0.875rem;
+}
+
+.title {
+  margin-top: 1.5rem;
+  color: var(--gris-900);
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.subtitle {
+  margin-top: 0.5rem;
+  color: var(--gris-600);
+  font-size: 0.875rem;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  margin-top: 1.5rem;
+}
+
+.feedback {
+  margin-top: 1rem;
+}
+
+.textButton {
+  align-self: center;
+  border: 0;
+  background: none;
+  color: var(--color-primario, #1f4e79);
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-decoration: underline;
+}

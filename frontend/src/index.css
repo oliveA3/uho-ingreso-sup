@@ -188,12 +188,6 @@ button.rounded-full.border-rose-200.bg-rose-50.px-3.py-1.text-xs.font-semibold {
   padding: 0.5rem 0.75rem;
 }
 
-.table-scroll {
-  max-height: 520px;
-  overflow-y: auto;
-  scrollbar-gutter: stable;
-}
-
 .overflow-x-auto,
 .overflow-hidden:has(> table) {
   max-height: 520px;
@@ -201,7 +195,6 @@ button.rounded-full.border-rose-200.bg-rose-50.px-3.py-1.text-xs.font-semibold {
   scrollbar-gutter: stable;
 }
 
-.table-scroll thead,
 .overflow-x-auto thead,
 .overflow-hidden:has(> table) thead {
   position: sticky;

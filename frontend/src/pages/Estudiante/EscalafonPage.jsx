@@ -41,7 +41,6 @@ export default function EstudianteEscalafonPage() {
     <div className={styles.page}>
       <Card padding="p-6">
         <div>
-          <p className={styles.eyebrow}>Mi proceso académico</p>
           <h1 className={styles.title}>Mi Escalafón</h1>
           <p className={styles.subtitle}>Consulta tus notas, tu posición en el escalafón y el estado de validación en el proceso de ingreso.</p>
         </div>

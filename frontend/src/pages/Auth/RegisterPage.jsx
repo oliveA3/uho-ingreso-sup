@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
     changePendingEmail,
+    resendVerificationCode,
     register,
     verifyEmail,
 } from "../../api/auth.service";
@@ -90,6 +91,7 @@ export default function RegisterPage() {
     const [pendingVerification, setPendingVerification] = useState(false);
     const [editingPendingEmail, setEditingPendingEmail] = useState(false);
     const [changingPendingEmail, setChangingPendingEmail] = useState(false);
+    const [resendingCode, setResendingCode] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const navigate = useNavigate();
@@ -220,6 +222,20 @@ export default function RegisterPage() {
         }
     };
 
+    const handleResendVerificationCode = async () => {
+        setError(null);
+        setSuccess(null);
+        setResendingCode(true);
+        try {
+            const result = await resendVerificationCode({ username: form.username });
+            setSuccess(result.detail);
+        } catch (err) {
+            setError(err.message || "No se pudo solicitar otro código.");
+        } finally {
+            setResendingCode(false);
+        }
+    };
+
     const handlePendingEmailChange = async () => {
         setError(null);
         setSuccess(null);
@@ -296,6 +312,9 @@ export default function RegisterPage() {
                     <PrimaryButton type="submit">
                         Verificar correo
                     </PrimaryButton>
+                    <SecondaryButton onClick={handleResendVerificationCode} disabled={resendingCode}>
+                        {resendingCode ? "Solicitando..." : "Enviar otro código"}
+                    </SecondaryButton>
                 </form>
             ) : <form
                 onSubmit={handleSubmit}
@@ -489,6 +508,7 @@ export default function RegisterPage() {
                         <input
                             id="register-privacy-policy"
                             type="checkbox"
+                            required
                             checked={form.politicaPrivacidadAceptada}
                             onChange={(event) => {
                                 const value = event.target.checked;
@@ -502,6 +522,7 @@ export default function RegisterPage() {
                         />
                         <span>
                             He leído y acepto la <a href="/politica-privacidad" target="_blank" rel="noreferrer">política de privacidad</a> del sistema.
+                            <span className={styles.requiredMark} aria-hidden="true">*</span>
                         </span>
                     </label>
                     {errors.politicaPrivacidadAceptada && <span className={styles.errorText}>{errors.politicaPrivacidadAceptada}</span>}

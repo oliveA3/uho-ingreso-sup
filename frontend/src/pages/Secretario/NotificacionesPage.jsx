@@ -25,7 +25,6 @@ export default function SecretarioNotificacionesPage() {
 
   return (
     <section className={styles.section}>
-      <p className={styles.eyebrow}>Cuenta</p>
       <h1 className={styles.title}>Notificaciones</h1>
       <p className={styles.subtitle}>Consulta los avisos de tu cuenta.</p>
       {error && <FeedbackMessage type="error" className={styles.feedbackMessage}>{error}</FeedbackMessage>}

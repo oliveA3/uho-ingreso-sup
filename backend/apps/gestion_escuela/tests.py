@@ -1,11 +1,11 @@
 import io
+from unittest.mock import patch
 
 from django.test import TestCase
 from openpyxl import Workbook
 from rest_framework.test import APIClient
 
-from apps.authentication.models import Estudiante
-from apps.authentication.models import Usuario
+from apps.authentication.models import EmailVerificationCode, Estudiante, Usuario
 from apps.gestion_escuela.models import Escalafon, EscalafonItem
 from apps.gestion_provincial.models import ETAPAS_NOMBRES, Etapa, Proceso
 from apps.import_export.services.escalafon_service import EscalafonExcelService
@@ -138,6 +138,41 @@ class EscalafonTests(TestCase):
 			"apellidos": "Pérez",
 			"indice_general": 91.5,
 		}])
+
+	def test_secretary_created_student_account_uses_student_school_scope(self):
+		secretary = Usuario.objects.create_user(
+			username="secretaria", email="secretaria@example.com", password="test-password",
+			rol="secretario_escuela", escuela=self.escuela,
+			municipio=self.municipio, provincia=self.provincia,
+		)
+		student = Estudiante.objects.create(
+			ci="12345678901", nombre="Ana", apellidos="Pérez", sexo="F",
+			direccion="Calle 1", escuela=self.escuela,
+		)
+		client = APIClient()
+		client.force_authenticate(user=secretary)
+
+		with patch("apps.gestion_escuela.views.send_email_async"):
+			response = client.post(
+				f"/api/v1/gestion-escuela/estudiantes/{student.id}/crear-cuenta/",
+				{
+					"username": "ana.perez",
+					"email": "ana@example.com",
+					"password": "temporary-password",
+				},
+				format="json",
+			)
+
+		self.assertEqual(response.status_code, 200, response.content)
+		user = Usuario.objects.get(username="ana.perez")
+		self.assertEqual(user.rol, "estudiante")
+		self.assertEqual(user.escuela_id, self.escuela.id)
+		self.assertEqual(user.municipio_id, self.municipio.id)
+		self.assertEqual(user.provincia_id, self.provincia.id)
+		self.assertEqual(user.pending_student_id, student.id)
+		self.assertFalse(user.is_active)
+		self.assertTrue(user.debe_cambiar_password)
+		self.assertFalse(EmailVerificationCode.objects.filter(user=user).exists())
 from django.test import TestCase
 
 # Create your tests here.

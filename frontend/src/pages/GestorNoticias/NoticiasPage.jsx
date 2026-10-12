@@ -6,7 +6,7 @@ import {
   updateProvincialNews,
 } from "../../api/news.service";
 import EntityActionButton from "../../components/Buttons/EntityActionButton";
-import PrimaryButton from "../../components/Buttons/PrimaryButton";
+import AddButton from "../../components/Buttons/AddButton";
 import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
 import ExternalLinkIcon from "../../components/Icons/ExternalLinkIcon";
 import { Card, NewsModal, PageHeader, useConfirm } from "../../components";
@@ -105,10 +105,9 @@ export default function NoticiasPage({ user }) {
     <div className={styles.page}>
       <Card padding="p-6">
         <PageHeader
-          eyebrow="Gestión provincial"
           title="Noticias"
           subtitle="Publica comunicados y noticias del proceso de ingreso para los aspirantes de tu provincia."
-          actions={<PrimaryButton onClick={openCreate}>+ Nueva noticia</PrimaryButton>}
+          actions={<AddButton onClick={openCreate}>Nueva noticia</AddButton>}
         />
         {notice && <FeedbackMessage type="success" className={styles.errorMessage}>{notice}</FeedbackMessage>}
         {error && <FeedbackMessage type="error" className={styles.errorMessage}>{error}</FeedbackMessage>}

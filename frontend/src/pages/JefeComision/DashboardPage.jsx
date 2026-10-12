@@ -38,7 +38,6 @@ export default function DashboardPage({ user }) {
       <section className={styles.heroCard}>
         <div className={styles.heroTop}>
           <div>
-            <p className={styles.eyebrow}>Dashboard Provincial</p>
             <h1 className={styles.title}>Dashboard Provincial</h1>
             <p className={styles.subtitle}>Información actual del proceso de ingreso</p>
           </div>
@@ -67,9 +66,12 @@ export default function DashboardPage({ user }) {
                   <span>{municipio.nombre}</span>
                   <span>{municipio.completed}/{municipio.total} escuelas</span>
                 </div>
-                <div className={styles.progressTrack}>
-                  <div className={styles.progressFill} style={{ width: `${municipio.total ? municipio.completed / municipio.total * 100 : 0}%` }} />
-                </div>
+                <progress
+                  className={styles.progressTrack}
+                  value={municipio.completed}
+                  max={municipio.total || 1}
+                  aria-label={`${municipio.nombre}: ${municipio.completed} de ${municipio.total} escuelas`}
+                />
               </div>
             ))}
           </div>
@@ -84,9 +86,12 @@ export default function DashboardPage({ user }) {
                   <span>{career.carrera__nombre}</span>
                   <span>{career.total}</span>
                 </div>
-                <div className={styles.progressTrack}>
-                  <div className={styles.progressFill} style={{ width: `${Math.min(100, career.total * 10)}%` }} />
-                </div>
+                <progress
+                  className={styles.progressTrack}
+                  value={career.total}
+                  max={10}
+                  aria-label={`${career.carrera__nombre}: ${career.total} solicitudes`}
+                />
               </div>
             ))}
           </div>

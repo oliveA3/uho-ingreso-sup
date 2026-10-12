@@ -13,7 +13,6 @@ export default function InterestMetricsView({ metrics, title, schoolName }) {
   return (
     <div className={styles.wrapper}>
       <section className={styles.section}>
-        <p className={styles.eyebrow}>Boletas de Interés</p>
         <div className={styles.titleRow}>
           <h1 className={styles.title}>{title}</h1>
           <span className={styles.schoolBadge}>{schoolName || "Escuela no asignada"}</span>
@@ -43,9 +42,12 @@ export default function InterestMetricsView({ metrics, title, schoolName }) {
                   <span className={styles.rankingName}>{index + 1}. {career.nombre}</span>
                   <span className={styles.rankingValue}>{career.total}</span>
                 </div>
-                <div className={styles.barTrack}>
-                  <div className={styles.barFill} style={{ width: `${(career.total / maximum) * 100}%` }} />
-                </div>
+                <progress
+                  className={styles.barTrack}
+                  value={career.total}
+                  max={maximum}
+                  aria-label={`${career.nombre}: ${career.total} boletas`}
+                />
               </div>
             ))}
           </div>

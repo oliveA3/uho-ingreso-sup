@@ -42,6 +42,10 @@ class ProvinciaViewSet(SoftDeleteModelMixin, viewsets.ModelViewSet):
     search_fields = ["nombre", "descripcion"]
 
     def get_permissions(self):
+        # Lectura pública: el registro estudiantil es anónimo y necesita elegir
+        # provincia, municipio y escuela antes de que exista la cuenta.
+        if self.request.method == "GET":
+            return [AllowAny()]
         return [IsSuperAdmin()]
 
 
@@ -54,6 +58,9 @@ class MunicipioViewSet(SoftDeleteModelMixin, viewsets.ModelViewSet):
     active_field = "activo"
 
     def get_permissions(self):
+        # Lectura pública por el mismo motivo que ProvinciaViewSet.
+        if self.request.method == "GET":
+            return [AllowAny()]
         return [IsSuperAdmin()]
 
     def get_queryset(self):
@@ -73,6 +80,9 @@ class EscuelaViewSet(SoftDeleteModelMixin, viewsets.ModelViewSet):
     active_field = "activa"
 
     def get_permissions(self):
+        # Lectura pública por el mismo motivo que ProvinciaViewSet.
+        if self.request.method == "GET":
+            return [AllowAny()]
         return [IsSuperAdmin()]
 
     def get_queryset(self):

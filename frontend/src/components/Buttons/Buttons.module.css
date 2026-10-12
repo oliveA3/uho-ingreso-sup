@@ -50,3 +50,27 @@
 .small:hover:not(:disabled) {
   filter: brightness(0.95);
 }
+
+.edit {
+  background-color: color-mix(in srgb, var(--color-primario, #1f4e79) 10%, var(--blanco));
+  border-color: color-mix(in srgb, var(--color-primario, #1f4e79) 35%, var(--blanco));
+  color: var(--color-primario, #1f4e79);
+}
+
+.delete {
+  background-color: color-mix(in srgb, var(--color-error, #c0392b) 10%, var(--blanco));
+  border-color: color-mix(in srgb, var(--color-error, #c0392b) 35%, var(--blanco));
+  color: var(--color-error, #c0392b);
+}
+
+.statusActive {
+  background-color: color-mix(in srgb, var(--color-exito, #1a7a4a) 10%, var(--blanco));
+  border-color: color-mix(in srgb, var(--color-exito, #1a7a4a) 35%, var(--blanco));
+  color: var(--color-exito, #1a7a4a);
+}
+
+.statusInactive {
+  background-color: color-mix(in srgb, var(--color-error, #c0392b) 10%, var(--blanco));
+  border-color: color-mix(in srgb, var(--color-error, #c0392b) 35%, var(--blanco));
+  color: var(--color-error, #c0392b);
+}

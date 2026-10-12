@@ -2,7 +2,7 @@ import StageStatusNotice from "../../components/StageStatusNotice/StageStatusNot
 import { useEffect, useState } from "react";
 import { fetchSchoolDashboard } from "../../api/school.service";
 import BallotMetrics from "../../components/BallotMetrics/BallotMetrics";
-import { StatCard, StatsGrid } from "../../components";
+import { PageHeader, StatCard, StatsGrid } from "../../components";
 import styles from "./DashboardPage.module.css";
 
 export default function SecretarioDashboardPage({ user, title = "Dashboard Secretario" }) {
@@ -21,15 +21,11 @@ export default function SecretarioDashboardPage({ user, title = "Dashboard Secre
   return (
     <div className={styles.card}>
       <div className={styles.cardInner}>
-        <div>
-          <div className={styles.titleRow}>
-            <h1 className={styles.title}>{title}</h1>
-            <span className={styles.schoolBadge}>{user?.escuela_nombre || "Escuela no asignada"}</span>
-          </div>
-          <p className={styles.subtitle}>
-            Resumen de etapa activa, estudiantes, boletas y escalafón para tu escuela.
-          </p>
-        </div>
+        <PageHeader
+          title={title}
+          subtitle="Resumen de etapa activa, estudiantes, boletas y escalafón para tu escuela."
+          actions={<span className={styles.schoolBadge}>{user?.escuela_nombre || "Escuela no asignada"}</span>}
+        />
 
         <StageStatusNotice />
 
@@ -47,23 +43,17 @@ export default function SecretarioDashboardPage({ user, title = "Dashboard Secre
                 <span>Aceptaron</span>
                 <span className={styles.progressValue}>{dashboard.escalafon.accepted}</span>
               </div>
-              <div className={styles.progressTrack}>
-                <div className={styles.progressFillSuccess} style={{ width: `${dashboard.escalafon.accepted / total * 100}%` }} />
-              </div>
+              <progress className={`${styles.progressTrack} ${styles.progressFillSuccess}`} value={dashboard.escalafon.accepted} max={total} aria-label={`Aceptaron: ${dashboard.escalafon.accepted}`} />
               <div className={styles.progressRow}>
                 <span>Revisión</span>
                 <span className={styles.progressValue}>{dashboard.escalafon.review}</span>
               </div>
-              <div className={styles.progressTrack}>
-                <div className={styles.progressFillWarning} style={{ width: `${dashboard.escalafon.review / total * 100}%` }} />
-              </div>
+              <progress className={`${styles.progressTrack} ${styles.progressFillWarning}`} value={dashboard.escalafon.review} max={total} aria-label={`En revisión: ${dashboard.escalafon.review}`} />
               <div className={styles.progressRow}>
                 <span>Sin respuesta</span>
                 <span className={styles.progressValue}>{dashboard.escalafon.no_response}</span>
               </div>
-              <div className={styles.progressTrack}>
-                <div className={styles.progressFillNeutral} style={{ width: `${dashboard.escalafon.no_response / total * 100}%` }} />
-              </div>
+              <progress className={`${styles.progressTrack} ${styles.progressFillNeutral}`} value={dashboard.escalafon.no_response} max={total} aria-label={`Sin respuesta: ${dashboard.escalafon.no_response}`} />
             </div>
           </div>
           <div className={styles.panel}>

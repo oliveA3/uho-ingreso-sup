@@ -7,6 +7,11 @@ import styles from "./DataTable.module.css";
  * columns: [{ key, header, render?(row), className? }]
  */
 const isActionsColumn = (column) => /^acciones?$/i.test(column.key);
+const maxHeightClasses = {
+  short: styles.maxHeightShort,
+  medium: styles.maxHeightMedium,
+  tall: styles.maxHeightTall,
+};
 
 export default function DataTable({
   columns,
@@ -20,8 +25,7 @@ export default function DataTable({
 }) {
   return (
     <div
-      className={`${styles.wrapper} ${className}`}
-      style={maxHeight ? { maxHeight, overflowY: "auto" } : undefined}
+      className={`${styles.wrapper} ${className} ${maxHeightClasses[maxHeight] || ""}`}
       aria-busy={loading || undefined}
     >
       <table className={styles.table}>

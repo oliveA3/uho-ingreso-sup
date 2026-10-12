@@ -1,10 +1,18 @@
 from django.urls import path
 
-from .views import SchoolDashboardView, SchoolExamConfirmationMetricsView, SchoolInterestMetricsView, SchoolSolicitudView, StudentsWithoutAccountView
+from .views import (
+    SchoolDashboardView,
+    SchoolExamConfirmationMetricsView,
+    SchoolInterestMetricsView,
+    SchoolSolicitudView,
+    StudentsWithoutAccountView,
+    CreateStudentAccountView,
+)
 
 
 urlpatterns = [
     path("estudiantes/sin-cuenta/", StudentsWithoutAccountView.as_view(), name="students-without-account"),
+    path("estudiantes/<int:student_id>/crear-cuenta/", CreateStudentAccountView.as_view(), name="create-student-account"),
     path("dashboard/", SchoolDashboardView.as_view(), name="school-dashboard"),
     path("boleta-interes/metricas/", SchoolInterestMetricsView.as_view(), name="school-interest-metrics"),
     path("confirmacion-pruebas/metricas/", SchoolExamConfirmationMetricsView.as_view(), name="school-exam-confirmation-metrics"),

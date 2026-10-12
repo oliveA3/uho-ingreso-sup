@@ -7,7 +7,7 @@ import {
 } from "../../api/news.service";
 import EntityActionButton from "../../components/Buttons/EntityActionButton";
 import StatusToggle from "../../components/Buttons/StatusToggle";
-import PrimaryButton from "../../components/Buttons/PrimaryButton";
+import AddButton from "../../components/Buttons/AddButton";
 import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
 import { DataTable, NewsManagerModal, useConfirm } from "../../components";
 import styles from "./NewsManagersSection.module.css";
@@ -120,7 +120,7 @@ export default function NewsManagersSection() {
           <h2 className={styles.title}>Gestores de noticias</h2>
           <p className={styles.subtitle}>Administra las cuentas que pueden publicar noticias en tu provincia.</p>
         </div>
-        <PrimaryButton onClick={openCreate}>+ Nuevo gestor</PrimaryButton>
+        <AddButton onClick={openCreate}>Nuevo gestor</AddButton>
       </div>
       {notice && <FeedbackMessage type="success" className={styles.feedbackMessage}>{notice}</FeedbackMessage>}
       {error && <FeedbackMessage type="error" className={styles.feedbackMessage}>{error}</FeedbackMessage>}
@@ -131,7 +131,7 @@ export default function NewsManagersSection() {
         loading={loading}
         loadingMessage="Cargando gestores..."
         emptyMessage="No hay gestores de noticias para tu provincia."
-        maxHeight="12.5rem"
+        maxHeight="short"
       />
 
       {modalOpen && (

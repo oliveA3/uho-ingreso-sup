@@ -34,3 +34,7 @@ export function fetchSchoolOtorgamientos(anio) {
 export function fetchStudentsWithoutAccount() {
   return request("/gestion-escuela/estudiantes/sin-cuenta/");
 }
+
+export function createStudentAccount(studentId, payload) {
+  return request(`/gestion-escuela/estudiantes/${studentId}/crear-cuenta/`, { method: "POST", body: payload });
+}

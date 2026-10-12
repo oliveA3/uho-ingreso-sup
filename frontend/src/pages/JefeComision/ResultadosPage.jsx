@@ -4,6 +4,8 @@ import { downloadResultsExport, fetchResultClaims, fetchResults, importResults, 
 import EntityActionButton from "../../components/Buttons/EntityActionButton";
 import SecondaryButton from "../../components/Buttons/SecondaryButton";
 import PrimaryButton from "../../components/Buttons/PrimaryButton";
+import ImportButton from "../../components/Buttons/ImportButton";
+import ExportButton from "../../components/Buttons/ExportButton";
 import StageStatusNotice from "../../components/StageStatusNotice/StageStatusNotice";
 import { Card, DataTable, FormField, Input, Modal, Select, useConfirm } from "../../components";
 import styles from "./ResultadosPage.module.css";
@@ -138,7 +140,6 @@ export default function ResultadosPage() {
     <div className={styles.page}>
       <Card padding="p-6">
         <div>
-          <p className={styles.eyebrow}>Gestión de Resultados</p>
           <h1 className={styles.title}>Importar notas y gestionar reclamaciones</h1>
         </div>
 
@@ -168,8 +169,8 @@ export default function ResultadosPage() {
             disabled={!stageActive || importing}
             onChange={handleImport}
           />
-          <PrimaryButton className={styles.importButton} onClick={() => fileInput.current?.click()} disabled={!stageActive || importing}>{importing ? "Importando..." : "Importar resultados desde Excel"}</PrimaryButton>
-          <SecondaryButton className={styles.exportButton} onClick={handleExport} disabled={!results.length}>Exportar resultados</SecondaryButton>
+          <ImportButton className={styles.importButton} onClick={() => fileInput.current?.click()} disabled={!stageActive || importing}>{importing ? "Importando..." : "Importar resultados desde Excel"}</ImportButton>
+          <ExportButton className={styles.exportButton} onClick={handleExport} disabled={!results.length}>Exportar resultados</ExportButton>
         </div>
       </Card>
 
@@ -180,7 +181,8 @@ export default function ResultadosPage() {
         </div>
 
         <DataTable
-          className={`table-scroll ${styles.table}`}
+          className={styles.table}
+          maxHeight="tall"
           columns={columns}
           data={claims}
           loading={loading}

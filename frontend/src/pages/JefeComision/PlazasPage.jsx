@@ -4,6 +4,8 @@ import StageStatusNotice from "../../components/StageStatusNotice/StageStatusNot
 import EntityActionButton from "../../components/Buttons/EntityActionButton";
 import PrimaryButton from "../../components/Buttons/PrimaryButton";
 import SecondaryButton from "../../components/Buttons/SecondaryButton";
+import AddButton from "../../components/Buttons/AddButton";
+import ImportButton from "../../components/Buttons/ImportButton";
 import { Card, DataTable, FormField, Input, Modal, Select, useConfirm } from "../../components";
 import styles from "./PlazasPage.module.css";
 import {
@@ -217,9 +219,6 @@ export default function PlazasPage() {
       <Card padding="p-6">
         <div className={styles.headerRow}>
           <div>
-            <p className={styles.eyebrow}>
-              Etapa 3
-            </p>
             <h1 className={styles.title}>
               Gestión del Plan de Plazas
             </h1>
@@ -236,12 +235,12 @@ export default function PlazasPage() {
               disabled={stageFinished || importing}
               onChange={handleImport}
             />
-            <PrimaryButton onClick={() => fileInput.current?.click()} disabled={stageFinished || importing}>
+            <ImportButton onClick={() => fileInput.current?.click()} disabled={stageFinished || importing}>
               {importing ? "Importando..." : "Importar Excel"}
-            </PrimaryButton>
-            <PrimaryButton className={styles.darkButton} onClick={openCreateForm} disabled={stageFinished}>
+            </ImportButton>
+            <AddButton className={styles.darkButton} onClick={openCreateForm} disabled={stageFinished}>
               Añadir carrera
-            </PrimaryButton>
+            </AddButton>
           </div>
         </div>
         {error && <FeedbackMessage type="error" className={styles.feedbackMessage}>{error}</FeedbackMessage>}
@@ -255,7 +254,8 @@ export default function PlazasPage() {
           loading={loading}
           loadingMessage="Cargando plan de plazas..."
           emptyMessage="No hay registros."
-          className={`table-scroll ${styles.tableUnwrapped}`}
+          className={styles.tableUnwrapped}
+          maxHeight="tall"
         />
       </Card>
       <Modal

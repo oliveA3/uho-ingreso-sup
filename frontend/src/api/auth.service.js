@@ -19,6 +19,18 @@ export function verifyEmail(payload) {
   return request("/authentication/verify-email/", { method: "POST", body: payload });
 }
 
+export function resendVerificationCode(payload) {
+  return request("/authentication/resend-verification-code/", { method: "POST", body: payload });
+}
+
+export function requestPasswordReset(payload) {
+  return request("/authentication/password-reset/", { method: "POST", body: payload });
+}
+
+export function confirmPasswordReset(payload) {
+  return request("/authentication/password-reset/confirm/", { method: "POST", body: payload });
+}
+
 export function changePendingEmail(payload) {
   return request("/authentication/change-pending-email/", { method: "POST", body: payload, credentials: "same-origin" });
 }

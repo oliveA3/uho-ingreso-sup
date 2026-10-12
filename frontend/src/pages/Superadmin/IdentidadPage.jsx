@@ -98,7 +98,7 @@ export default function IdentidadPage() {
   return (
     <div className={styles.page}>
       <Card as="form" padding="p-6" onSubmit={handleSubmit}>
-        <PageHeader title="🎨 Identidad Visual" subtitle="Configura la apariencia global de IngresoSUP." />
+        <PageHeader title="Identidad Visual" subtitle="Configura la apariencia global de IngresoSUP." />
 
         {error && <FeedbackMessage type="error" className={styles.feedbackMessage}>{error}</FeedbackMessage>}
         {message && <FeedbackMessage type="success" className={styles.feedbackMessage}>{message}</FeedbackMessage>}

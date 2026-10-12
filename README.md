@@ -41,4 +41,4 @@ Consulta [docs/SETUP.md](docs/SETUP.md) para instalar y ejecutar el proyecto loc
 - [x] Revisión de seguridad y lista de comprobaciones para despliegue.
 - [x] Seed territorial idempotente para desarrollo y pruebas.
 - [x] Documentación para despliegue local e información adicional.
-- [ ] Manual de usuario.
+- [x] Manual de usuario.

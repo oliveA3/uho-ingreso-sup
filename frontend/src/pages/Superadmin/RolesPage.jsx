@@ -32,10 +32,10 @@ export default function RolesPage() {
     <div className={styles.page}>
       <Card padding="p-6">
         <PageHeader
-          title="🔐 Roles y Permisos"
+          title="Roles y Permisos"
           subtitle="Matriz de control de acceso. Los permisos se verifican en el servidor en cada petición."
         />
-        <DataTable className={`table-scroll ${styles.table}`} columns={columns} data={rolePermissions} getRowKey={([permission]) => permission} />
+        <DataTable className={styles.table} maxHeight="tall" columns={columns} data={rolePermissions} getRowKey={([permission]) => permission} />
       </Card>
     </div>
   );

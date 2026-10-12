@@ -83,7 +83,6 @@ export default function SolicitudesPage() {
     <div className={styles.page}>
       <Card padding="p-6">
         <div>
-          <p className={styles.eyebrow}>Solicitudes — Vista Provincial</p>
           <h1 className={styles.title}>Estado de boletas y modificaciones</h1>
         </div>
 
@@ -104,7 +103,8 @@ export default function SolicitudesPage() {
         </div>
 
         <DataTable
-          className={`table-scroll ${styles.table}`}
+          className={styles.table}
+          maxHeight="tall"
           columns={columns}
           data={data.items}
           emptyMessage="No hay modificaciones pendientes."

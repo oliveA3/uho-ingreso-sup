@@ -1,6 +1,13 @@
 import { Children, cloneElement, isValidElement, useId } from "react";
 import styles from "./FormField.module.css";
 
+function hasRequiredControl(children) {
+  return Children.toArray(children).some((child) => {
+    if (!isValidElement(child)) return false;
+    return Boolean(child.props.required) || hasRequiredControl(child.props.children);
+  });
+}
+
 export default function FormField({
   label,
   htmlFor,
@@ -26,6 +33,7 @@ export default function FormField({
   // input de contraseña envuelto en un <div> con botón de mostrar/ocultar).
   // Forzar el id aquí duplicaría el id en el wrapper y rompería la asociación
   // del <label>.
+  const isRequired = required || hasRequiredControl(children);
   const content = singleChild
     ? cloneElement(singleChild, {
         ...(htmlFor ? {} : { id: singleChild.props.id || resolvedHtmlFor }),
@@ -40,7 +48,7 @@ export default function FormField({
       <div className={styles.labelRow}>
         <label htmlFor={resolvedHtmlFor} className={styles.label}>
           {label}
-          {required && <span className={styles.requiredMark} aria-hidden="true">*</span>}
+          {isRequired && <span className={styles.requiredMark} aria-hidden="true">*</span>}
         </label>
       </div>
       {content}

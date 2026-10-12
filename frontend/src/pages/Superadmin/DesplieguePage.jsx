@@ -21,7 +21,7 @@ export default function DesplieguePage() {
     <div className={styles.page}>
       <Card padding="p-6">
         <PageHeader
-          title="🐳 Despliegue Docker"
+          title="Despliegue Docker"
           subtitle="Entorno de desarrollo local reproducible y servicios del sistema."
           actions={
             <div className={styles.referenceBox}>
@@ -43,7 +43,7 @@ export default function DesplieguePage() {
           <div className={styles.success}>✅ Correo (dev) en http://localhost:8025 (MailHog)</div>
         </div>
 
-        <DataTable className={`table-scroll ${styles.table}`} columns={columns} data={dockerServices} getRowKey={([service]) => service} />
+        <DataTable className={styles.table} maxHeight="tall" columns={columns} data={dockerServices} getRowKey={([service]) => service} />
       </Card>
     </div>
   );

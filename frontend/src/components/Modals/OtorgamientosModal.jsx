@@ -21,6 +21,7 @@ const otorgamientosColumns = [
   { key: "career", header: "Carrera" },
   { key: "ces", header: "CES" },
   { key: "award_index", header: "Índice" },
+  { key: "school", header: "Escuela" },
   { key: "province", header: "Provincia" },
 ];
 
@@ -114,7 +115,7 @@ export default function OtorgamientosModal({ onClose, mode = "otorgamientos" }) 
         </FormField>
         {mode === "cortes" ? (
           <FormField label="Buscar carrera" className={styles.searchField}>
-            <Input value={filters.carrera} onChange={(event) => changeFilter("carrera", event.target.value)} placeholder="Nombre de carrera" />
+            <Input value={filters.carrera || ""} onChange={(event) => changeFilter("carrera", event.target.value)} placeholder="Nombre de carrera" />
           </FormField>
         ) : (
           <FormField label="Buscar por CI" className={styles.searchField}>

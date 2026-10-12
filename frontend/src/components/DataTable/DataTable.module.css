@@ -4,6 +4,28 @@
   border: 1px solid var(--border-color, var(--gris-200));
 }
 
+.maxHeightShort {
+  max-height: 12.5rem;
+  overflow-y: auto;
+}
+
+.maxHeightMedium {
+  max-height: 18rem;
+  overflow-y: auto;
+}
+
+.maxHeightTall {
+  max-height: 520px;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+
+.maxHeightTall .thead {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
 .table {
   min-width: 100%;
   border-collapse: collapse;

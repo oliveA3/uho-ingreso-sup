@@ -13,6 +13,7 @@ import EntityActionButton from "../../components/Buttons/EntityActionButton";
 import StatusToggle from "../../components/Buttons/StatusToggle";
 import PrimaryButton from "../../components/Buttons/PrimaryButton";
 import SecondaryButton from "../../components/Buttons/SecondaryButton";
+import AddButton from "../../components/Buttons/AddButton";
 import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
 import { Card, DataTable, FormField, Input, Modal, Select, StatCard, StatsGrid, useConfirm } from "../../components";
 import styles from "./MunicipiosPage.module.css";
@@ -217,7 +218,6 @@ export default function MunicipiosPage({ user }) {
         <p className={styles.provinceLabel}>Provincia: {user?.provincia_nombre || "No asignada"}</p>
         <div className={styles.headerRow}>
           <div>
-            <p className={styles.eyebrow}>Municipios y Escuelas</p>
             <h1 className={styles.title}>Estructura territorial de la provincia</h1>
             <p className={styles.subtitle}>Gestiona las escuelas de tu provincia.</p>
           </div>
@@ -241,7 +241,7 @@ export default function MunicipiosPage({ user }) {
         <FormField label="Buscar municipio" className={styles.searchField}>
           <Input type="search" value={municipioSearch} onChange={(event) => setMunicipioSearch(event.target.value)} placeholder="Nombre del municipio" />
         </FormField>
-        <DataTable className={`table-scroll ${styles.table}`} columns={municipioColumns} data={filteredMunicipios} loading={loading} />
+        <DataTable className={styles.table} maxHeight="tall" columns={municipioColumns} data={filteredMunicipios} loading={loading} />
       </Card>
 
       {selectedMunicipio && (
@@ -251,12 +251,12 @@ export default function MunicipiosPage({ user }) {
               <h2 className={styles.sectionTitle}>Escuelas de {selectedMunicipio.nombre}</h2>
               <p className={styles.sectionSubtitle}>Las escuelas sí pueden editarse.</p>
             </div>
-            <PrimaryButton onClick={openCreate}>+ Agregar Escuela</PrimaryButton>
+            <AddButton onClick={openCreate}>Agregar Escuela</AddButton>
           </div>
           <FormField label="Buscar escuela" className={styles.searchField}>
             <Input type="search" value={schoolSearch} onChange={(event) => setSchoolSearch(event.target.value)} placeholder="Nombre o código" />
           </FormField>
-          <DataTable className={`table-scroll ${styles.table}`} columns={schoolColumns} data={filteredSchools} />
+          <DataTable className={styles.table} maxHeight="tall" columns={schoolColumns} data={filteredSchools} />
         </Card>
       )}
 

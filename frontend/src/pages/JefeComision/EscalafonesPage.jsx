@@ -4,6 +4,7 @@ import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
 import StageStatusNotice from "../../components/StageStatusNotice/StageStatusNotice";
 import PrimaryButton from "../../components/Buttons/PrimaryButton";
 import SecondaryButton from "../../components/Buttons/SecondaryButton";
+import ExportButton from "../../components/Buttons/ExportButton";
 import { Card, DataTable, Modal } from "../../components";
 import styles from "./EscalafonesPage.module.css";
 
@@ -85,13 +86,12 @@ export default function EscalafonesPage() {
       <Card padding="p-6 sm:p-8">
         <div className={styles.headerRow}>
           <div>
-            <p className={styles.eyebrow}>Escalafones recibidos</p>
             <h1 className={styles.title}>Estado provincial</h1>
             <p className={styles.description}>Seguimiento de los escalafones enviados por cada municipio.</p>
           </div>
-          <PrimaryButton className={styles.darkButton} onClick={exportExcel} disabled={exporting}>
+          <ExportButton variant="primary" className={styles.darkButton} onClick={exportExcel} disabled={exporting}>
             {exporting ? "Exportando..." : "Exportar Excel"}
-          </PrimaryButton>
+          </ExportButton>
         </div>
 
         {error && <FeedbackMessage type="error" className={styles.feedbackMessage}>{error}</FeedbackMessage>}
@@ -105,7 +105,8 @@ export default function EscalafonesPage() {
         </div>
 
         <DataTable
-          className={`table-scroll ${styles.table}`}
+          className={styles.table}
+          maxHeight="tall"
           columns={columns}
           data={summary?.municipios || []}
           loading={loading}

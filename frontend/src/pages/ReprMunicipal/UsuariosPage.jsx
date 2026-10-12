@@ -4,6 +4,7 @@ import EntityActionButton from "../../components/Buttons/EntityActionButton";
 import StatusToggle from "../../components/Buttons/StatusToggle";
 import PrimaryButton from "../../components/Buttons/PrimaryButton";
 import SecondaryButton from "../../components/Buttons/SecondaryButton";
+import AddButton from "../../components/Buttons/AddButton";
 import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
 import { Card, DataTable, FormField, Input, Modal, Select, useConfirm } from "../../components";
 import styles from "./UsuariosPage.module.css";
@@ -100,11 +101,10 @@ export default function UsuariosPage() {
       <Card padding="p-6">
         <div className={styles.headerRow}>
           <div>
-            <p className={styles.eyebrow}>Gestión</p>
             <h1 className={styles.title}>Usuarios</h1>
             <p className={styles.subtitle}>Crea Director y Secretario por escuela.</p>
           </div>
-          <PrimaryButton onClick={openCreate}>+ Nuevo usuario</PrimaryButton>
+          <AddButton onClick={openCreate}>Nuevo usuario</AddButton>
         </div>
         {notice && <FeedbackMessage type="success" className={styles.feedbackMessage}>{notice}</FeedbackMessage>}
         {error && <FeedbackMessage type="error" className={styles.feedbackMessage}>{error}</FeedbackMessage>}

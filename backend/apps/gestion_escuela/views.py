@@ -6,6 +6,7 @@ from drf_spectacular.utils import OpenApiExample, OpenApiParameter, extend_schem
 from rest_framework import serializers
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from django.db import transaction
 
 from apps.authentication.models import Estudiante, Usuario
 from apps.core.notifications import notify_users
@@ -16,6 +17,10 @@ from apps.gestion_provincial.models import ETAPAS_NOMBRES, Etapa, PlanPlaza, Pro
 from .models import EscalafonItem
 from .permissions import CanViewStudentsWithoutAccount, IsSchoolSecretary
 from .serializers import StudentsWithoutAccountSerializer
+
+from django.utils import timezone as dj_timezone
+from apps.authentication.models import PRIVACY_POLICY_VERSION, Usuario
+from apps.core.emailing import send_email_async
 
 
 @extend_schema(
@@ -165,6 +170,115 @@ class SchoolDashboardView(APIView):
             "interest": {"sent": interest.filter(enviada=True).count(), "pending": max(students.count() - interest.filter(enviada=True).count(), 0)},
             "solicitud": {"sent": solicitud.filter(estado__in={"pendiente", "aprobada", "modificada"}).count(), "pending": solicitud.filter(estado="pendiente").count(), "approved": solicitud.filter(estado="aprobada").count(), "modified": solicitud.filter(estado="modificada").count()},
         })
+
+
+@extend_schema(
+    tags=["Gestión"],
+    summary="Crear cuenta de estudiante desde la gestión de la escuela",
+    description=(
+        "Permite que un Secretario (o Director) de la escuela cree una cuenta de Usuario para un estudiante "
+        "existente que aún no tiene cuenta. Esto es útil cuando el estudiante no se registró durante la etapa 1. "
+        "La cuenta se crea en estado inactivo y se asocia como `pending_student`. Se envía un correo con las credenciales; "
+        "el código de verificación se genera y envía cuando el estudiante inicia sesión por primera vez con ellas. "
+        "Requiere permiso de Secretario/Director de escuela."
+    ),
+    request=inline_serializer(
+        name="CreateStudentAccountRequest",
+        fields={
+            "username": serializers.CharField(),
+            "email": serializers.EmailField(),
+            "password": serializers.CharField(required=False, min_length=8),
+        },
+    ),
+    responses={
+        200: inline_serializer(name="CreateStudentAccountResponse", fields={"detail": serializers.CharField()}),
+        400: inline_serializer(name="CreateStudentAccountError", fields={"detail": serializers.CharField()}),
+        403: inline_serializer(name="CreateStudentAccountForbidden", fields={"detail": serializers.CharField()}),
+    },
+)
+class CreateStudentAccountView(APIView):
+    permission_classes = [IsSchoolSecretary]
+
+    def post(self, request, student_id):
+        # Find student and ensure belongs to the secretary's school unless superuser
+        try:
+            estudiante = Estudiante.objects.get(pk=student_id)
+        except Estudiante.DoesNotExist:
+            return Response({"detail": "Estudiante no encontrado."}, status=400)
+        if not (request.user.is_superuser or request.user.escuela_id == estudiante.escuela_id):
+            return Response({"detail": "No tienes permiso para crear la cuenta para este estudiante."}, status=403)
+        if getattr(estudiante, "usuario_id", None):
+            return Response({"detail": "Este estudiante ya tiene una cuenta."}, status=400)
+
+        username = request.data.get("username")
+        email = request.data.get("email")
+        password = request.data.get("password") or Usuario.objects.make_random_password()
+        if not username or not email:
+            return Response({"detail": "Se requiere username y email."}, status=400)
+
+        # Check username/email conflicts
+        existing_by_username = Usuario.objects.filter(username=username).first()
+        existing_by_email = Usuario.objects.filter(email__iexact=email).first()
+        if existing_by_username and existing_by_username.is_active:
+            return Response({"detail": "El nombre de usuario ya está en uso."}, status=400)
+        if existing_by_email and existing_by_email.is_active:
+            return Response({"detail": "El correo ya está registrado."}, status=400)
+        # If existing pending user differs in pending_student, reject
+        if existing_by_username and existing_by_username.pending_student_id not in {None, estudiante.id}:
+            return Response({"detail": "El nombre de usuario está relacionado con otro registro pendiente."}, status=400)
+        if existing_by_email and existing_by_email.pending_student_id not in {None, estudiante.id}:
+            return Response({"detail": "El correo está relacionado con otro registro pendiente."}, status=400)
+
+        # Create or update pending user
+        with transaction.atomic():
+            user = None
+            if existing_by_username and not existing_by_username.is_active:
+                user = existing_by_username
+                user.email = email
+                user.set_password(password)
+            elif existing_by_email and not existing_by_email.is_active:
+                user = existing_by_email
+                user.username = username
+                user.set_password(password)
+            else:
+                user = Usuario.objects.create_user(username=username, email=email, password=password,
+                                                   first_name=estudiante.nombre, last_name=estudiante.apellidos,
+                                                   rol="estudiante", escuela=estudiante.escuela,
+                                                   municipio=estudiante.escuela.municipio,
+                                                   provincia=estudiante.escuela.municipio.provincia,
+                                                   politica_privacidad_aceptada=True,
+                                                   politica_privacidad_fecha_aceptacion=dj_timezone.now(),
+                                                   politica_privacidad_version=PRIVACY_POLICY_VERSION)
+            user.is_active = False
+            user.email_verificado = False
+            user.pending_student = estudiante
+            user.debe_cambiar_password = True
+            user.first_name = estudiante.nombre
+            user.last_name = estudiante.apellidos
+            user.rol = "estudiante"
+            user.escuela = estudiante.escuela
+            user.municipio = estudiante.escuela.municipio
+            user.provincia = estudiante.escuela.municipio.provincia
+            user.save()
+
+            try:
+                send_email_async(
+                    subject="Cuenta IngresoSUP creada",
+                    message=(
+                        f"Hola {estudiante.nombre},\n\n"
+                        f"Tu cuenta ha sido creada por la escuela.\nUsuario: {user.username}\nContraseña temporal: {password}\n\n"
+                        "Para activar tu cuenta, inicia sesión con estas credenciales. En ese momento te enviaremos "
+                        "un código de verificación válido por 15 minutos. Después de verificar el correo, deberás "
+                        "cambiar la contraseña temporal."
+                    ),
+                    recipient_list=[user.email],
+                )
+            except Exception:
+                # Do not fail the request if email fails; log is handled by send_email_async
+                pass
+
+        record_audit(request.user, "Crear cuenta estudiante", f"/gestion-escuela/estudiantes/{student_id}/crear-cuenta/", request=request)
+        return Response({"detail": "Cuenta creada. El estudiante recibirá el código de verificación al iniciar sesión."})
 
 
 @extend_schema(

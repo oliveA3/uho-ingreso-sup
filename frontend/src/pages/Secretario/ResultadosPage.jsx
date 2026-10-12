@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
 import StageStatusNotice from "../../components/StageStatusNotice/StageStatusNotice";
-import PrimaryButton from "../../components/Buttons/PrimaryButton";
-import { Card, DataTable } from "../../components";
+import ExportButton from "../../components/Buttons/ExportButton";
+import { Card, DataTable, PageHeader } from "../../components";
 import { downloadResultsExport, fetchResults } from "../../api/results.service";
 import styles from "./ResultadosPage.module.css";
 
@@ -42,8 +42,10 @@ export default function SecretarioResultadosPage() {
 
   return (
     <Card>
-      <h1 className={styles.title}>Resultados</h1>
-      <p className={styles.subtitle}>Estudiantes del escalafón y notas publicadas del proceso {year}.</p>
+      <PageHeader
+        title="Resultados"
+        subtitle={`Estudiantes del escalafón y notas publicadas del proceso ${year}.`}
+      />
       <StageStatusNotice stageNumber={5} />
       {error && <FeedbackMessage type="error" className={styles.feedbackMessage}>{error}</FeedbackMessage>}
 
@@ -57,7 +59,7 @@ export default function SecretarioResultadosPage() {
       />
 
       <div className={styles.actionsRow}>
-        <PrimaryButton className={styles.exportButton} onClick={handleExport} disabled={!results.length}>Exportar Excel</PrimaryButton>
+        <ExportButton variant="primary" className={styles.exportButton} onClick={handleExport} disabled={!results.length}>Exportar Excel</ExportButton>
       </div>
     </Card>
   );

@@ -66,7 +66,6 @@ export default function SolicitudOverviewView({ data, title, canManage = false, 
   return (
     <div className={styles.wrapper}>
       <section className={styles.section}>
-        <p className={styles.eyebrow}>Boletas de Solicitud</p>
         <h1 className={styles.title}>{title}</h1>
         <p className={styles.subtitle}>Resumen actualizado de las boletas de tu escuela.</p>
         <StageStatusNotice stageNumber={3} />
@@ -128,9 +127,12 @@ function Ranking({ items }) {
             <span className={styles.rankingName}>{index + 1}. {item.nombre}</span>
             <span className={styles.rankingValue}>{item.total}</span>
           </div>
-          <div className={styles.barTrack}>
-            <div className={styles.barFill} style={{ width: `${(item.total / maximum) * 100}%` }} />
-          </div>
+          <progress
+            className={styles.barTrack}
+            value={item.total}
+            max={maximum}
+            aria-label={`${item.nombre}: ${item.total} solicitudes`}
+          />
         </div>
       ))}
     </div>

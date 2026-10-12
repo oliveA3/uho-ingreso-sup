@@ -53,7 +53,6 @@ export default function EstudianteConfirmacionPruebasPage() {
       <Card padding="p-6">
         <div className={styles.headerBlock}>
           <div>
-            <p className={styles.eyebrow}>Pruebas de Ingreso</p>
             <h1 className={styles.title}>Confirmación de Pruebas de Ingreso</h1>
             <p className={styles.subtitle}>{canConfirm ? "Confirma tu presentación en cada prueba." : "La etapa de confirmación no está en curso. Puedes consultar tus pruebas, pero ya no modificar tu respuesta."}</p>
           </div>

@@ -11,6 +11,7 @@ import EntityActionButton from "../../components/Buttons/EntityActionButton";
 import StatusToggle from "../../components/Buttons/StatusToggle";
 import PrimaryButton from "../../components/Buttons/PrimaryButton";
 import SecondaryButton from "../../components/Buttons/SecondaryButton";
+import AddButton from "../../components/Buttons/AddButton";
 import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
 import { Card, DataTable, FormField, Input, Modal, PageHeader, Select, useConfirm } from "../../components";
 import styles from "./UsuariosPage.module.css";
@@ -320,12 +321,12 @@ export default function UsuariosPage() {
     <div className={styles.page}>
       <Card padding="p-6">
         <PageHeader
-          title="👥 Usuarios"
+          title="Usuarios"
           subtitle="Gestión global de usuarios en todo el sistema."
           actions={(
             <div className={styles.headerActions}>
               <SecondaryButton onClick={openStudents}>Ver estudiantes</SecondaryButton>
-              <PrimaryButton onClick={openCreate}>+ Nuevo usuario</PrimaryButton>
+              <AddButton onClick={openCreate}>Nuevo usuario</AddButton>
             </div>
           )}
         />
@@ -355,7 +356,8 @@ export default function UsuariosPage() {
         {notice && <FeedbackMessage type="success" className={styles.noticeMessage}>{notice}</FeedbackMessage>}
         {error && <FeedbackMessage type="error" className={styles.errorMessage}>{error}</FeedbackMessage>}
         <DataTable
-          className={`table-scroll ${styles.usersTable}`}
+          className={styles.usersTable}
+          maxHeight="tall"
           columns={columns}
           data={users}
           loading={loading}
@@ -392,7 +394,7 @@ export default function UsuariosPage() {
           data={students}
           loading={studentsLoading}
           emptyMessage="No hay estudiantes para estos filtros."
-          maxHeight="18rem"
+          maxHeight="medium"
         />
       </Modal>
 
@@ -436,7 +438,7 @@ export default function UsuariosPage() {
             </Select>
           </FormField>
           {form.rol !== "superadmin" && (
-            <FormField label={<>Provincia{(needsMunicipality || needsSchool) && <span className={styles.requiredMark}> *</span>}</>}>
+            <FormField label="Provincia" required={needsMunicipality || needsSchool}>
               <Select
                 required={needsMunicipality || needsSchool}
                 value={form.provincia}
@@ -448,7 +450,7 @@ export default function UsuariosPage() {
             </FormField>
           )}
           {needsMunicipality && (
-            <FormField label={<>Municipio <span className={styles.requiredMark}>*</span></>}>
+            <FormField label="Municipio">
               <Select
                 required
                 value={form.municipio}
@@ -461,7 +463,7 @@ export default function UsuariosPage() {
             </FormField>
           )}
           {needsSchool && (
-            <FormField label={<>Escuela <span className={styles.requiredMark}>*</span></>} className={styles.fieldSpan2}>
+            <FormField label="Escuela" className={styles.fieldSpan2}>
               <Select required value={form.escuela} onChange={(event) => setForm({ ...form, escuela: event.target.value })} disabled={!form.municipio}>
                 <option value="">Selecciona una escuela</option>
                 {schools.map((school) => <option key={school.id} value={school.id}>{school.nombre}</option>)}

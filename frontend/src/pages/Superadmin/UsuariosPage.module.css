@@ -76,10 +76,6 @@
   color: var(--color-primario, #1f4e79);
 }
 
-.requiredMark {
-  color: var(--color-error, #c0392b);
-}
-
 .activeCheckboxRow {
   display: flex;
   align-items: center;

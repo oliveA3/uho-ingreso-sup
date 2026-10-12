@@ -1,6 +1,9 @@
+import binascii
+from django.conf import settings
 from django.contrib.auth import authenticate, login, logout
 from apps.core.emailing import send_email_async
 from datetime import timedelta
+import secrets
 from django.utils import timezone
 from django.core.exceptions import ValidationError
 from django.utils.decorators import method_decorator
@@ -19,6 +22,34 @@ from .serializers import ChangePasswordSerializer, LoginSerializer, RegisterSeri
 from apps.core.audit import record_audit
 from apps.core.responses import api_error, api_success
 from apps.core.throttling import AuthenticationRateThrottle
+
+
+class PasswordResetConfirmInputSerializer(serializers.Serializer):
+    uid = serializers.CharField()
+    token = serializers.CharField()
+    new_password = serializers.CharField(max_length=128, write_only=True)
+
+
+class PasswordResetRequestInputSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+
+def _send_verification_code(user):
+    now = timezone.now()
+    EmailVerificationCode.objects.filter(
+        user=user, used_at__isnull=True
+    ).update(used_at=now)
+    code = f"{secrets.randbelow(1_000_000):06d}"
+    EmailVerificationCode.objects.create(
+        user=user,
+        code=code,
+        expires_at=now + timedelta(minutes=15),
+    )
+    send_email_async(
+        subject="Código de verificación de IngresoSUP",
+        message=f"Tu código de verificación es: {code}\n\nEste código vence en 15 minutos.",
+        recipient_list=[user.email],
+    )
 
 
 @extend_schema(
@@ -78,12 +109,27 @@ class LoginView(APIView):
             return api_error({"detail": "Cuenta temporalmente bloqueada. Intenta nuevamente en 15 minutos."}, status=status.HTTP_429_TOO_MANY_REQUESTS)
         user = authenticate(request, username=username, password=password)
         if user is None:
+            pending_user = Usuario.objects.filter(username=username).first()
+            if (
+                pending_user
+                and pending_user.check_password(password)
+                and not pending_user.is_active
+                and not pending_user.email_verificado
+                and pending_user.pending_student_id
+            ):
+                attempt.failed_attempts = 0
+                attempt.locked_until = None
+                attempt.save(update_fields=["failed_attempts", "locked_until", "updated_at"])
+                _send_verification_code(pending_user)
+                return api_error(
+                    {"detail": "Te enviamos un código de verificación. Revisa tu correo para activar la cuenta."},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
             attempt.failed_attempts += 1
             if attempt.failed_attempts >= 5:
                 attempt.failed_attempts = 0
                 attempt.locked_until = timezone.now() + timedelta(minutes=15)
             attempt.save(update_fields=["failed_attempts", "locked_until", "updated_at"])
-            pending_user = Usuario.objects.filter(username=username).first()
             if pending_user and pending_user.check_password(password) and not pending_user.is_active:
                 detail = (
                     "Debes verificar tu correo antes de iniciar sesión."
@@ -203,6 +249,156 @@ class VerifyEmailView(APIView):
         )
         record_audit(user, "Verificación de correo electrónico", request.path, request=request, new={"email_verificado": True, "is_active": True, "politica_privacidad_aceptada": True, "politica_privacidad_version": PRIVACY_POLICY_VERSION})
         return api_success({"detail": "Correo verificado correctamente."}, status=status.HTTP_200_OK)
+
+
+@extend_schema(
+    tags=["Autenticación"],
+    summary="Reenviar código de verificación",
+    description=(
+        "Solicita un nuevo código de verificación de seis dígitos, válido durante 15 minutos. "
+        "Para evitar revelar si una cuenta existe, siempre devuelve el mismo mensaje."
+    ),
+    request=inline_serializer(
+        name="ResendVerificationCodeRequest",
+        fields={"username": serializers.CharField()},
+    ),
+    responses={200: inline_serializer(
+        name="ResendVerificationCodeResponse",
+        fields={"detail": serializers.CharField()},
+    )},
+)
+class ResendVerificationCodeView(APIView):
+    authentication_classes = []
+    permission_classes = [AllowAny]
+    throttle_classes = [AuthenticationRateThrottle]
+
+    def post(self, request):
+        username = str(request.data.get("username", "")).strip()
+        user = Usuario.objects.filter(username=username).first() if username else None
+        if (
+            user
+            and not user.is_active
+            and not user.email_verificado
+            and user.pending_student_id
+        ):
+            _send_verification_code(user)
+        return api_success(
+            {"detail": "Si la cuenta puede verificarse, enviaremos un código al correo registrado."},
+            status=status.HTTP_200_OK,
+        )
+
+
+@extend_schema(
+    tags=["Autenticación"],
+    summary="Solicitar restablecimiento de contraseña",
+    description=(
+        "Envía un enlace de restablecimiento al correo de una cuenta activa y verificada. "
+        "La respuesta no revela si el correo está registrado."
+    ),
+    request=inline_serializer(
+        name="PasswordResetRequest",
+        fields={"email": serializers.EmailField()},
+    ),
+    responses={200: inline_serializer(
+        name="PasswordResetRequestResponse",
+        fields={"detail": serializers.CharField()},
+    )},
+)
+class PasswordResetRequestView(APIView):
+    authentication_classes = []
+    permission_classes = [AllowAny]
+    throttle_classes = [AuthenticationRateThrottle]
+
+    def post(self, request):
+        from django.contrib.auth.tokens import default_token_generator
+        from django.utils.encoding import force_bytes
+        from django.utils.http import urlsafe_base64_encode
+
+        serializer = PasswordResetRequestInputSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data["email"]
+        user = Usuario.objects.filter(email__iexact=email, is_active=True, email_verificado=True).first()
+        if user:
+            uid = urlsafe_base64_encode(force_bytes(user.pk))
+            token = default_token_generator.make_token(user)
+            frontend_url = settings.FRONTEND_URL or request.build_absolute_uri("/").rstrip("/")
+            reset_url = f"{frontend_url}/restablecer-contrasena?uid={uid}&token={token}"
+            send_email_async(
+                subject="Restablecer contraseña de IngresoSUP",
+                message=(
+                    f"Hola {user.first_name or user.username},\n\n"
+                    f"Para crear una nueva contraseña, abre este enlace:\n{reset_url}\n\n"
+                    "Si no solicitaste este cambio, ignora este correo."
+                ),
+                recipient_list=[user.email],
+            )
+        return api_success(
+            {"detail": "Si existe una cuenta activa con ese correo, recibirás instrucciones para restablecer la contraseña."},
+            status=status.HTTP_200_OK,
+        )
+
+
+@extend_schema(
+    tags=["Autenticación"],
+    summary="Restablecer contraseña",
+    description="Establece una nueva contraseña con un token de un solo uso y con vencimiento.",
+    request=inline_serializer(
+        name="PasswordResetConfirmRequest",
+        fields={
+            "uid": serializers.CharField(),
+            "token": serializers.CharField(),
+            "new_password": serializers.CharField(),
+        },
+    ),
+    responses={
+        200: inline_serializer(
+            name="PasswordResetConfirmResponse",
+            fields={"detail": serializers.CharField()},
+        ),
+        400: inline_serializer(
+            name="PasswordResetConfirmErrorResponse",
+            fields={"detail": serializers.CharField(required=False)},
+        ),
+    },
+)
+class PasswordResetConfirmView(APIView):
+    authentication_classes = []
+    permission_classes = [AllowAny]
+    throttle_classes = [AuthenticationRateThrottle]
+
+    def post(self, request):
+        from django.contrib.auth.password_validation import validate_password
+        from django.contrib.auth.tokens import default_token_generator
+        from django.core.exceptions import ValidationError as DjangoValidationError
+        from django.utils.encoding import force_str
+        from django.utils.http import urlsafe_base64_decode
+
+        serializer = PasswordResetConfirmInputSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        uid = serializer.validated_data["uid"]
+        token = serializer.validated_data["token"]
+        password = serializer.validated_data["new_password"]
+        try:
+            user_id = force_str(urlsafe_base64_decode(uid))
+            user = Usuario.objects.get(pk=user_id, is_active=True, email_verificado=True)
+        except (TypeError, ValueError, OverflowError, binascii.Error, Usuario.DoesNotExist):
+            user = None
+        if not user or not default_token_generator.check_token(user, token):
+            return api_error(
+                {"detail": "El enlace de restablecimiento es inválido o venció."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            validate_password(password, user)
+        except DjangoValidationError as error:
+            return api_error({"new_password": error.messages}, status=status.HTTP_400_BAD_REQUEST)
+        user.set_password(password)
+        user.debe_cambiar_password = False
+        user.save(update_fields=["password", "debe_cambiar_password"])
+        return api_success(
+            {"detail": "La contraseña fue restablecida. Ya puedes iniciar sesión."},
+            status=status.HTTP_200_OK,
+        )
 
 
 @extend_schema(

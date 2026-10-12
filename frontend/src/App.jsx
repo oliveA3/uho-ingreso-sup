@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { fetchCurrentUser, logout } from "./api/auth.service";
 import styles from "./App.module.css";
 import { ThemeProvider, useTheme } from "./theme/ThemeContext";
@@ -11,6 +11,8 @@ import StageOneGuard from "./components/StageOneGuard/StageOneGuard";
 import LandingPage from "./pages/LandingPage";
 import LoginPage from "./pages/Auth/LoginPage";
 import RegisterPage from "./pages/Auth/RegisterPage";
+import VerifyEmailPage from "./pages/Auth/VerifyEmailPage";
+import ResetPasswordPage from "./pages/Auth/ResetPasswordPage";
 import PolicyPrivacyPage from "./pages/PolicyPrivacyPage";
 import ChangePasswordPage from "./pages/Auth/ChangePasswordPage";
 import SuperAdminLayout from "./pages/Superadmin/SuperAdminLayout";
@@ -73,6 +75,8 @@ function AppContent() {
   // En escritorio el menú lateral arranca desplegado; en móvil se abre bajo demanda para no tapar el contenido.
   const [isMenuOpen, setIsMenuOpen] = useState(() => window.matchMedia("(min-width: 1024px)").matches);
   const { theme } = useTheme();
+  const location = useLocation();
+  const isCompactPage = location.pathname === "/login" || location.pathname === "/registro";
 
   useEffect(() => {
     async function loadCurrentUser() {
@@ -108,7 +112,7 @@ function AppContent() {
           onViewPlan={() => window.dispatchEvent(new CustomEvent("open-plan-plazas"))}
         />
 
-      <div className={styles.page}>
+      <div className={`${styles.page} ${isCompactPage ? styles.pageCompact : ""}`}>
         <div className={styles.body}>
           {user && !user.debe_cambiar_password && isMenuOpen && <div className={styles.backdrop} onClick={() => setIsMenuOpen(false)} />}
           {user && !user.debe_cambiar_password && (
@@ -157,6 +161,8 @@ function AppContent() {
               <Route path="/" element={<LandingPage user={user} />} />
               <Route path="/login" element={<LoginPage onLogin={handleLogin} />} />
               <Route path="/registro" element={<RegisterPage />} />
+              <Route path="/verificar-correo" element={<VerifyEmailPage />} />
+              <Route path="/restablecer-contrasena" element={<ResetPasswordPage />} />
               <Route path="/politica-privacidad" element={<PolicyPrivacyPage />} />
               <Route path="/superadmin/*" element={<SuperAdminLayout user={user} onLogout={handleLogout} />}>
                 <Route index element={<DashboardPage user={user} />} />

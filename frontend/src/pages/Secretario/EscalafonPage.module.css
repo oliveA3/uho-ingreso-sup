@@ -10,14 +10,6 @@
   gap: 1rem;
 }
 
-.eyebrow {
-  font-size: 0.875rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.24em;
-  color: var(--color-primario, #1f4e79);
-}
-
 .title {
   font-size: 1.5rem;
   font-weight: 600;
@@ -31,7 +23,6 @@
 }
 
 .titleRow {
-  margin-top: 0.5rem;
   display: flex;
   flex-wrap: wrap;
   align-items: center;

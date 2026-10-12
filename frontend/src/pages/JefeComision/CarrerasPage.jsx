@@ -13,6 +13,9 @@ import EntityActionButton from "../../components/Buttons/EntityActionButton";
 import StatusToggle from "../../components/Buttons/StatusToggle";
 import PrimaryButton from "../../components/Buttons/PrimaryButton";
 import SecondaryButton from "../../components/Buttons/SecondaryButton";
+import AddButton from "../../components/Buttons/AddButton";
+import ImportButton from "../../components/Buttons/ImportButton";
+import ExportButton from "../../components/Buttons/ExportButton";
 import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
 import { Card, DataTable, FormField, Input, Modal, Select, TextArea, useConfirm } from "../../components";
 import { normalizeCatalogList } from "../../api/httpClient";
@@ -205,20 +208,17 @@ export default function CarrerasPage() {
             <Card padding="p-6">
                 <div className={styles.headerRow}>
                     <div>
-                        <p className={styles.eyebrow}>
-                            Catálogo de Carreras
-                        </p>
                         <h1 className={styles.title}>
-                            Lista de carreras
+                            Catálogo de carreras
                         </h1>
                         <p className={styles.description}>
                             Gestiona el catálogo oficial.
                         </p>
                     </div>
                     <div className={styles.actions}>
-                        <PrimaryButton className={styles.darkButton} onClick={openCreate}>+ Añadir Carrera</PrimaryButton>
-                        <PrimaryButton onClick={() => setImportOpen(true)}>Importar Excel</PrimaryButton>
-                        <SecondaryButton onClick={handleExport}>Exportar Excel</SecondaryButton>
+                        <AddButton className={styles.darkButton} onClick={openCreate}>Añadir Carrera</AddButton>
+                        <ImportButton onClick={() => setImportOpen(true)}>Importar Excel</ImportButton>
+                        <ExportButton onClick={handleExport}>Exportar Excel</ExportButton>
                     </div>
                 </div>
                 {error && <FeedbackMessage type="error" className={styles.feedbackMessage}>{error}</FeedbackMessage>}
@@ -226,7 +226,7 @@ export default function CarrerasPage() {
             </Card>
             <Card padding="p-6">
                 <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por nombre" className={styles.searchInput} />
-                <DataTable className={`table-scroll ${styles.table}`} columns={columns} data={filteredCareers} loading={loading} emptyMessage="No hay carreras para mostrar." />
+                <DataTable className={styles.table} maxHeight="tall" columns={columns} data={filteredCareers} loading={loading} emptyMessage="No hay carreras para mostrar." />
             </Card>
             <Modal
                 open={modalOpen}

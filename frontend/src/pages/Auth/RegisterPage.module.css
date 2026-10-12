@@ -220,6 +220,11 @@
   text-decoration: underline;
 }
 
+.requiredMark {
+  margin-left: 0.25rem;
+  color: var(--color-error, #c0392b);
+}
+
 .errorText {
   color: var(--color-error, #c0392b);
   font-size: 0.75rem;

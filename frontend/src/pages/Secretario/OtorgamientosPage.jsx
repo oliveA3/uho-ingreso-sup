@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
 import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
 import StageStatusNotice from "../../components/StageStatusNotice/StageStatusNotice";
-import PrimaryButton from "../../components/Buttons/PrimaryButton";
-import SecondaryButton from "../../components/Buttons/SecondaryButton";
-import { Card, DataTable } from "../../components";
+import ExportButton from "../../components/Buttons/ExportButton";
+import { Card, DataTable, PageHeader } from "../../components";
 import { downloadStageSixExport } from "../../api/results.service";
 import { fetchSchoolOtorgamientos } from "../../api/school.service";
 import styles from "./OtorgamientosPage.module.css";
@@ -61,8 +60,10 @@ export default function SecretarioOtorgamientosPage() {
 
   return (
     <Card>
-      <h1 className={styles.title}>Otorgamientos</h1>
-      <p className={styles.subtitle}>Lista real de otorgamientos de tu escuela para {year}.</p>
+      <PageHeader
+        title="Otorgamientos"
+        subtitle={`Lista real de otorgamientos de tu escuela para ${year}.`}
+      />
       <StageStatusNotice stageNumber={6} />
       {error && <FeedbackMessage type="error" className={styles.feedbackMessage}>{error}</FeedbackMessage>}
 
@@ -74,8 +75,8 @@ export default function SecretarioOtorgamientosPage() {
       />
 
       <div className={styles.actionsRow}>
-        <PrimaryButton className={styles.exportButton} onClick={handleExport}>Exportar otorgamientos</PrimaryButton>
-        <SecondaryButton className={styles.exportCutsButton} onClick={handleExportCuts}>Exportar índices de corte</SecondaryButton>
+        <ExportButton variant="primary" className={styles.exportButton} onClick={handleExport}>Exportar otorgamientos</ExportButton>
+        <ExportButton className={styles.exportCutsButton} onClick={handleExportCuts}>Exportar índices de corte</ExportButton>
       </div>
     </Card>
   );

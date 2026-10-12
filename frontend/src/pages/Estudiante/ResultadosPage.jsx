@@ -3,7 +3,7 @@ import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
 import StageStatusNotice from "../../components/StageStatusNotice/StageStatusNotice";
 import PrimaryButton from "../../components/Buttons/PrimaryButton";
 import SecondaryButton from "../../components/Buttons/SecondaryButton";
-import { Card, FormField, Modal, StatCard, StatsGrid, TextArea } from "../../components";
+import { Card, FormField, Modal, PageHeader, StatCard, StatsGrid, TextArea } from "../../components";
 import { fetchResults, submitStudentResultClaim } from "../../api/results.service";
 import styles from "./ResultadosPage.module.css";
 
@@ -47,10 +47,10 @@ export default function ResultadosPage() {
     <div className={styles.page}>
       <Card padding="p-6">
         <div className={styles.headerRow}>
-          <div>
-            <h1 className={styles.title}>📊 Resultados</h1>
-            <p className={styles.subtitle}>Consulta tus notas publicadas y el estado de tus reclamaciones.</p>
-          </div>
+          <PageHeader
+            title="Resultados"
+            subtitle="Consulta tus notas publicadas y el estado de tus reclamaciones."
+          />
         </div>
 
         <StageStatusNotice stageNumber={5} />

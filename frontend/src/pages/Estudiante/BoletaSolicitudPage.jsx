@@ -6,6 +6,7 @@ import { downloadStudentSolicitudExcel, downloadStudentSolicitudPdf, fetchStuden
 import { Card, Select, useConfirm } from "../../components";
 import PrimaryButton from "../../components/Buttons/PrimaryButton";
 import SecondaryButton from "../../components/Buttons/SecondaryButton";
+import AddButton from "../../components/Buttons/AddButton";
 import styles from "./BoletaSolicitudPage.module.css";
 
 const statusStyles = {
@@ -172,7 +173,6 @@ export default function BoletaPage() {
       <Card padding="p-6">
         <div className={styles.headerRow}>
           <div>
-            <p className={styles.eyebrow}>Boleta de Solicitud</p>
             <h1 className={styles.title}>Preferencias de ingreso</h1>
             <p className={styles.subtitle}>Selecciona exactamente {data.max_items} plazas de tu provincia y ordénalas por prioridad.</p>
           </div>
@@ -198,7 +198,7 @@ export default function BoletaPage() {
               <option value="">Selecciona una plaza de tu provincia</option>
               {plansToAdd.map((plan) => <option key={plan.id} value={plan.id}>{plan.carrera_nombre} · {plan.ces_nombre}</option>)}
             </Select>
-            <PrimaryButton onClick={addPlan} disabled={!selectedPlan || !editing}>+ Agregar</PrimaryButton>
+            <AddButton onClick={addPlan} disabled={!selectedPlan || !editing}>Agregar</AddButton>
           </div>
           <p className={styles.countHint}>Carreras seleccionadas: {selected.length}/{data.max_items} · Catálogo provincial: {available.length}</p>
           <div className={styles.planList}>

@@ -23,16 +23,7 @@
   }
 }
 
-.eyebrow {
-  font-size: 0.875rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.24em;
-  color: var(--color-primario, #1f4e79);
-}
-
 .heroTop {
-  margin-top: 0.75rem;
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;

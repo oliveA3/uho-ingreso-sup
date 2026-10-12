@@ -14,6 +14,7 @@ import StageStatusNotice from "../../components/StageStatusNotice/StageStatusNot
 import CareerPreferenceList from "../../components/CareerPreferenceList/CareerPreferenceList";
 import PrimaryButton from "../../components/Buttons/PrimaryButton";
 import SecondaryButton from "../../components/Buttons/SecondaryButton";
+import AddButton from "../../components/Buttons/AddButton";
 import { Card, Select } from "../../components";
 import styles from "./BoletaInteresPage.module.css";
 
@@ -82,7 +83,6 @@ export default function EstudianteBoletaInteresPage() {
   return (
     <div className={styles.page}>
       <Card padding="p-6">
-        <p className={styles.eyebrow}>Boleta de Interés</p>
         <div className={styles.headerRow}>
           <div>
             <h1 className={styles.title}>Carreras de interés</h1>
@@ -104,7 +104,7 @@ export default function EstudianteBoletaInteresPage() {
                 <option value="">Selecciona una carrera</option>
                 {careersToAdd.map((career) => <option key={career.id} value={career.id}>{career.nombre} · {career.ces_nombre}</option>)}
               </Select>
-              <PrimaryButton disabled={!selectedCareer || !editing} onClick={() => update(() => addStudentInterestCareer(Number(selectedCareer)))}>+ Agregar</PrimaryButton>
+              <AddButton disabled={!selectedCareer || !editing} onClick={() => update(() => addStudentInterestCareer(Number(selectedCareer)))}>Agregar</AddButton>
             </div>
           </div>
           {!careersToAdd.length && editing && <p className={styles.warningHint}>No quedan más carreras activas disponibles para agregar.</p>}

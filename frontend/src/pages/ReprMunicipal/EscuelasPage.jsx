@@ -10,6 +10,7 @@ import EntityActionButton from "../../components/Buttons/EntityActionButton";
 import StatusToggle from "../../components/Buttons/StatusToggle";
 import PrimaryButton from "../../components/Buttons/PrimaryButton";
 import SecondaryButton from "../../components/Buttons/SecondaryButton";
+import AddButton from "../../components/Buttons/AddButton";
 import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
 import { Card, DataTable, FormField, Input, Modal, StatCard, StatsGrid, useConfirm } from "../../components";
 import styles from "./EscuelasPage.module.css";
@@ -112,11 +113,10 @@ export default function EscuelasPage({ user }) {
         <p className={styles.municipioLabel}>Municipio: {user?.municipio_nombre || "No asignado"}</p>
         <div className={styles.headerRow}>
           <div>
-            <p className={styles.eyebrow}>Gestión municipal</p>
             <h1 className={styles.title}>Escuelas</h1>
             <p className={styles.subtitle}>Crea y gestiona las escuelas de tu municipio.</p>
           </div>
-          <PrimaryButton onClick={openCreate}>+ Nueva escuela</PrimaryButton>
+          <AddButton onClick={openCreate}>Nueva escuela</AddButton>
         </div>
         {notice && <FeedbackMessage type="success" className={styles.feedbackMessage}>{notice}</FeedbackMessage>}
         {error && <FeedbackMessage type="error" className={styles.feedbackMessage}>{error}</FeedbackMessage>}

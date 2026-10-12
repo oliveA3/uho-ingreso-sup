@@ -58,7 +58,11 @@ export default function EtapasPage() {
   function openActivation(stage) {
     setSelectedStage(stage);
     setDates({ fecha_inicio: "", fecha_fin: "" });
-    setExamDates({ fecha_matematica: "", fecha_espanol: "", fecha_historia: "" });
+    setExamDates({
+      fecha_matematica: stage.fecha_matematica || "",
+      fecha_espanol: stage.fecha_espanol || "",
+      fecha_historia: stage.fecha_historia || "",
+    });
     setError("");
   }
 
@@ -131,7 +135,6 @@ export default function EtapasPage() {
     <div className={styles.page}>
       <Card padding="p-6">
         <div>
-          <p className={styles.eyebrow}>Control de Etapas</p>
           <h1 className={styles.title}>Activación secuencial del proceso</h1>
           <p className={styles.description}>Solo se puede activar la etapa inmediata después de la última en curso o completada.</p>
         </div>

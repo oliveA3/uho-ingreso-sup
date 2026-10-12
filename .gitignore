@@ -46,3 +46,6 @@ backend/media/
 
 # Variables de entorno locales (contienen secretos)
 .env
+
+# Material de trabajo para generar el Manual de Usuario (no es el entregable)
+docs/manual_assets/

@@ -10,6 +10,8 @@ import EntityActionButton from "../../components/Buttons/EntityActionButton";
 import StatusToggle from "../../components/Buttons/StatusToggle";
 import PrimaryButton from "../../components/Buttons/PrimaryButton";
 import SecondaryButton from "../../components/Buttons/SecondaryButton";
+import AddButton from "../../components/Buttons/AddButton";
+import ExportButton from "../../components/Buttons/ExportButton";
 import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
 import { Card, DataTable, FormField, Input, Modal, PageHeader, Select, useConfirm } from "../../components";
 import styles from "./NomencladoresPage.module.css";
@@ -329,14 +331,14 @@ export default function NomencladoresPage() {
     <div className={styles.page}>
       <Card>
         <PageHeader
-          title="📚 Nomencladores"
+          title="Nomencladores"
           subtitle="Administra los catálogos."
           actions={
             <>
-              <SecondaryButton onClick={handleExport} disabled={exporting}>
+              <ExportButton onClick={handleExport} disabled={exporting}>
                 {exporting ? "Exportando..." : "Exportar Excel"}
-              </SecondaryButton>
-              <PrimaryButton onClick={openCreate}>+ Nuevo registro</PrimaryButton>
+              </ExportButton>
+              <AddButton onClick={openCreate}>Nuevo registro</AddButton>
             </>
           }
         />
@@ -389,7 +391,8 @@ export default function NomencladoresPage() {
           </span>
         </div>
         <DataTable
-          className={`table-scroll ${styles.table}`}
+          className={styles.table}
+          maxHeight="tall"
           columns={columns}
           data={filteredItems}
           emptyMessage={items.length ? "No se encontraron registros." : "No hay registros."}

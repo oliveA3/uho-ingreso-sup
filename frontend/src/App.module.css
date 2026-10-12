@@ -13,6 +13,12 @@
   }
 }
 
+/* Páginas de contenido corto (login/registro): sin estirar a 100vh, para que el footer
+   quede justo debajo del formulario en lugar de pegado al final de la pantalla. */
+.pageCompact {
+  min-height: auto;
+}
+
 .body {
   position: relative;
   display: flex;

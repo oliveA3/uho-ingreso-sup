@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
 import { fetchAuditLogs, getAuditLogExportUrl } from "../../api/audit.service";
 import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
-import PrimaryButton from "../../components/Buttons/PrimaryButton";
-import SecondaryButton from "../../components/Buttons/SecondaryButton";
+import ExportButton from "../../components/Buttons/ExportButton";
 import { Card, DataTable, FormField, Input, Select } from "../../components";
 import styles from "./LogsPage.module.css";
 
@@ -36,7 +35,6 @@ export default function LogsPage() {
     <div className={styles.page}>
       <Card padding="p-6">
         <div>
-          <p className={styles.eyebrow}>Registros</p>
           <div className={styles.titleRow}>
             <h1 className={styles.title}>Logs de Auditoría</h1>
             <span className={styles.countBadge}>{total.toLocaleString("es-ES")} registros</span>
@@ -63,15 +61,15 @@ export default function LogsPage() {
             </FormField>
           </div>
           <div className={styles.actionsRow}>
-            <PrimaryButton className={styles.darkButton} onClick={() => exportLogs("xlsx")}>Exportar Excel</PrimaryButton>
-            <SecondaryButton onClick={() => exportLogs("pdf")}>Exportar PDF</SecondaryButton>
+            <ExportButton variant="primary" className={styles.darkButton} onClick={() => exportLogs("xlsx")}>Exportar Excel</ExportButton>
+            <ExportButton onClick={() => exportLogs("pdf")}>Exportar PDF</ExportButton>
           </div>
         </div>
       </Card>
 
       <Card padding="p-6">
         <DataTable
-          className="table-scroll"
+          maxHeight="tall"
           columns={columns}
           data={logs}
           emptyMessage="No hay registros para los filtros seleccionados."

@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { login } from "../../api/auth.service";
+import { Link, useNavigate } from "react-router-dom";
+import { login, requestPasswordReset } from "../../api/auth.service";
 import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
 import PrimaryButton from "../../components/Buttons/PrimaryButton";
 import { Card, FormField, Input } from "../../components";
@@ -27,6 +27,9 @@ const validateField = (field, value) => {
 export default function LoginPage({ onLogin }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [resetEmail, setResetEmail] = useState("");
+  const [resetMode, setResetMode] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState(null);
   const [usernameError, setUsernameError] = useState("");
@@ -69,6 +72,17 @@ export default function LoginPage({ onLogin }) {
     }
   };
 
+  const handlePasswordResetRequest = async (event) => {
+    event.preventDefault();
+    setError(null);
+    try {
+      await requestPasswordReset({ email: resetEmail.trim() });
+      setResetSent(true);
+    } catch (err) {
+      setError(err.message || "No se pudo procesar la solicitud. Inténtalo nuevamente.");
+    }
+  };
+
   return (
     <div className={styles.wrapper}>
       <Card className={styles.card} padding="p-6">
@@ -84,7 +98,28 @@ export default function LoginPage({ onLogin }) {
         </p>
 
         {error && <FeedbackMessage type="error" className={styles.feedbackMessage}>{error}</FeedbackMessage>}
+        {error?.includes("código de verificación") && (
+          <p className={styles.authLink}>
+            <Link to={`/verificar-correo?usuario=${encodeURIComponent(username.trim())}`}>Verificar correo o solicitar otro código</Link>
+          </p>
+        )}
 
+        {resetMode ? (
+          <form className={styles.form} onSubmit={handlePasswordResetRequest} noValidate>
+            <p className={styles.subtitle}>Escribe el correo asociado a tu cuenta. Si está registrada y verificada, recibirás un enlace para cambiar la contraseña.</p>
+            {resetSent ? (
+              <FeedbackMessage type="success">Si existe una cuenta activa con ese correo, recibirás instrucciones para restablecer la contraseña.</FeedbackMessage>
+            ) : (
+              <>
+                <FormField htmlFor="reset-email" label="Correo electrónico" required>
+                  <Input id="reset-email" type="email" autoComplete="email" value={resetEmail} onChange={(event) => setResetEmail(event.target.value)} required />
+                </FormField>
+                <PrimaryButton type="submit" className={styles.submitButton}>Enviar instrucciones</PrimaryButton>
+              </>
+            )}
+            <button type="button" className={styles.textButton} onClick={() => { setResetMode(false); setResetSent(false); setError(null); }}>Volver a iniciar sesión</button>
+          </form>
+        ) : (
         <form className={styles.form} onSubmit={handleSubmit} noValidate>
           <FormField
             htmlFor="login-username"
@@ -142,7 +177,11 @@ export default function LoginPage({ onLogin }) {
           <PrimaryButton type="submit" className={styles.submitButton}>
             Iniciar sesión
           </PrimaryButton>
+          <button type="button" className={styles.textButton} onClick={() => { setResetMode(true); setError(null); }}>
+            ¿Olvidaste tu contraseña?
+          </button>
         </form>
+        )}
       </Card>
     </div>
   );

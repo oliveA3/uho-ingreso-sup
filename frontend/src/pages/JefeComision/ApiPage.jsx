@@ -15,154 +15,49 @@ const item = (method, path, description, access = "JWT requerido") => ({
 const groups = [
   {
     name: "Autenticación",
-    description: "Registro, verificación, sesión y tokens JWT.",
+    description: "Rutas de acceso público del flujo de cuenta y operaciones sobre la sesión propia.",
     endpoints: [
-      item("POST", "/authentication/login/", "Login. Body: username, password. Retorna access, refresh y usuario.", "Público"),
-      item("POST", "/authentication/token/refresh/", "Renueva el access token con un refresh token válido.", "Refresh token"),
-      item("POST", "/authentication/register/", "Registra un estudiante y envía código de verificación.", "Público"),
-      item("POST", "/authentication/verify-email/", "Verifica una cuenta con el código recibido.", "Público"),
-      item("POST", "/authentication/change-pending-email/", "Cambia el correo de una cuenta no verificada.", "Público"),
-      item("POST", "/authentication/logout/", "Revoca el refresh token enviado.", "JWT requerido"),
-      item("GET", "/authentication/me/", "Retorna el usuario autenticado.", "JWT requerido"),
+      item("POST", "/authentication/login/", "Inicia sesión con username y password; establece cookies JWT HttpOnly.", "Público"),
+      item("POST", "/authentication/token/refresh/", "Renueva la cookie de acceso usando la cookie refresh.", "Cookie refresh"),
+      item("POST", "/authentication/register/", "Registra un estudiante durante la etapa 1 y envía verificación.", "Público; sujeto a etapa"),
+      item("POST", "/authentication/verify-email/", "Verifica una cuenta con username y código recibido.", "Público"),
+      item("POST", "/authentication/change-pending-email/", "Actualiza el correo de una cuenta pendiente de verificación.", "Público"),
+      item("POST", "/authentication/logout/", "Cierra la sesión y revoca el refresh token de la cookie.", "Sesión propia"),
+      item("GET", "/authentication/me/", "Retorna los datos de la cuenta autenticada.", "Sesión propia"),
+      item("POST", "/authentication/change-password/", "Cambia la contraseña de la cuenta autenticada.", "Sesión propia"),
       item("GET", "/authentication/csrf/", "Establece la cookie CSRF para clientes web.", "Público"),
     ],
   },
   {
-    name: "Core, auditoría y notificaciones",
-    description: "Salud del servicio, trazabilidad y mensajes del usuario.",
+    name: "Consultas públicas",
+    description: "Información institucional no personal publicada para la landing y consultas generales.",
     endpoints: [
-      item("GET", "/core/health/", "Comprueba disponibilidad del backend."),
-      item("GET", "/core/logs/", "Lista logs. Filtros: usuario, acción, módulo, fecha_desde, fecha_hasta."),
-      item("GET", "/core/logs/export/", "Exporta logs de auditoría."),
-      item("GET", "/core/logs/export/pdf/", "Genera PDF de logs filtrados."),
-      item("GET", "/core/notificaciones/", "Lista notificaciones del usuario."),
-      item("PATCH", "/core/notificaciones/{id}/leer/", "Marca una notificación como leída."),
+      item("GET", "/gestion-provincial/etapas/disponibilidad/", "Consulta el estado público de las etapas y si el registro está abierto.", "Público"),
+      item("GET", "/gestion-provincial/plan-plazas/landing/", "Consulta el plan de plazas publicado.", "Público"),
+      item("GET", "/gestion-provincial/carreras/landing/", "Consulta información pública de carreras.", "Público"),
+      item("GET", "/gestion-provincial/noticias/landing/", "Lista noticias vigentes de la provincia de la landing.", "Público"),
+      item("GET", "/gestion-provincial/noticias/{id}/descargar/", "Descarga el archivo de una noticia pública vigente.", "Público"),
+      item("GET", "/import-export/resultados/landing/", "Consulta resultados por estudiante. Filtros: año, provincia, municipio, escuela y asignatura.", "Público"),
+      item("GET", "/import-export/otorgamiento/landing/", "Consulta otorgamientos por estudiante. Filtros: año, provincia y CI.", "Público"),
+      item("GET", "/import-export/cortes/landing/", "Consulta índices de corte agregados por carrera.", "Público"),
+      item("GET", "/import-export/landing/export/{kind}/", "Descarga Excel de resultados, otorgamientos o índices de corte; admite filtros de año y provincia.", "Público"),
     ],
   },
   {
-    name: "Superadministración y nomencladores",
-    description: "CRUD real de catálogos institucionales y usuarios globales.",
+    name: "Gestión de la comisión",
+    description: "Operaciones protegidas por permisos del backend; conocer una ruta no concede acceso.",
     endpoints: [
-      item("GET, POST", "/superadmin/provincias/", "Lista o crea provincias."),
-      item("GET, PUT, PATCH, DELETE", "/superadmin/provincias/{id}/", "Consulta, edita o desactiva una provincia."),
-      item("GET, POST", "/superadmin/municipios/", "Lista o crea municipios."),
-      item("GET, PUT, PATCH, DELETE", "/superadmin/municipios/{id}/", "Consulta, edita o desactiva un municipio."),
-      item("GET, POST", "/superadmin/escuelas/", "Lista o crea escuelas."),
-      item("GET, PUT, PATCH, DELETE", "/superadmin/escuelas/{id}/", "Consulta, edita o desactiva una escuela."),
-      item("GET, POST", "/superadmin/ces/", "Lista o crea centros de educación superior."),
-      item("GET, PUT, PATCH, DELETE", "/superadmin/ces/{id}/", "Consulta, edita o desactiva un CES."),
-      item("GET, POST", "/superadmin/carreras/", "Lista o crea carreras."),
-      item("GET, PUT, PATCH, DELETE", "/superadmin/carreras/{id}/", "Consulta, edita o desactiva una carrera."),
-      item("GET, POST", "/superadmin/asignaturas/", "Lista o crea asignaturas."),
-      item("GET, PUT, PATCH, DELETE", "/superadmin/asignaturas/{id}/", "Consulta, edita o desactiva una asignatura."),
-      item("GET, POST", "/superadmin/usuarios/", "Lista o crea usuarios administrativos."),
-      item("GET, PUT, PATCH, DELETE", "/superadmin/usuarios/{id}/", "Consulta, edita o desactiva un usuario."),
-      item("GET", "/superadmin/dashboard/", "Indicadores globales del sistema."),
-      item("GET, PATCH", "/superadmin/config/", "Consulta o actualiza identidad visual."),
-    ],
-  },
-  {
-    name: "Gestión provincial y proceso",
-    description: "Etapas, procesos, plan de plazas y alcance provincial.",
-    endpoints: [
-      item("GET", "/gestion-provincial/dashboard/", "Indicadores provinciales."),
-      item("GET", "/gestion-provincial/municipios/", "Lista municipios de la provincia."),
-      item("GET", "/gestion-provincial/provincias/", "Lista provincias disponibles."),
-      item("GET, POST", "/gestion-provincial/escuelas/", "Lista o crea escuelas provinciales."),
-      item("GET, PATCH, DELETE", "/gestion-provincial/escuelas/{id}/", "Consulta, edita o desactiva escuela."),
-      item("GET, POST", "/gestion-provincial/usuarios/", "Lista o crea usuarios provinciales."),
-      item("GET, PATCH, DELETE", "/gestion-provincial/usuarios/{id}/", "Consulta, edita o desactiva usuario."),
-      item("GET, POST", "/gestion-provincial/noticias/", "Lista o crea noticias de la provincia del gestor de noticias o jefe de comisión."),
-      item("GET, PATCH, DELETE", "/gestion-provincial/noticias/{id}/", "Consulta, edita o elimina una noticia provincial."),
-      item("GET", "/gestion-provincial/noticias/landing/", "Noticias vigentes de la provincia de la landing.", "Consulta pública configurada"),
-      item("GET", "/gestion-provincial/noticias/{id}/descargar/", "Descarga multimedia o portada de una noticia."),
-      item("GET, POST", "/gestion-provincial/carreras/", "Lista o crea carreras provinciales."),
-      item("GET, PATCH, DELETE", "/gestion-provincial/carreras/{id}/", "Consulta, edita o desactiva carrera."),
-      item("GET", "/gestion-provincial/ces/", "Lista CES provinciales."),
-      item("GET", "/gestion-provincial/etapas/", "Lista etapas del proceso."),
-      item("GET", "/gestion-provincial/etapas/disponibilidad/", "Disponibilidad de etapas para la landing.", "Consulta pública configurada"),
-      item("GET", "/gestion-provincial/plan-plazas/landing/", "Plan de plazas de la landing.", "Consulta pública configurada"),
-      item("GET, POST", "/gestion-provincial/procesos/", "Lista o crea procesos de ingreso."),
-      item("POST", "/gestion-provincial/etapas/{id}/activar/", "Activa una etapa."),
-      item("POST", "/gestion-provincial/etapas/{id}/cerrar/", "Cierra una etapa."),
-      item("POST", "/gestion-provincial/etapas/reiniciar/", "Reinicia las etapas."),
-      item("GET, POST", "/gestion-provincial/plan-plazas/", "Lista o crea plazas."),
-      item("GET, PATCH, DELETE", "/gestion-provincial/plan-plazas/{id}/", "Consulta, edita o elimina plaza."),
-      item("GET, POST", "/gestion-provincial/boletas-solicitud/modificaciones/", "Lista o procesa modificaciones."),
-      item("POST", "/gestion-provincial/boletas-solicitud/{id}/autorizar-modificacion/", "Autoriza modificación de boleta."),
-    ],
-  },
-  {
-    name: "Gestión municipal y escuela",
-    description: "Operaciones territoriales, métricas escolares y aprobación de boletas.",
-    endpoints: [
-      item("GET, POST", "/gestion-municipal/escuelas/", "Lista o crea escuelas municipales."),
-      item("GET, PATCH, DELETE", "/gestion-municipal/escuelas/{id}/", "Consulta, edita o desactiva escuela."),
-      item("GET, POST", "/gestion-municipal/usuarios/", "Lista o crea usuarios municipales."),
-      item("GET, PATCH, DELETE", "/gestion-municipal/usuarios/{id}/", "Consulta, edita o desactiva usuario."),
-      item("GET", "/gestion-escuela/estudiantes/sin-cuenta/", "Lista estudiantes sin cuenta."),
-      item("GET", "/gestion-escuela/dashboard/", "Indicadores de la escuela."),
-      item("GET", "/gestion-escuela/boleta-interes/metricas/", "Métricas de boletas de interés."),
-      item("GET", "/gestion-escuela/confirmacion-pruebas/metricas/", "Métricas de confirmación de pruebas."),
-      item("GET", "/gestion-escuela/boletas-solicitud/", "Lista boletas de solicitud."),
-      item("POST", "/gestion-escuela/boletas-solicitud/{id}/aprobar/", "Aprueba una boleta de solicitud."),
-    ],
-  },
-  {
-    name: "Estudiante, escalafón y boletas",
-    description: "Dashboard, perfil y flujo de preferencias del estudiante.",
-    endpoints: [
-      item("GET", "/gestion-personal/estudiante/dashboard/", "Estado general del proceso."),
-      item("GET, PATCH", "/gestion-personal/estudiante/perfil/", "Consulta o actualiza el perfil."),
-      item("GET", "/gestion-personal/estudiante/boleta-interes/", "Consulta la boleta de interés."),
-      item("POST", "/gestion-personal/estudiante/boleta-interes/items/", "Añade una carrera a preferencias."),
-      item("PATCH, DELETE", "/gestion-personal/estudiante/boleta-interes/items/{id}/", "Edita o elimina preferencia."),
-      item("POST", "/gestion-personal/estudiante/boleta-interes/enviar/", "Envía la boleta de interés."),
-      item("POST", "/gestion-personal/estudiante/boleta-interes/editar/", "Edita la boleta durante la etapa habilitada."),
-      item("GET", "/gestion-personal/estudiante/boleta-solicitud/", "Consulta la boleta definitiva."),
-      item("POST", "/gestion-personal/estudiante/boleta-solicitud/editar/", "Guarda una edición de la boleta."),
-      item("GET", "/gestion-personal/estudiante/boleta-solicitud/pdf/", "Genera el PDF de la boleta."),
-      item("GET, POST", "/gestion-personal/estudiante/confirmacion-pruebas/", "Consulta o actualiza confirmación de pruebas."),
-      item("GET", "/gestion-personal/estudiante/otorgamiento/", "Consulta la carrera otorgada."),
-    ],
-  },
-  {
-    name: "Importación, resultados y otorgamiento",
-    description: "Excel, PDF, escalafón, resultados, reclamaciones y consultas públicas.",
-    endpoints: [
-      item("POST", "/import-export/import/plan-plaza/", "Importa plan de plazas desde Excel."),
-      item("GET", "/import-export/export/plan-plaza/", "Exporta plan de plazas."),
-      item("GET", "/import-export/export/plan-plaza/plantilla/", "Descarga plantilla de plan de plazas."),
-      item("GET", "/import-export/export/boleta-interes/", "Exporta boleta de interés en PDF."),
-      item("GET", "/import-export/export/boleta-solicitud/", "Exporta boletas de solicitud en PDF."),
-      item("GET", "/import-export/export/boleta-solicitud/{id}/", "Exporta una boleta específica."),
-      item("POST", "/import-export/import/otorgamiento/", "Importa otorgamientos desde Excel."),
-      item("POST", "/import-export/import/cortes-carrera/", "Importa índices de corte."),
-      item("GET", "/import-export/otorgamiento/resumen/", "Resumen de otorgamientos."),
-      item("GET", "/import-export/otorgamiento/exportar/{tipo}/", "Exporta otorgamiento por tipo."),
-      item("GET", "/import-export/otorgamiento/escuela/", "Lista otorgamientos de escuela."),
-      item("POST", "/import-export/import/carreras/", "Importa carreras desde Excel."),
-      item("GET", "/import-export/export/carreras/", "Exporta catálogo de carreras."),
-      item("POST", "/import-export/import/escalafon/", "Importa escalafón desde Excel."),
-      item("POST", "/import-export/import/resultados/", "Importa resultados desde Excel."),
-      item("GET", "/import-export/resultados/", "Lista resultados de exámenes."),
-      item("GET", "/import-export/resultados/landing/", "Consulta pública de resultados.", "Consulta pública configurada"),
-      item("GET", "/import-export/otorgamiento/landing/", "Consulta pública de otorgamientos.", "Consulta pública configurada"),
-      item("GET", "/import-export/cortes/landing/", "Consulta pública de índices de corte.", "Consulta pública configurada"),
-      item("GET", "/import-export/landing/export/{tipo}/", "Exportación de datos de landing.", "Consulta pública configurada"),
-      item("POST", "/import-export/resultados/{id}/reclamar/", "Crea reclamación de resultado."),
-      item("GET", "/import-export/resultados/reclamaciones/", "Lista reclamaciones."),
-      item("PATCH", "/import-export/resultados/reclamaciones/{id}/", "Decide una reclamación."),
-      item("GET", "/import-export/resultados/exportar/", "Exporta resultados."),
-      item("GET", "/import-export/export/escalafon/", "Exporta escalafón de escuela."),
-      item("GET", "/import-export/escalafon/", "Lista entradas del escalafón."),
-      item("GET", "/import-export/escalafon/resumen-provincial/", "Resumen provincial del escalafón."),
-      item("GET", "/import-export/escalafon/exportar-provincial/", "Exporta escalafón provincial."),
-      item("GET", "/import-export/escalafon/plantilla/", "Descarga plantilla de escalafón."),
-      item("GET, PATCH", "/import-export/escalafon/{id}/", "Consulta o edita una entrada."),
-      item("POST", "/import-export/escalafon/{id}/revisar/", "Revisa una entrada."),
-      item("POST", "/import-export/escalafon/enviar-comision/", "Envía escalafón a comisión."),
-      item("POST", "/import-export/escalafon/mi-accion/{accion}/", "Registra la acción del estudiante."),
+      item("GET", "/gestion-provincial/dashboard/", "Consulta indicadores agregados de la provincia.", "JWT: jefe de comisión, ingreso provincial o superadmin"),
+      item("GET", "/gestion-provincial/etapas/", "Consulta el estado y fechas de las etapas.", "JWT: jefe, director/secretario, estudiante o superadmin"),
+      item("POST", "/gestion-provincial/etapas/{id}/activar/", "Activa una etapa con sus fechas.", "JWT: jefe de comisión o superadmin"),
+      item("POST", "/gestion-provincial/etapas/{id}/cerrar/", "Cierra una etapa en curso.", "JWT: jefe de comisión o superadmin"),
+      item("POST", "/gestion-provincial/etapas/reiniciar/", "Reinicia el ciclo cuando todas las etapas están completadas.", "JWT: jefe de comisión o superadmin"),
+      item("GET, POST", "/gestion-provincial/plan-plazas/", "Consulta o crea plazas para la provincia autorizada.", "JWT: jefe de comisión o superadmin"),
+      item("GET, PATCH, DELETE", "/gestion-provincial/plan-plazas/{id}/", "Consulta, actualiza o elimina una plaza autorizada.", "JWT: jefe de comisión o superadmin"),
+      item("GET, POST", "/gestion-provincial/carreras/", "Consulta o gestiona el catálogo de carreras.", "JWT: jefe de comisión, ingreso provincial o superadmin"),
+      item("GET, PATCH, DELETE", "/gestion-provincial/carreras/{id}/", "Consulta, actualiza o elimina una carrera.", "JWT: jefe de comisión, ingreso provincial o superadmin"),
+      item("GET, POST", "/gestion-provincial/noticias/", "Lista o publica noticias provinciales.", "JWT: jefe de comisión o gestor de noticias"),
+      item("GET, PATCH, DELETE", "/gestion-provincial/noticias/{id}/", "Consulta, actualiza o elimina una noticia provincial.", "JWT: jefe de comisión o gestor de noticias"),
     ],
   },
 ];
@@ -209,22 +104,19 @@ export default function ApiPage() {
   // dominio en producción). Reutilizarla evita que estos enlaces apunten a
   // un origen distinto al que realmente responde la API.
   const apiBaseUrl = /^https?:\/\//i.test(API_BASE) ? API_BASE : `${origin}${API_BASE}`;
-  const docsUrl = `${apiBaseUrl}/docs/`;
-  const schemaUrl = `${apiBaseUrl}/schema/`;
 
   return (
     <div className={styles.page}>
       <section className={styles.hero}>
         <div className={styles.heroInner}>
-          <p className={styles.eyebrow}>API REST - IngresoSUP</p>
           <div className={styles.heroTop}>
             <div>
               <h1 className={styles.title}>Interoperabilidad institucional</h1>
-              <p className={styles.description}>Referencia de las rutas reales del backend Django REST. Las respuestas usan JSON salvo las exportaciones de archivos.</p>
+              <p className={styles.description}>Referencia seleccionada de rutas públicas y operaciones institucionales autorizadas. No incluye administración de cuentas, auditoría ni consultas de datos personales.</p>
             </div>
             <div className={styles.countBox}>
               <p className={styles.countValue}>{endpointCount}</p>
-              <p className={styles.countLabel}>rutas documentadas</p>
+              <p className={styles.countLabel}>rutas seleccionadas</p>
             </div>
           </div>
         </div>
@@ -233,16 +125,6 @@ export default function ApiPage() {
             <p className={styles.linkLabel}>URL base versionada</p>
             <code className={styles.baseUrlCode}>{apiBaseUrl}/</code>
           </div>
-          <a href={docsUrl} target="_blank" rel="noreferrer" className={styles.linkCardAccent}>
-            <p className={styles.linkLabelAccent}>Swagger UI</p>
-            <p className={styles.linkTitle}>Abrir documentación interactiva</p>
-            <code className={styles.linkUrlAccent}>{docsUrl}</code>
-          </a>
-          <a href={schemaUrl} target="_blank" rel="noreferrer" className={styles.linkCardPlain}>
-            <p className={styles.linkLabel}>OpenAPI 3.0</p>
-            <p className={styles.linkTitle}>Abrir esquema JSON</p>
-            <code className={styles.linkUrlPlain}>{schemaUrl}</code>
-          </a>
         </div>
         <div className={styles.filterBar}>
           <div className={styles.filterRow}>
@@ -255,7 +137,7 @@ export default function ApiPage() {
               {groups.map((group) => <option key={group.name}>{group.name}</option>)}
             </Select>
           </div>
-          <p className={styles.authNote}>Autenticación: <strong>Authorization: Bearer &lt;access&gt;</strong>. Las peticiones están sujetas a rate limiting.</p>
+          <p className={styles.authNote}>La sesion se autentica mediante cookies JWT HttpOnly. Las rutas protegidas validan rol y alcance en el backend; las operaciones de escritura tambien requieren CSRF. Conocer una ruta no concede acceso.</p>
         </div>
       </section>
       <div className={styles.groupsList}>

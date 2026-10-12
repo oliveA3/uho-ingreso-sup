@@ -27,7 +27,6 @@ export default function EstudianteOtorgamientoPage() {
   return (
     <div className={styles.page}>
       <Card padding="p-6">
-        <p className={styles.eyebrow}>Mi Otorgamiento</p>
         <h1 className={styles.title}>Carrera otorgada</h1>
         <p className={styles.subtitle}>Resultado final del proceso {data.year}.</p>
         <StageStatusNotice stageNumber={6} />

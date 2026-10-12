@@ -35,7 +35,6 @@ from apps.core.pdf import render_pdf
 
 logger = logging.getLogger("django.request")
 
-
 _IMPORT_ACCEPTED = inline_serializer(
     name="ImportTaskAcceptedResponse",
     fields={
@@ -1214,9 +1213,8 @@ class ResultadosListView(APIView):
     tags=["Resultados"],
     summary="Resultados públicos",
     description=(
-        "Consulta pública (sin autenticación) de resultados de exámenes de ingreso para la interoperabilidad "
-        "institucional, con filtros por año, provincia, municipio, escuela y asignatura. También devuelve los "
-        "valores disponibles para cada filtro."
+        "Consulta pública de resultados de exámenes de ingreso para la landing, con filtros por año, provincia, "
+        "municipio, escuela y asignatura."
     ),
     parameters=[
         OpenApiParameter("anio", OpenApiTypes.INT, OpenApiParameter.QUERY, required=False, description="Año del proceso. Por defecto el año actual."),
@@ -1328,9 +1326,7 @@ class LandingResultadosView(APIView):
     tags=["Otorgamiento"],
     summary="Otorgamientos públicos",
     description=(
-        "Consulta pública (sin autenticación) del resultado de otorgamiento de carreras, con filtros por año, "
-        "provincia y CI, para la interoperabilidad institucional. También devuelve los años y provincias "
-        "disponibles."
+        "Consulta pública de otorgamientos de carreras para la landing, con filtros por año, provincia y CI."
     ),
     parameters=[
         OpenApiParameter("anio", OpenApiTypes.INT, OpenApiParameter.QUERY, required=False, description="Año del proceso. Por defecto el año actual."),

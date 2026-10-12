@@ -91,3 +91,23 @@
   margin-top: 1.5rem;
   border-radius: 1rem;
 }
+
+.authLink {
+  margin-top: 0.75rem;
+  font-size: 0.875rem;
+}
+
+.authLink a,
+.textButton {
+  color: var(--color-primario, #1f4e79);
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+.textButton {
+  align-self: center;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  font-size: 0.875rem;
+}

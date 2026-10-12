@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import StageStatusNotice from "../../components/StageStatusNotice/StageStatusNotice";
 import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
-import PrimaryButton from "../../components/Buttons/PrimaryButton";
-import SecondaryButton from "../../components/Buttons/SecondaryButton";
+import ImportButton from "../../components/Buttons/ImportButton";
+import ExportButton from "../../components/Buttons/ExportButton";
 import { Card } from "../../components";
 import { downloadStageSixExport, fetchOtorgamientoSummary, importCortesCarrera, importOtorgamientos } from "../../api/results.service";
 import styles from "./OtorgamientoPage.module.css";
@@ -70,7 +70,6 @@ export default function OtorgamientoPage() {
     <div className={styles.page}>
       <Card padding="p-6">
         <div>
-          <p className={styles.eyebrow}>Otorgamiento de Carreras</p>
           <h1 className={styles.title}>Importar otorgamientos y cortes</h1>
           <p className={styles.description}>Carga exámenes, otorgamientos y valores de corte de carrera para publicar los resultados finales.</p>
         </div>
@@ -85,10 +84,10 @@ export default function OtorgamientoPage() {
             <p className={styles.importDescription}>Carga un archivo Excel con CI, código de carrera, nombre y índice.</p>
             <input ref={otorgamientoInput} type="file" accept=".xlsx" className={styles.hiddenInput} disabled={!stageActive} onChange={(event) => handleImport(event, "otorgamientos")} />
             <div className={styles.importActions}>
-              <PrimaryButton className={styles.importButton} onClick={() => otorgamientoInput.current?.click()} disabled={!stageActive || importing === "otorgamientos"}>
+              <ImportButton className={styles.importButton} onClick={() => otorgamientoInput.current?.click()} disabled={!stageActive || importing === "otorgamientos"}>
                 {importing === "otorgamientos" ? "Importando..." : "Importar Otorgamientos"}
-              </PrimaryButton>
-              <SecondaryButton className={styles.exportButton} onClick={() => handleExport("otorgamientos")}>Exportar Otorgamientos</SecondaryButton>
+              </ImportButton>
+              <ExportButton className={styles.exportButton} onClick={() => handleExport("otorgamientos")}>Exportar Otorgamientos</ExportButton>
             </div>
           </div>
           <div className={styles.importCard}>
@@ -96,10 +95,10 @@ export default function OtorgamientoPage() {
             <p className={styles.importDescription}>Carga datos de corte para que el sistema publique resultados.</p>
             <input ref={corteInput} type="file" accept=".xlsx" className={styles.hiddenInput} disabled={!stageActive} onChange={(event) => handleImport(event, "cortes")} />
             <div className={styles.importActions}>
-              <PrimaryButton className={styles.importButton} onClick={() => corteInput.current?.click()} disabled={!stageActive || importing === "cortes"}>
+              <ImportButton className={styles.importButton} onClick={() => corteInput.current?.click()} disabled={!stageActive || importing === "cortes"}>
                 {importing === "cortes" ? "Importando..." : "Importar Índices"}
-              </PrimaryButton>
-              <SecondaryButton className={styles.exportButton} onClick={() => handleExport("cortes")}>Exportar Índices</SecondaryButton>
+              </ImportButton>
+              <ExportButton className={styles.exportButton} onClick={() => handleExport("cortes")}>Exportar Índices</ExportButton>
             </div>
           </div>
         </div>

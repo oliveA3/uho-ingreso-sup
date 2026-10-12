@@ -11,6 +11,8 @@ import {
 import EntityActionButton from "../../components/Buttons/EntityActionButton";
 import PrimaryButton from "../../components/Buttons/PrimaryButton";
 import SecondaryButton from "../../components/Buttons/SecondaryButton";
+import ImportButton from "../../components/Buttons/ImportButton";
+import ExportButton from "../../components/Buttons/ExportButton";
 import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
 import StageStatusNotice from "../../components/StageStatusNotice/StageStatusNotice";
 import { Card, DataTable, Modal, StatCard, StatsGrid } from "../../components";
@@ -243,7 +245,6 @@ export default function SecretarioEscalafonPage() {
       <Card padding="p-6">
       <div className={styles.headerRow}>
         <div>
-          <p className={styles.eyebrow}>Escalafón</p>
           <div className={styles.titleRow}>
             <h1 className={styles.title}>Escalafón de la escuela {summary?.year ? `(${summary.year})` : ""}</h1>
             {entries.length > 0 && (
@@ -266,8 +267,8 @@ export default function SecretarioEscalafonPage() {
 
       <div className={styles.toolbar}>
         <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className={styles.hiddenInput} disabled={!permissions.importar || importing} onChange={handleImport} />
-        <PrimaryButton type="button" onClick={() => fileInputRef.current?.click()} disabled={!permissions.importar || importing}>{importing ? "Importando..." : "Importar Excel"}</PrimaryButton>
-        <SecondaryButton onClick={exportExcel} disabled={!entries.length}>Exportar Excel</SecondaryButton>
+        <ImportButton type="button" onClick={() => fileInputRef.current?.click()} disabled={!permissions.importar || importing}>{importing ? "Importando..." : "Importar Excel"}</ImportButton>
+        <ExportButton onClick={exportExcel} disabled={!entries.length}>Exportar Excel</ExportButton>
         <PrimaryButton type="button" onClick={sendToCommission} disabled={!permissions.enviar || sending}>{sending ? "Enviando..." : "Enviar índices a la Comisión"}</PrimaryButton>
       </div>
 
@@ -276,7 +277,7 @@ export default function SecretarioEscalafonPage() {
       {notice && <FeedbackMessage type="success" className={styles.feedbackMessage}>{notice}</FeedbackMessage>}
 
       <DataTable
-        className="table-scroll"
+        maxHeight="tall"
         columns={columns}
         data={entries}
         loading={loading}

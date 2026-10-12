@@ -8,10 +8,10 @@ from django.contrib.auth import get_user_model
 from django.utils import timezone
 
 from apps.authentication.models import Estudiante
-from apps.gestion_personal.models import BoletaInteres, BoletaInteresItem, BoletaSolicitud, BoletaSolicitudItem
-from apps.gestion_provincial.models import ETAPAS_NOMBRES, CorteCarrera, Etapa, PlanPlaza, Proceso
+from apps.gestion_personal.models import BoletaInteres, BoletaInteresItem, BoletaSolicitud, BoletaSolicitudItem, ResultadoExamen
+from apps.gestion_provincial.models import ETAPAS_NOMBRES, CorteCarrera, Etapa, Otorgamiento, PlanPlaza, Proceso
 from apps.import_export.services.carreras_service import CareerExcelService
-from apps.superadmin.models import Carrera, Ces, Escuela, IdentidadVisual, Municipio, Provincia, TipoOtorgamiento
+from apps.superadmin.models import Asignatura, Carrera, Ces, Escuela, IdentidadVisual, Municipio, Provincia, TipoOtorgamiento
 
 
 class PublicLandingCortesTests(APITestCase):
@@ -99,6 +99,123 @@ class PublicLandingCortesTests(APITestCase):
         self.assertIn("Proceso de Ingreso 2026", content)
         self.assertIn("Etapa 3 - Plan de plazas", content)
         self.assertIn("Fecha de generación", content)
+
+
+class PublicResultsLandingTests(APITestCase):
+    def setUp(self):
+        self.province = Provincia.objects.create(nombre="Provincia protegida")
+        municipality = Municipio.objects.create(nombre="Municipio protegido", provincia=self.province)
+        school = Escuela.objects.create(nombre="Escuela protegida", municipio=municipality)
+        ces = Ces.objects.create(nombre="CES protegido")
+        self.career = Carrera.objects.create(
+            codigo="PRV-1", nombre="Carrera protegida", ces=ces, provincia=self.province,
+        )
+        self.rare_career = Carrera.objects.create(
+            codigo="PRV-2", nombre="Carrera minoritaria", ces=ces, provincia=self.province,
+        )
+        self.math = Asignatura.objects.create(nombre="Asignatura protegida")
+        self.rare_subject = Asignatura.objects.create(nombre="Asignatura minoritaria")
+        self.results_process = Proceso.objects.create(
+            anio=date(2025, 1, 1),
+            etapa=Etapa.objects.get(nombre=ETAPAS_NOMBRES[5]),
+        )
+        self.awards_process = Proceso.objects.create(
+            anio=date(2025, 1, 1),
+            etapa=Etapa.objects.get(nombre=ETAPAS_NOMBRES[6]),
+        )
+        students = []
+        for index in range(6):
+            student = Estudiante.objects.create(
+                ci=f"900000000{index:02d}",
+                nombre=f"Nombre privado {index}",
+                apellidos=f"Apellido privado {index}",
+                sexo="F",
+                direccion="Dirección privada",
+                escuela=school,
+            )
+            students.append(student)
+            if index < 5:
+                ResultadoExamen.objects.create(
+                    estudiante=student,
+                    proceso=self.results_process,
+                    asignatura=self.math,
+                    nota=80 + index,
+                    fecha_limite_reclamo=date(2025, 12, 31),
+                )
+                Otorgamiento.objects.create(
+                    estudiante=student,
+                    proceso=self.awards_process,
+                    carrera=self.career,
+                    indice_otorgamiento=90 + index,
+                )
+        ResultadoExamen.objects.create(
+            estudiante=students[5],
+            proceso=self.results_process,
+            asignatura=self.rare_subject,
+            nota=99,
+            fecha_limite_reclamo=date(2025, 12, 31),
+        )
+        Otorgamiento.objects.create(
+            estudiante=students[5],
+            proceso=self.awards_process,
+            carrera=self.rare_career,
+            indice_otorgamiento=99,
+        )
+        self.factory = APIRequestFactory()
+
+    def test_public_results_include_student_rows_and_apply_filters(self):
+        from .views import LandingResultadosView
+
+        response = LandingResultadosView.as_view()(
+            self.factory.get(
+                "/api/v1/import-export/resultados/landing/",
+                {"anio": 2025, "municipio": "Municipio protegido", "escuela": "Escuela protegida"},
+            )
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data["results"]), 6)
+        result = response.data["results"][0]
+        self.assertEqual(result["student"], "Nombre privado 0 Apellido privado 0")
+        self.assertEqual(result["school"], "Escuela protegida")
+        self.assertEqual(result["municipality"], "Municipio protegido")
+        self.assertEqual(result["province"], "Provincia protegida")
+        self.assertEqual(len(response.data["municipalities"]), 1)
+        self.assertEqual(len(response.data["schools"]), 1)
+
+    def test_public_awards_include_student_rows_and_filter_by_ci(self):
+        from .views import LandingOtorgamientosView
+
+        response = LandingOtorgamientosView.as_view()(
+            self.factory.get(
+                "/api/v1/import-export/otorgamiento/landing/",
+                {"anio": 2025, "ci": "90000000000"},
+            )
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data["results"]), 1)
+        award = response.data["results"][0]
+        self.assertEqual(award["student"], "Nombre privado 0 Apellido privado 0")
+        self.assertEqual(award["ci"], "90000000000")
+        self.assertEqual(award["school"], "Escuela protegida")
+
+    def test_public_excel_exports_include_student_results_and_awards(self):
+        from .views import LandingExcelExportView
+
+        for kind in ("resultados", "otorgamientos"):
+            with self.subTest(kind=kind):
+                response = LandingExcelExportView.as_view()(
+                    self.factory.get(f"/api/v1/import-export/landing/export/{kind}/", {"anio": 2025}),
+                    kind=kind,
+                )
+                workbook = load_workbook(BytesIO(response.content), read_only=True)
+                rows = list(workbook.active.values)
+                values = [str(value) for row in rows for value in row]
+                self.assertIn("CI", rows[0])
+                self.assertIn("Estudiante", rows[0])
+                self.assertTrue(any("privado" in value.lower() for value in values))
+                self.assertTrue(any(value.startswith("900000000") for value in values))
 
 
 class StudentBallotExcelExportTests(APITestCase):

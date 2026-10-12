@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
 import PrimaryButton from "../../components/Buttons/PrimaryButton";
-import { Card, FormField, Input } from "../../components";
+import { Card, FormField, Input, PageHeader } from "../../components";
 import { fetchStudentProfile, updateStudentProfile } from "../../api/student.service";
 import styles from "./PerfilPage.module.css";
 
@@ -63,10 +63,7 @@ export default function EstudiantePerfilPage() {
   return (
     <div className={styles.page}>
       <Card padding="p-6 sm:p-8">
-        <div>
-          <h1 className={styles.title}>Mi Perfil</h1>
-          <p className={styles.subtitle}>Datos personales y de contacto.</p>
-        </div>
+        <PageHeader title="Mi Perfil" subtitle="Datos personales y de contacto." />
 
         {message && <FeedbackMessage type={message.type} className={styles.feedbackMessage}>{message.text}</FeedbackMessage>}
 

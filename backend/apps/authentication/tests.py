@@ -1,8 +1,12 @@
 from django.test import TestCase
+from django.test import override_settings
 from django.core import mail
 from django.core.cache import cache
 from django.utils import timezone
+from django.contrib.auth.tokens import default_token_generator
 from datetime import timedelta
+from django.utils.encoding import force_bytes
+from django.utils.http import urlsafe_base64_encode
 
 from unittest.mock import patch
 from django.urls import reverse
@@ -10,6 +14,7 @@ from rest_framework.test import APIClient
 
 from apps.authentication.models import EmailVerificationCode, LoginAttempt, Usuario
 from apps.authentication.serializers import SuperAdminUserSerializer, UserSerializer
+from apps.gestion_personal.models import Estudiante
 from apps.superadmin.models import Escuela, Municipio, Provincia
 
 
@@ -35,6 +40,117 @@ class AutheticationSmokeTests(TestCase):
 
         self.assertEqual(response.status_code, 403)
         self.assertIn("verificar tu correo", response.json()["error"]["detail"])
+
+    @patch("apps.authentication.views.send_email_async")
+    def test_pending_student_login_sends_a_fresh_verification_code_only_with_correct_password(self, send_email):
+        province = Provincia.objects.create(nombre="Provincia pendiente")
+        municipality = Municipio.objects.create(nombre="Municipio pendiente", provincia=province)
+        school = Escuela.objects.create(nombre="Escuela pendiente", municipio=municipality)
+        student = Estudiante.objects.create(
+            ci="00000000002",
+            nombre="Estudiante",
+            apellidos="Pendiente",
+            sexo="F",
+            direccion="Calle",
+            escuela=school,
+        )
+        user = Usuario.objects.create_user(
+            username="pending.secretary",
+            email="pending.secretary@example.com",
+            password="secret1234",
+            is_active=False,
+            pending_student=student,
+        )
+        expired_code = EmailVerificationCode.objects.create(
+            user=user,
+            code="111111",
+            expires_at=timezone.now() - timedelta(minutes=1),
+        )
+
+        invalid_response = self.client.post(
+            "/api/v1/authentication/login/",
+            data={"username": user.username, "password": "wrong-password"},
+        )
+        self.assertEqual(invalid_response.status_code, 401)
+        self.assertFalse(send_email.called)
+
+        response = self.client.post(
+            "/api/v1/authentication/login/",
+            data={"username": user.username, "password": "secret1234"},
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertIn("Te enviamos un código", response.json()["error"]["detail"])
+        expired_code.refresh_from_db()
+        self.assertIsNotNone(expired_code.used_at)
+        new_code = EmailVerificationCode.objects.filter(user=user, used_at__isnull=True).get()
+        self.assertGreater(new_code.expires_at, timezone.now())
+        self.assertEqual(send_email.call_args.kwargs["recipient_list"], [user.email])
+
+    @patch("apps.authentication.views.send_email_async")
+    def test_resend_verification_code_has_generic_response_for_unknown_user(self, send_email):
+        response = self.client.post(
+            "/api/v1/authentication/resend-verification-code/",
+            data={"username": "no-such-user"},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Si la cuenta puede verificarse", response.json()["data"]["detail"])
+        self.assertFalse(send_email.called)
+
+    @patch("apps.authentication.views.send_email_async")
+    @override_settings(FRONTEND_URL="https://frontend.example")
+    def test_password_reset_request_is_generic_and_sends_frontend_link(self, send_email):
+        user = Usuario.objects.create_user(
+            username="reset.request",
+            email="reset.request@example.com",
+            password="secret1234",
+            email_verificado=True,
+        )
+        response = self.client.post(
+            "/api/v1/authentication/password-reset/",
+            data={"email": user.email},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Si existe una cuenta", response.json()["data"]["detail"])
+        message = send_email.call_args.kwargs["message"]
+        self.assertIn("https://frontend.example/restablecer-contrasena?uid=", message)
+        unknown_response = self.client.post(
+            "/api/v1/authentication/password-reset/",
+            data={"email": "unknown@example.com"},
+        )
+        self.assertEqual(unknown_response.status_code, 200)
+        self.assertEqual(
+            unknown_response.json()["data"]["detail"],
+            response.json()["data"]["detail"],
+        )
+        self.assertEqual(send_email.call_count, 1)
+
+    def test_password_reset_token_changes_password_and_cannot_be_reused(self):
+        user = Usuario.objects.create_user(
+            username="reset.confirm",
+            email="reset.confirm@example.com",
+            password="secret1234",
+            email_verificado=True,
+        )
+        uid = urlsafe_base64_encode(force_bytes(user.pk))
+        token = default_token_generator.make_token(user)
+        payload = {
+            "uid": uid,
+            "token": token,
+            "new_password": "StrongReset#927abc",
+        }
+        response = self.client.post(
+            "/api/v1/authentication/password-reset/confirm/",
+            data=payload,
+        )
+        self.assertEqual(response.status_code, 200, response.content)
+        user.refresh_from_db()
+        self.assertTrue(user.check_password(payload["new_password"]))
+        reused_response = self.client.post(
+            "/api/v1/authentication/password-reset/confirm/",
+            data=payload,
+        )
+        self.assertEqual(reused_response.status_code, 400)
 
     def test_deactivated_verified_user_cannot_login(self):
         user = Usuario.objects.create_user(
@@ -136,6 +252,41 @@ class AutheticationSmokeTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["data"]["user"]["rol"], "superadmin")
         self.assertEqual(response.json()["data"]["user"]["rol_label"], "Super Administrador")
+
+    def test_login_serializes_student_tutor_telefono_as_string(self):
+        """tutor_telefono es un PhoneNumberField; UserSerializer debe convertirlo a str
+        antes de serializarlo a JSON (regresion: devolvia el objeto PhoneNumber y el
+        login fallaba con 500 para cualquier estudiante con tutor_telefono definido)."""
+        province = Provincia.objects.create(nombre="Provincia de prueba tutor")
+        municipality = Municipio.objects.create(nombre="Municipio de prueba tutor", provincia=province)
+        school = Escuela.objects.create(nombre="Escuela de prueba tutor", municipio=municipality)
+        user = Usuario.objects.create_user(
+            username="estudiante.tutor",
+            email="estudiante.tutor@example.com",
+            password="secret1234",
+            rol="estudiante",
+            provincia=province,
+            municipio=municipality,
+            escuela=school,
+        )
+        Estudiante.objects.create(
+            usuario=user,
+            ci="00000000001",
+            nombre="Estudiante",
+            apellidos="De Prueba",
+            sexo="F",
+            direccion="Calle de prueba",
+            escuela=school,
+            tutor_telefono="+5355550002",
+        )
+
+        response = self.client.post(
+            "/api/v1/authentication/login/",
+            data={"username": "estudiante.tutor", "password": "secret1234"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["data"]["user"]["tutor_telefono"], "+5355550002")
 
     def test_current_user_endpoint_keeps_auth_cookie_for_superadmin_on_safe_request(self):
         user = Usuario.objects.create_user(

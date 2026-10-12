@@ -110,6 +110,7 @@ Define los secretos en el gestor de configuración de la plataforma, nunca en el
 DJANGO_DEBUG=false
 DJANGO_SECRET_KEY=<clave-larga-y-aleatoria>
 DJANGO_ALLOWED_HOSTS=api.ingresosup.cu
+FRONTEND_URL=https://ingresosup.cu
 
 EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
 EMAIL_HOST=smtp.institucion.cu
@@ -136,6 +137,8 @@ Configura los dominios reales del frontend en `CORS_ALLOWED_ORIGINS` y `CSRF_TRU
 ```env
 VITE_API_ORIGIN=https://api.ingresosup.cu
 ```
+
+`FRONTEND_URL` es el origen público del sitio web; el backend lo usa para construir enlaces de restablecimiento de contraseña en los correos.
 
 ## Preparar y publicar
 
