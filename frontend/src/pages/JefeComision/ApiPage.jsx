@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import { Input, Select } from "../../components";
-import { API_BASE } from "../../api/httpClient";
 import styles from "./ApiPage.module.css";
 
 const API_PREFIX = "/api/v1";
@@ -97,13 +96,6 @@ export default function ApiPage() {
     }))
     .filter((group) => group.endpoints.length), [normalizedQuery, selectedGroup]);
   const endpointCount = groups.reduce((total, group) => total + group.endpoints.length, 0);
-  const origin = typeof window === "undefined" ? "" : window.location.origin;
-  // API_BASE es la misma fuente de verdad que usa el cliente HTTP real: puede
-  // ser una URL absoluta (otro origen) o una ruta relativa servida por el
-  // mismo origen del frontend (proxy de Vite en desarrollo, o el mismo
-  // dominio en producción). Reutilizarla evita que estos enlaces apunten a
-  // un origen distinto al que realmente responde la API.
-  const apiBaseUrl = /^https?:\/\//i.test(API_BASE) ? API_BASE : `${origin}${API_BASE}`;
 
   return (
     <div className={styles.page}>
@@ -112,18 +104,12 @@ export default function ApiPage() {
           <div className={styles.heroTop}>
             <div>
               <h1 className={styles.title}>Interoperabilidad institucional</h1>
-              <p className={styles.description}>Referencia seleccionada de rutas públicas y operaciones institucionales autorizadas. No incluye administración de cuentas, auditoría ni consultas de datos personales.</p>
+              <p className={styles.description}>Referencia seleccionada de rutas públicas y operaciones institucionales autorizadas.</p>
             </div>
             <div className={styles.countBox}>
               <p className={styles.countValue}>{endpointCount}</p>
               <p className={styles.countLabel}>rutas seleccionadas</p>
             </div>
-          </div>
-        </div>
-        <div className={styles.linksGrid}>
-          <div className={styles.baseUrlBox}>
-            <p className={styles.linkLabel}>URL base versionada</p>
-            <code className={styles.baseUrlCode}>{apiBaseUrl}/</code>
           </div>
         </div>
         <div className={styles.filterBar}>
@@ -132,12 +118,12 @@ export default function ApiPage() {
               <span className={styles.srOnly}>Buscar endpoint</span>
               <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar por ruta, método o descripción..." />
             </label>
-            <Select value={selectedGroup} onChange={(event) => setSelectedGroup(event.target.value)}>
+            <Select className={styles.groupFilter} value={selectedGroup} onChange={(event) => setSelectedGroup(event.target.value)}>
               <option>Todos</option>
               {groups.map((group) => <option key={group.name}>{group.name}</option>)}
             </Select>
           </div>
-          <p className={styles.authNote}>La sesion se autentica mediante cookies JWT HttpOnly. Las rutas protegidas validan rol y alcance en el backend; las operaciones de escritura tambien requieren CSRF. Conocer una ruta no concede acceso.</p>
+          <p className={styles.authNote}>La sesion se autentica mediante cookies JWT HttpOnly. Las rutas protegidas validan rol y alcance en el backend; las operaciones de escritura tambien requieren CSRF.</p>
         </div>
       </section>
       <div className={styles.groupsList}>
