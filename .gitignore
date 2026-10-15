@@ -7,13 +7,15 @@ __pycache__/
 # Django
 *.log
 local_settings.py
+backend/media/
 
 # Database
 *.sqlite3
 *.sqlite
 db.sqlite3
+backend/backups/
 
-# Virtual enviroments
+# Entornos virtuales
 env/
 venv/
 .venv/
@@ -34,18 +36,10 @@ pnpm-debug.log*
 .claude/
 .vscode/
 .idea/
+.env
 .DS_Store
 github_scripts.md
 to-do.txt
 
-# Copias de seguridad de la base de datos
-backend/backups/
-
-# Archivos subidos temporalmente (importaciones Excel)
-backend/media/
-
-# Variables de entorno locales (contienen secretos)
-.env
-
-# Material de trabajo para generar el Manual de Usuario (no es el entregable)
+# Manual de usuario
 docs/manual_assets/
