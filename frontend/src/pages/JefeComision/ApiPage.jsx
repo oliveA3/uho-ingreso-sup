@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { API_BASE } from "../../api/httpClient";
 import { Input, Select } from "../../components";
 import styles from "./ApiPage.module.css";
 
@@ -96,6 +97,11 @@ export default function ApiPage() {
     }))
     .filter((group) => group.endpoints.length), [normalizedQuery, selectedGroup]);
   const endpointCount = groups.reduce((total, group) => total + group.endpoints.length, 0);
+  const apiOrigin = import.meta.env.VITE_API_ORIGIN || window.location.origin;
+  const apiDocsUrl = new URL(
+    `${API_BASE.replace(/\/+$/, "")}/docs/`,
+    `${apiOrigin.replace(/\/+$/, "")}/`,
+  ).href;
 
   return (
     <div className={styles.page}>
@@ -104,7 +110,9 @@ export default function ApiPage() {
           <div className={styles.heroTop}>
             <div>
               <h1 className={styles.title}>Interoperabilidad institucional</h1>
-              <p className={styles.description}>Referencia seleccionada de rutas públicas y operaciones institucionales autorizadas.</p>
+              <p className={styles.description}>
+                {" "}Consulta la <a href={apiDocsUrl} target="_blank" rel="noopener noreferrer">documentación interactiva de la API (Swagger UI)</a>.
+              </p>
             </div>
             <div className={styles.countBox}>
               <p className={styles.countValue}>{endpointCount}</p>

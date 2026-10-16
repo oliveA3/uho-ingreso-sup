@@ -45,6 +45,17 @@
   color: var(--gris-600);
 }
 
+.description a {
+  color: var(--color-primario, #1f4e79);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+.description a:hover {
+  color: var(--color-secundario, #2e75b6);
+}
+
 .countBox {
   border-radius: 1.5rem;
   background-color: var(--gris-50);

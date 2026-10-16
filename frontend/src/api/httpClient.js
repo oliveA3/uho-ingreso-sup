@@ -1,5 +1,17 @@
 export const API_BASE = import.meta.env.VITE_API_BASE || "/api/v1";
 
+const GET_CACHE_TTL_MS = 20_000;
+const MAX_GET_CACHE_ENTRIES = 100;
+const getResponseCache = new Map();
+const pendingGetRequests = new Map();
+let getCacheGeneration = 0;
+
+function clearGetCache() {
+  getCacheGeneration += 1;
+  getResponseCache.clear();
+  pendingGetRequests.clear();
+}
+
 // Access/refresh JWTs live in httpOnly cookies set by the backend — they are
 // never readable from JS, which keeps them safe from XSS token theft.
 
@@ -34,6 +46,9 @@ async function refreshAccessToken() {
 }
 
 export async function apiFetch(url, options = {}, retried = false) {
+  if (!["GET", "HEAD", "OPTIONS"].includes((options.method || "GET").toUpperCase())) {
+    clearGetCache();
+  }
   const response = await window.fetch(url, { ...options, credentials: options.credentials ?? "include" });
   if (response.status === 401 && !retried && !url.includes("/authentication/token/refresh/")) {
     if (await refreshAccessToken()) return apiFetch(url, options, true);
@@ -117,18 +132,72 @@ function buildQuery(params = {}) {
 
 /** Thin JSON/CSRF-aware wrapper around apiFetch, shared by every domain service. */
 export async function request(path, { method = "GET", body, params, credentials = "include", blob = false, blobErrorMessage } = {}) {
-  const needsCsrf = method !== "GET";
+  const requestMethod = method.toUpperCase();
+  if (!["GET", "HEAD", "OPTIONS"].includes(requestMethod)) {
+    clearGetCache();
+  }
+  const needsCsrf = requestMethod !== "GET";
   const csrf = needsCsrf ? await csrfHeaders() : {};
   const isFormData = body instanceof FormData;
   const headers = { ...csrf };
   if (body && !isFormData) headers["Content-Type"] = "application/json";
 
-  const response = await apiFetch(`${API_BASE}${path}${params ? buildQuery(params) : ""}`, {
-    method,
+  const url = `${API_BASE}${path}${params ? buildQuery(params) : ""}`;
+  const options = {
+    method: requestMethod,
     credentials,
     headers,
     body: body ? (isFormData ? body : JSON.stringify(body)) : undefined,
-  });
+  };
+
+  if (requestMethod === "GET" && !blob) {
+    const cacheKey = `${credentials}:${url}`;
+    const cached = getResponseCache.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) {
+      return JSON.parse(cached.serialized);
+    }
+    if (cached) getResponseCache.delete(cacheKey);
+
+    const pending = pendingGetRequests.get(cacheKey);
+    if (pending) {
+      const serialized = await pending;
+      return serialized === undefined ? undefined : JSON.parse(serialized);
+    }
+
+    const generation = getCacheGeneration;
+    const requestPromise = (async () => {
+      const response = await apiFetch(url, options);
+      const data = await handleResponse(response);
+      const serialized = JSON.stringify(data);
+
+      if (serialized !== undefined && generation === getCacheGeneration) {
+        const now = Date.now();
+        for (const [key, entry] of getResponseCache) {
+          if (entry.expiresAt <= now) getResponseCache.delete(key);
+        }
+        while (getResponseCache.size >= MAX_GET_CACHE_ENTRIES) {
+          getResponseCache.delete(getResponseCache.keys().next().value);
+        }
+        getResponseCache.set(cacheKey, {
+          serialized,
+          expiresAt: now + GET_CACHE_TTL_MS,
+        });
+      }
+
+      return serialized;
+    })();
+    pendingGetRequests.set(cacheKey, requestPromise);
+    try {
+      const serialized = await requestPromise;
+      return serialized === undefined ? undefined : JSON.parse(serialized);
+    } finally {
+      if (pendingGetRequests.get(cacheKey) === requestPromise) {
+        pendingGetRequests.delete(cacheKey);
+      }
+    }
+  }
+
+  const response = await apiFetch(url, options);
 
   return blob ? handleBlobResponse(response, blobErrorMessage) : handleResponse(response);
 }
