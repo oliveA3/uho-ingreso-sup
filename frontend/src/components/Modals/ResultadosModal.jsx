@@ -26,8 +26,11 @@ const columns = [
   { key: "province", header: "Provincia" },
 ];
 
-export default function ResultadosModal({ onClose }) {
-  const [filters, setFilters] = useState(emptyFilters);
+export default function ResultadosModal({ onClose, user }) {
+  const [filters, setFilters] = useState(() => ({
+    ...emptyFilters,
+    provincia: user?.rol === "estudiante" ? user.provincia_nombre || "" : "",
+  }));
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");

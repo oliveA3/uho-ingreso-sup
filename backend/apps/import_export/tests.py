@@ -2,7 +2,7 @@ from datetime import date
 from io import BytesIO
 
 from openpyxl import Workbook, load_workbook
-from rest_framework.test import APIRequestFactory, APITestCase
+from rest_framework.test import APIRequestFactory, APITestCase, force_authenticate
 from django.contrib.auth.models import AnonymousUser
 from django.contrib.auth import get_user_model
 from django.utils import timezone
@@ -176,7 +176,7 @@ class PublicResultsLandingTests(APITestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.data["results"]), 6)
         result = response.data["results"][0]
-        self.assertEqual(result["student"], "Nombre privado 0 Apellido privado 0")
+        self.assertEqual(result["student"], "Nombre p****** 0 A******* p****** 0")
         self.assertEqual(result["school"], "Escuela protegida")
         self.assertEqual(result["municipality"], "Municipio protegido")
         self.assertEqual(result["province"], "Provincia protegida")
@@ -196,9 +196,24 @@ class PublicResultsLandingTests(APITestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.data["results"]), 1)
         award = response.data["results"][0]
-        self.assertEqual(award["student"], "Nombre privado 0 Apellido privado 0")
-        self.assertEqual(award["ci"], "90000000000")
+        self.assertEqual(award["student"], "Nombre p****** 0 A******* p****** 0")
+        self.assertEqual(award["ci"], "900000*****")
         self.assertEqual(award["school"], "Escuela protegida")
+
+    def test_public_awards_show_own_student_unmasked(self):
+        from .views import LandingOtorgamientosView
+
+        user = get_user_model().objects.create_user(
+            username="own.student", email="own.student@example.com", password="secret1234", rol="estudiante",
+        )
+        Estudiante.objects.filter(ci="90000000001").update(usuario=user)
+        request = self.factory.get("/api/v1/import-export/otorgamiento/landing/", {"anio": 2025})
+        force_authenticate(request, user=user)
+        response = LandingOtorgamientosView.as_view()(request)
+
+        by_ci = {row["ci"]: row for row in response.data["results"]}
+        self.assertEqual(by_ci["90000000001"]["student"], "Nombre privado 1 Apellido privado 1")
+        self.assertIn("900000*****", by_ci)
 
     def test_public_excel_exports_include_student_results_and_awards(self):
         from .views import LandingExcelExportView
@@ -214,8 +229,9 @@ class PublicResultsLandingTests(APITestCase):
                 values = [str(value) for row in rows for value in row]
                 self.assertIn("CI", rows[0])
                 self.assertIn("Estudiante", rows[0])
-                self.assertTrue(any("privado" in value.lower() for value in values))
-                self.assertTrue(any(value.startswith("900000000") for value in values))
+                self.assertFalse(any("privado" in value.lower() for value in values))
+                self.assertFalse(any(value.startswith("900000000") for value in values))
+                self.assertTrue(any(value == "900000*****" for value in values))
 
 
 class StudentBallotExcelExportTests(APITestCase):

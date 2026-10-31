@@ -25,10 +25,10 @@ const otorgamientosColumns = [
   { key: "province", header: "Provincia" },
 ];
 
-export default function OtorgamientosModal({ onClose, mode = "otorgamientos" }) {
+export default function OtorgamientosModal({ onClose, mode = "otorgamientos", user }) {
   const [filters, setFilters] = useState(() => ({
     anio: mode === "cortes" ? "" : new Date().getFullYear(),
-    provincia: "",
+    provincia: mode !== "cortes" && user?.rol === "estudiante" ? user.provincia_nombre || "" : "",
     ci: "",
     carrera: "",
   }));

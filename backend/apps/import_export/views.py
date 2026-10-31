@@ -1040,6 +1040,33 @@ class ImportResultadosView(APIView):
         return _accepted(task_id)
 
 
+def mask_ci(ci):
+    ci = ci or ""
+    return ci[:6] + "*" * max(len(ci) - 6, 0)
+
+
+def mask_name(full_name):
+    words = (full_name or "").split()
+    return " ".join(
+        word if index == 0 else word[0] + "*" * (len(word) - 1)
+        for index, word in enumerate(words)
+    )
+
+
+def own_student_id(request):
+    """ID del estudiante autenticado (None si es anónimo o no es estudiante)."""
+    student = getattr(request.user, "estudiante", None) if request.user.is_authenticated else None
+    return student.id if student else None
+
+
+def public_student_identity(student, own_id):
+    """(nombre completo, CI) para listados públicos: enmascarados salvo para el propio estudiante."""
+    full_name = f"{student.nombre} {student.apellidos}"
+    if student.id == own_id:
+        return full_name, student.ci
+    return mask_name(full_name), mask_ci(student.ci)
+
+
 def normalize_result_subject(value):
     text = unicodedata.normalize("NFKD", str(value or "").strip().lower())
     text = "".join(char for char in text if not unicodedata.combining(char))
@@ -1297,9 +1324,10 @@ class LandingResultadosView(APIView):
             queryset = queryset.filter(estudiante__escuela__nombre__iexact=escuela)
         if asignatura:
             queryset = queryset.filter(asignatura__nombre__iexact=asignatura)
+        own_id = own_student_id(request)
         results = [{
             "id": item.id,
-            "student": f"{item.estudiante.nombre} {item.estudiante.apellidos}",
+            "student": public_student_identity(item.estudiante, own_id)[0],
             "school": item.estudiante.escuela.nombre,
             "municipality": item.estudiante.escuela.municipio.nombre,
             "province": item.estudiante.escuela.municipio.provincia.nombre,
@@ -1401,19 +1429,24 @@ class LandingOtorgamientosView(APIView):
             proceso__anio__year=anio,
             proceso__etapa__nombre=ETAPAS_NOMBRES[6],
         ).select_related("estudiante__escuela__municipio__provincia")
-        return Response({
-            "year": anio,
-            "results": [{
+        own_id = own_student_id(request)
+        results = []
+        for item in queryset.order_by("estudiante__apellidos", "estudiante__nombre"):
+            student_name, student_ci = public_student_identity(item.estudiante, own_id)
+            results.append({
                 "id": item.id,
-                "student": f"{item.estudiante.nombre} {item.estudiante.apellidos}",
-                "ci": item.estudiante.ci,
+                "student": student_name,
+                "ci": student_ci,
                 "career": item.carrera.nombre,
                 "ces": item.carrera.ces.nombre,
                 "award_index": item.indice_otorgamiento,
                 "school": item.estudiante.escuela.nombre,
                 "province": item.estudiante.escuela.municipio.provincia.nombre,
                 "year": item.proceso.anio.year,
-            } for item in queryset.order_by("estudiante__apellidos", "estudiante__nombre")],
+            })
+        return Response({
+            "year": anio,
+            "results": results,
             "years": list(Proceso.objects.filter(etapa__nombre=ETAPAS_NOMBRES[6]).values_list("anio__year", flat=True).distinct().order_by("-anio__year")),
             "provinces": list(all_awards.values_list("estudiante__escuela__municipio__provincia__nombre", flat=True).distinct().order_by("estudiante__escuela__municipio__provincia__nombre")),
         })
@@ -1558,10 +1591,12 @@ class LandingExcelExportView(APIView):
             ).select_related("estudiante__escuela__municipio__provincia", "asignatura")
             if provincia:
                 queryset = queryset.filter(estudiante__escuela__municipio__provincia__nombre__iexact=provincia)
+            own_id = own_student_id(request)
             for item in queryset.order_by("estudiante__apellidos", "estudiante__nombre", "asignatura__nombre"):
+                student_name, student_ci = public_student_identity(item.estudiante, own_id)
                 sheet.append([
-                    item.estudiante.ci,
-                    f"{item.estudiante.nombre} {item.estudiante.apellidos}",
+                    student_ci,
+                    student_name,
                     item.asignatura.nombre,
                     item.nota,
                     item.estudiante.escuela.nombre,
@@ -1578,10 +1613,12 @@ class LandingExcelExportView(APIView):
             ).select_related("estudiante__escuela__municipio__provincia", "carrera__ces")
             if provincia:
                 queryset = queryset.filter(estudiante__escuela__municipio__provincia__nombre__iexact=provincia)
+            own_id = own_student_id(request)
             for item in queryset.order_by("estudiante__apellidos", "estudiante__nombre"):
+                student_name, student_ci = public_student_identity(item.estudiante, own_id)
                 sheet.append([
-                    item.estudiante.ci,
-                    f"{item.estudiante.nombre} {item.estudiante.apellidos}",
+                    student_ci,
+                    student_name,
                     item.carrera.nombre,
                     item.carrera.ces.nombre,
                     item.indice_otorgamiento,
