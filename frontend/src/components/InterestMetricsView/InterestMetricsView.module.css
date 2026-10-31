@@ -47,15 +47,19 @@
   color: var(--gris-600);
 }
 
+/* Métricas cortas: se reparten en las columnas que quepan en móvil en lugar
+   de apilarse una debajo de otra. */
 .metricsGrid {
   margin-top: 1.5rem;
   display: grid;
-  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(6.5rem, 1fr));
+  gap: 1rem 0.5rem;
 }
 
 @media (min-width: 640px) {
   .metricsGrid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1rem;
   }
 }
 
@@ -70,6 +74,7 @@
   font-size: 0.875rem;
   text-transform: uppercase;
   letter-spacing: 0.18em;
+  overflow-wrap: anywhere;
   color: var(--gris-500);
 }
 

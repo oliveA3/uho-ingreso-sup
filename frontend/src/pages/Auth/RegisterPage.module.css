@@ -6,6 +6,13 @@
   margin-bottom: 2.5rem;
 }
 
+@media (max-width: 639px) {
+  .wrapper {
+    margin-top: 1.25rem;
+    margin-bottom: 1.25rem;
+  }
+}
+
 .backLink {
   display: flex;
   align-items: center;
@@ -124,15 +131,21 @@
   flex: 1;
 }
 
+/* La rejilla es de dos columnas en todos los tamaños. En móvil solo comparten
+   fila los campos cortos (usuario/CI, provincia/municipio); el resto ocupa el
+   ancho completo con .fieldFullMobile, porque un correo o una contraseña a
+   media pantalla no se leen. */
 .registerForm {
-  margin-top: 1.5rem;
+  margin-top: 1.25rem;
   display: grid;
-  gap: 1.25rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.875rem 0.75rem;
 }
 
-@media (min-width: 768px) {
+@media (min-width: 640px) {
   .registerForm {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-top: 1.5rem;
+    gap: 1.25rem;
   }
 }
 
@@ -143,12 +156,27 @@
 }
 
 .fieldSpan2 {
-  grid-column: span 1 / span 1;
+  grid-column: span 2 / span 2;
 }
 
-@media (min-width: 768px) {
-  .fieldSpan2 {
-    grid-column: span 2 / span 2;
+/* Campos que solo ocupan la fila completa mientras la pantalla es estrecha. */
+.fieldFullMobile {
+  grid-column: span 2 / span 2;
+}
+
+@media (min-width: 640px) {
+  .fieldFullMobile {
+    grid-column: span 1 / span 1;
+  }
+}
+
+/* Los campos emparejados pierden algo de relleno lateral en móvil para que el
+   valor del select siga siendo legible a media columna. */
+@media (max-width: 639px) {
+  .pairedField input,
+  .pairedField select {
+    padding-left: 0.625rem;
+    padding-right: 0.625rem;
   }
 }
 
@@ -191,13 +219,7 @@
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  grid-column: span 1 / span 1;
-}
-
-@media (min-width: 768px) {
-  .privacyConsentRow {
-    grid-column: span 2 / span 2;
-  }
+  grid-column: span 2 / span 2;
 }
 
 .privacyConsentLabel {
@@ -231,13 +253,7 @@
 }
 
 .submitButton {
-  grid-column: span 1 / span 1;
-}
-
-@media (min-width: 768px) {
-  .submitButton {
-    grid-column: span 2 / span 2;
-  }
+  grid-column: span 2 / span 2;
 }
 
 .backRow {

@@ -4,7 +4,10 @@ import { fetchRegistrationAvailability } from "../../api/landing.service";
 import PrimaryButton from "../Buttons/PrimaryButton";
 import styles from "./AuthActions.module.css";
 
-export default function AuthActions({ user, onLogout }) {
+// `onBothActionsChange` avisa al contenedor de cuándo se muestran a la vez los
+// dos botones de sesión (iniciar sesión + registro), para que pueda ajustar el
+// resto de la barra en pantallas estrechas.
+export default function AuthActions({ user, onLogout, onBothActionsChange }) {
   const [registrationOpen, setRegistrationOpen] = useState(false);
 
   useEffect(() => {
@@ -13,6 +16,10 @@ export default function AuthActions({ user, onLogout }) {
       .then((data) => setRegistrationOpen(data.registro_estudiantil))
       .catch(() => setRegistrationOpen(false));
   }, [user]);
+
+  useEffect(() => {
+    onBothActionsChange?.(!user && registrationOpen);
+  }, [user, registrationOpen, onBothActionsChange]);
 
   return (
     <div className={styles.container}>

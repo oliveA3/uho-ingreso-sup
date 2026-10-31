@@ -63,7 +63,7 @@ export default function EstudianteOtorgamientoPage() {
             </div>
             {awardedPriority && (
               <div className={`${styles.priorityNotice} ${awardedCareerQualified ? styles.priorityNoticeQualified : styles.priorityNoticeUnqualified}`}>
-                Tu índice ({award.award_index}) {awardedCareerQualified ? "superó" : "no alcanzó"} el corte de {award.career} ({award.cut_index ?? "-"}) — accediste por tu {priorityLabel} opción.
+                Tu índice ({award.award_index}) {awardedCareerQualified ? "superó" : "no alcanzó"} el corte de {award.career} ({award.cut_index ?? "-"}) y accediste por tu {priorityLabel} opción.
               </div>
             )}
           </>
