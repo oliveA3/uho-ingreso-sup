@@ -1,7 +1,8 @@
 from django.db.models import Count, Q
 from django.db import transaction
 from django.utils import timezone
-from drf_spectacular.utils import OpenApiExample, extend_schema, inline_serializer
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import OpenApiExample, OpenApiParameter, extend_schema, extend_schema_view, inline_serializer
 from rest_framework import serializers, viewsets
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -30,20 +31,20 @@ def _landing_scope_province(request):
 
 
 def build_plan_plaza_landing_payload(request):
-    active_stage = Etapa.objects.en_curso().order_by('id').first()
+    active_stage = get_active_stage()
     plan_stage = Etapa.objects.filter(nombre=ETAPAS_NOMBRES[3]).first()
     provincia_id, provincia_nombre = _landing_scope_province(request)
     if not plan_stage:
         return {
-            'year': timezone.now().year,
+            'year': get_current_cycle_year(),
             'plan_year': None,
             'provincia_id': provincia_id,
             'provincia_nombre': provincia_nombre,
             'ces': [],
             'items': [],
             'years': [],
-            'active_stage': active_stage.id if active_stage else None,
-            'active_stage_nombre': active_stage.nombre if active_stage else None,
+            'active_stage': active_stage.etapa_id if active_stage else None,
+            'active_stage_nombre': active_stage.etapa.nombre if active_stage else None,
         }
 
     scope_filter = {'provincia_id': provincia_id} if provincia_id else {}
@@ -55,12 +56,12 @@ def build_plan_plaza_landing_payload(request):
         .order_by('-proceso__anio__year')
     )
     if not years:
-        years = [timezone.now().year]
+        years = [get_current_cycle_year()]
 
-    if active_stage and active_stage.id == plan_stage.id:
-        selected_year = timezone.now().year if timezone.now().year in years else years[0]
+    if active_stage and active_stage.etapa_id == plan_stage.id:
+        selected_year = get_current_cycle_year() if get_current_cycle_year() in years else years[0]
     else:
-        selected_year = years[0] if years else timezone.now().year
+        selected_year = years[0] if years else get_current_cycle_year()
 
     selected_items = list(
         PlanPlaza.objects.filter(proceso__etapa=plan_stage, proceso__anio__year=selected_year, **scope_filter)
@@ -112,11 +113,11 @@ def build_plan_plaza_landing_payload(request):
         ],
         'years': years,
         'provincias': province_names,
-        'active_stage': active_stage.id if active_stage else None,
-        'active_stage_nombre': active_stage.nombre if active_stage else None,
+        'active_stage': active_stage.etapa_id if active_stage else None,
+        'active_stage_nombre': active_stage.etapa.nombre if active_stage else None,
     }
 
-from .models import ETAPAS_NOMBRES, Etapa, PlanPlaza, Proceso
+from .models import ETAPAS_NOMBRES, Etapa, PlanPlaza, Proceso, ensure_processes_for_year
 from .permissions import CanAccessEscalafon, CanViewProvincialDashboard, IsCommissionChief, IsProvincialRepresentative
 from .serializers import (
     ActivarEtapaSerializer,
@@ -134,7 +135,7 @@ from .serializers import (
 from .permissions import IsCareerManager
 from .serializers_plan import PlanPlazaSerializer
 from .services.boletas import BoletaRuleError, resolve_modification
-from .services.etapas import StageRuleError, activate_stage, is_stage_active, stage_readonly_message
+from .services.etapas import StageRuleError, activate_stage, effective_stage_state, get_active_stage, get_current_cycle_year, is_stage_active, stage_readonly_message
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import SAFE_METHODS
 
@@ -273,32 +274,29 @@ class ProvincialDashboardView(APIView):
     permission_classes = [CanViewProvincialDashboard]
 
     def get(self, request):
-        Etapa.objects.filter(
-            estado='en_curso', fecha_fin__lt=timezone.localdate()
-        ).update(estado='completada')
         municipalities = MunicipalityQuery(request).all()
         province_id = getattr(request.user, "provincia_id", None)
         if request.user.is_superuser or request.user.rol == "superadmin":
             schools = Escuela.objects.all()
             representatives = Usuario.objects.filter(rol="ingreso_municipal")
             users = Usuario.objects.exclude(rol="estudiante")
-            escalafon_process = Proceso.get_for_stage_and_year(timezone.now().year, ETAPAS_NOMBRES[1])
-            interest_process = Proceso.get_for_stage_and_year(timezone.now().year, ETAPAS_NOMBRES[2])
+            escalafon_process = Proceso.get_for_stage_and_year(get_current_cycle_year(), ETAPAS_NOMBRES[1])
+            interest_process = Proceso.get_for_stage_and_year(get_current_cycle_year(), ETAPAS_NOMBRES[2])
             students = Estudiante.objects.filter(escalafones__escalafon__proceso=escalafon_process).distinct() if escalafon_process else Estudiante.objects.none()
             interest_forms = BoletaInteres.objects.filter(proceso=interest_process) if interest_process else BoletaInteres.objects.none()
         else:
             schools = Escuela.objects.filter(municipio__provincia_id=province_id)
             representatives = Usuario.objects.filter(rol="ingreso_municipal", municipio__provincia_id=province_id)
             users = Usuario.objects.filter(provincia_id=province_id).exclude(rol="estudiante")
-            escalafon_process = Proceso.get_for_stage_and_year(timezone.now().year, ETAPAS_NOMBRES[1])
-            interest_process = Proceso.get_for_stage_and_year(timezone.now().year, ETAPAS_NOMBRES[2])
+            escalafon_process = Proceso.get_for_stage_and_year(get_current_cycle_year(), ETAPAS_NOMBRES[1])
+            interest_process = Proceso.get_for_stage_and_year(get_current_cycle_year(), ETAPAS_NOMBRES[2])
             students = Estudiante.objects.filter(escuela__municipio__provincia_id=province_id, escalafones__escalafon__proceso=escalafon_process).distinct() if escalafon_process else Estudiante.objects.none()
             interest_forms = BoletaInteres.objects.filter(
                 estudiante__escuela__municipio__provincia_id=province_id,
                 proceso=interest_process,
             ) if interest_process else BoletaInteres.objects.none()
-        active_stage = Etapa.objects.en_curso().order_by("id").first()
-        solicitud_process = Proceso.get_for_stage_and_year(timezone.now().year, ETAPAS_NOMBRES[3])
+        active_stage = get_active_stage()
+        solicitud_process = Proceso.get_for_stage_and_year(get_current_cycle_year(), ETAPAS_NOMBRES[3])
         solicitud_forms = BoletaSolicitud.objects.filter(
             proceso=solicitud_process,
             estado__in={"pendiente", "aprobada", "modificada"},
@@ -306,7 +304,7 @@ class ProvincialDashboardView(APIView):
         if province_id and not (request.user.is_superuser or request.user.rol == "superadmin"):
             solicitud_forms = solicitud_forms.filter(estudiante__escuela__municipio__provincia_id=province_id)
         active_stage_number = next(
-            (number for number, name in ETAPAS_NOMBRES.items() if active_stage and name == active_stage.nombre),
+            (number for number, name in ETAPAS_NOMBRES.items() if active_stage and name == active_stage.etapa.nombre),
             None,
         )
         using_solicitud = active_stage_number is not None and active_stage_number >= 3
@@ -383,6 +381,11 @@ def MunicipalityQuery(request):
     return queryset
 
 
+@extend_schema_view(
+    list=extend_schema(tags=["Gestión"], summary="Listar municipios de la provincia",
+        parameters=[OpenApiParameter("provincia", OpenApiTypes.INT, OpenApiParameter.QUERY, required=False, description="ID de la provincia por la que filtrar. Solo lo aplica un superadmin; el resto de roles queda acotado a su propia provincia.")]),
+    retrieve=extend_schema(tags=["Gestión"], summary="Consultar un municipio de la provincia"),
+)
 class ProvincialMunicipioViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = ProvincialMunicipioSerializer
     permission_classes = [IsProvincialRepresentative]
@@ -391,6 +394,11 @@ class ProvincialMunicipioViewSet(viewsets.ReadOnlyModelViewSet):
         return MunicipalityQuery(self.request)
 
 
+@extend_schema_view(
+    list=extend_schema(tags=["Gestión"], summary="Listar provincias activas",
+        description="Un superadmin ve todas las provincias activas; el resto de roles solo la suya."),
+    retrieve=extend_schema(tags=["Gestión"], summary="Consultar una provincia activa"),
+)
 class ProvincialProvinciaViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = ProvincialProvinciaSerializer
     permission_classes = [IsCareerManager]
@@ -402,6 +410,10 @@ class ProvincialProvinciaViewSet(viewsets.ReadOnlyModelViewSet):
         return queryset
 
 
+@extend_schema_view(
+    list=extend_schema(tags=["Gestión"], summary="Listar CES activos"),
+    retrieve=extend_schema(tags=["Gestión"], summary="Consultar un CES activo"),
+)
 class ProvincialCesViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = ProvincialCesSerializer
     permission_classes = [IsCareerManager]
@@ -410,6 +422,10 @@ class ProvincialCesViewSet(viewsets.ReadOnlyModelViewSet):
         return Ces.objects.filter(activa=True).order_by("nombre")
 
 
+@extend_schema_view(
+    list=extend_schema(tags=["Gestión"], summary="Listar tipos de otorgamiento activos"),
+    retrieve=extend_schema(tags=["Gestión"], summary="Consultar un tipo de otorgamiento activo"),
+)
 class ProvincialTipoOtorgamientoViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = ProvincialTipoOtorgamientoSerializer
     permission_classes = [IsCareerManager]
@@ -418,27 +434,50 @@ class ProvincialTipoOtorgamientoViewSet(viewsets.ReadOnlyModelViewSet):
         return TipoOtorgamiento.objects.filter(activa=True).order_by("nombre")
 
 
+@extend_schema_view(
+    list=extend_schema(tags=["Gestión"], summary="Listar las etapas del proceso de ingreso",
+        description="Lista las etapas del año/cohorte solicitado (`anio`, por defecto el ciclo vigente), mostrando como completadas las vencidas sin modificar el historial.",
+        parameters=[
+            OpenApiParameter(
+                name="anio",
+                type=OpenApiTypes.INT,
+                location=OpenApiParameter.QUERY,
+                required=False,
+                description="Año del proceso a consultar.",
+            ),
+        ]),
+    retrieve=extend_schema(tags=["Gestión"], summary="Consultar una etapa"),
+)
 class ProvincialEtapaViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = ProvincialEtapaSerializer
     permission_classes = [CanAccessEscalafon]
 
     def get_queryset(self):
-        return Etapa.objects.all()
+        year_value = self.request.query_params.get("anio")
+        try:
+            year = int(year_value) if year_value else get_current_cycle_year()
+        except ValueError as error:
+            raise serializers.ValidationError({"anio": "Indica un año válido."}) from error
+        if year < 1900 or year > 9999:
+            raise serializers.ValidationError({"anio": "Indica un año entre 1900 y 9999."})
+        return ensure_processes_for_year(year)
 
     def list(self, request, *args, **kwargs):
-        Etapa.objects.filter(
-            estado='en_curso',
-            fecha_fin__lt=timezone.localdate(),
-        ).update(estado='completada')
+        # Una etapa vencida se muestra como completada sin escribir en la base:
+        # `close_expired_stages` (Celery Beat) persiste el cambio. Antes esta
+        # lectura mutaba el estado, con lo que el cierre dependia de que alguien
+        # abriera esta pantalla.
         etapas = list(self.get_queryset())
         previous_completed = True
         data = []
         for etapa in etapas:
             serialized = self.get_serializer(etapa).data
-            if etapa.estado == 'no_iniciada' and not previous_completed:
+            estado = effective_stage_state(etapa)
+            serialized['estado'] = estado
+            if estado == 'no_iniciada' and not previous_completed:
                 serialized['estado'] = 'bloqueada'
             data.append(serialized)
-            previous_completed = etapa.estado == 'completada'
+            previous_completed = estado == 'completada'
         return Response(data)
 
 
@@ -528,20 +567,20 @@ class PublicEtapasDisponibilidadView(APIView):
     permission_classes = [AllowAny]
 
     def get(self, request):
-        Etapa.objects.filter(
-            estado='en_curso', fecha_fin__lt=timezone.localdate()
-        ).update(estado='completada')
-        etapas = list(Etapa.objects.all())
+        etapas = list(ensure_processes_for_year(get_current_cycle_year()))
         ordered_names = list(ETAPAS_NOMBRES.values())
-        etapas.sort(key=lambda etapa: ordered_names.index(etapa.nombre))
+        etapas.sort(key=lambda etapa: ordered_names.index(etapa.etapa.nombre))
         previous_completed = True
         serialized = []
         for etapa in etapas:
             data = ProvincialEtapaSerializer(etapa).data
-            if etapa.estado == 'no_iniciada' and not previous_completed:
+            estado = effective_stage_state(etapa)
+            if estado == 'no_iniciada' and not previous_completed:
                 data['estado'] = 'bloqueada'
+            else:
+                data['estado'] = estado
             serialized.append(data)
-            previous_completed = etapa.estado == 'completada'
+            previous_completed = estado == 'completada'
         payload = {
             "etapas": serialized,
             "registro_estudiantil": any(
@@ -647,6 +686,52 @@ class PublicPlanPlazaLandingView(APIView):
         return Response(build_plan_plaza_landing_payload(request))
 
 
+@extend_schema(
+    tags=["Gestión"],
+    summary="Información pública de carreras",
+    description=(
+        "Devuelve la información divulgativa de las carreras activas de una provincia (solo las que tienen "
+        "al menos un campo informativo relleno). La provincia es la del usuario autenticado si la tiene; "
+        "en caso contrario se usa Holguín como provincia por defecto. No acepta parámetros de consulta."
+    ),
+    responses={
+        200: inline_serializer(
+            name="PublicCareerInformationLandingResponse",
+            fields={
+                "provincia_id": serializers.IntegerField(allow_null=True),
+                "provincia_nombre": serializers.CharField(),
+                "items": PublicCareerInformationSerializer(many=True),
+            },
+        ),
+    },
+    examples=[
+        OpenApiExample(
+            "Carreras con información publicada",
+            value={
+                "success": True,
+                "data": {
+                    "provincia_id": 11,
+                    "provincia_nombre": "Holguín",
+                    "items": [
+                        {
+                            "id": 7,
+                            "codigo": "INF-01",
+                            "nombre": "Ingeniería Informática",
+                            "ces_nombre": "Universidad de Holguín",
+                            "descripcion": "Formación en desarrollo de software y redes.",
+                            "campo_laboral": "Empresas de software, telecomunicaciones.",
+                            "requisitos": "Examen de Matemática y Español.",
+                            "perfil_egresado": "Ingeniero capaz de diseñar sistemas informáticos.",
+                        }
+                    ],
+                },
+                "error": None,
+            },
+            response_only=True,
+            status_codes=["200"],
+        ),
+    ],
+)
 class PublicCareerInformationLandingView(APIView):
     permission_classes = [AllowAny]
 
@@ -678,19 +763,72 @@ class PublicCareerInformationLandingView(APIView):
         })
 
 
+PUBLIC_CONSULT_FLAGS = ("config_consulta_nota_publica", "config_consulta_otorg_publico")
+
+
+@extend_schema_view(
+    list=extend_schema(tags=["Gestión"], summary="Listar los procesos de ingreso", description="Procesos (año + etapa) ordenados del más reciente al más antiguo."),
+    create=extend_schema(tags=["Gestión"], summary="Crear un proceso de ingreso"),
+    partial_update=extend_schema(
+        tags=["Gestión"],
+        summary="Activar o desactivar la consulta pública de un proceso",
+        description=(
+            "Cambia los interruptores de publicación del proceso. Solo acepta "
+            "`config_consulta_nota_publica` (consulta pública de resultados de exámenes) y "
+            "`config_consulta_otorg_publico` (consulta pública de otorgamientos e índices de corte); "
+            "el año y la etapa no se pueden modificar por aquí. Mientras un interruptor esté en "
+            "`false`, el endpoint público correspondiente responde que la consulta no está habilitada."
+        ),
+        request=inline_serializer(
+            name="ProcesoPublicConsultRequest",
+            fields={
+                "config_consulta_nota_publica": serializers.BooleanField(required=False),
+                "config_consulta_otorg_publico": serializers.BooleanField(required=False),
+            },
+        ),
+        responses={
+            200: ProvincialProcesoSerializer,
+            400: inline_serializer(name="ProcesoPublicConsultError", fields={"detail": serializers.CharField()}),
+        },
+    ),
+)
 class ProvincialProcesoViewSet(viewsets.GenericViewSet):
     serializer_class = ProvincialProcesoSerializer
     permission_classes = [IsCommissionChief]
 
+    def get_queryset(self):
+        return Proceso.objects.select_related("etapa").order_by("-anio", "etapa_id")
+
     def list(self, request):
-        procesos = Proceso.objects.select_related("etapa").order_by("-anio", "etapa_id")
-        return Response(self.get_serializer(procesos, many=True).data)
+        return Response(self.get_serializer(self.get_queryset(), many=True).data)
 
     def create(self, request):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         proceso = serializer.save()
         return Response(self.get_serializer(proceso).data, status=201)
+
+    def partial_update(self, request, pk=None):
+        """Solo los interruptores de consulta pública: el año y la etapa de un proceso ya creado no se editan."""
+        proceso = self.get_queryset().filter(pk=pk).first()
+        if proceso is None:
+            return Response({"detail": "No existe el proceso indicado."}, status=404)
+        unknown = [field for field in request.data if field not in PUBLIC_CONSULT_FLAGS]
+        if unknown:
+            return Response(
+                {"detail": f"Solo puedes modificar {' y '.join(PUBLIC_CONSULT_FLAGS)}."},
+                status=400,
+            )
+        serializer = self.get_serializer(proceso, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        previous = {field: getattr(proceso, field) for field in PUBLIC_CONSULT_FLAGS}
+        proceso = serializer.save()
+        record_audit(
+            request.user, "Cambio de consulta pública del proceso", request.path, request=request,
+            previous=previous,
+            new={field: getattr(proceso, field) for field in PUBLIC_CONSULT_FLAGS},
+        )
+        return Response(self.get_serializer(proceso).data)
 
 
 class CommissionSolicitudAuthorizationView(APIView):
@@ -773,11 +911,11 @@ class CommissionSolicitudAuthorizationView(APIView):
         ],
     )
     def get(self, request):
-        current_stage = Etapa.objects.en_curso().order_by("id").first()
-        if not current_stage or current_stage.nombre != ETAPAS_NOMBRES[3]:
+        current_stage = get_active_stage()
+        if not current_stage or current_stage.etapa.nombre != ETAPAS_NOMBRES[3]:
             return Response({"items": [], "metrics": {"total": 0, "pendientes": 0, "aprobadas": 0}})
         user_province_id = getattr(request.user, "provincia_id", None)
-        year = timezone.now().year
+        year = get_current_cycle_year()
 
         approved_ballots = BoletaSolicitud.objects.filter(
             estado="aprobada",
@@ -971,6 +1109,8 @@ class ProvincialActivarEtapaView(APIView):
 
         try:
             etapa = activate_stage(pk, serializer.validated_data, request.user, request, request.path)
+        except Proceso.DoesNotExist:
+            return Response({"detail": "No existe la etapa del proceso anual indicado."}, status=404)
         except StageRuleError as error:
             return Response({"detail": str(error)}, status=400)
         return Response(ProvincialEtapaSerializer(etapa).data)
@@ -1022,87 +1162,103 @@ class ProvincialCerrarEtapaView(APIView):
 
     @transaction.atomic
     def post(self, request, pk):
-        etapa = Etapa.objects.select_for_update().get(pk=pk)
-        if etapa.estado != "en_curso":
+        proceso = Proceso.objects.select_for_update().select_related("etapa").filter(pk=pk).first()
+        if proceso is None:
+            return Response({"detail": "No existe la etapa del proceso anual indicado."}, status=404)
+        if proceso.anio.year != get_current_cycle_year():
+            return Response({"detail": "Solo se pueden cerrar etapas del ciclo vigente."}, status=400)
+        if proceso.estado != "en_curso":
             return Response(
                 {"detail": "Solo se puede cerrar una etapa en curso."},
                 status=400,
             )
-        etapa.estado = 'completada'
-        etapa.save(update_fields=["estado"])
-        record_audit(request.user, "Cierre de etapa", request.path, request=request, previous={"estado": "en_curso"}, new={"estado": "completada", "etapa": etapa.nombre})
-        if etapa.nombre == ETAPAS_NOMBRES[1]:
+        proceso.estado = 'completada'
+        proceso.save(update_fields=["estado"])
+        record_audit(request.user, "Cierre de etapa", request.path, request=request, previous={"estado": "en_curso"}, new={"estado": "completada", "etapa": proceso.etapa.nombre, "anio": proceso.anio.year})
+        if proceso.etapa.nombre == ETAPAS_NOMBRES[1]:
             from apps.gestion_escuela.models import Escalafon, EscalafonItem
 
-            escalafones = Escalafon.objects.filter(proceso__etapa=etapa, estado="pendiente")
+            escalafones = Escalafon.objects.filter(proceso=proceso, estado="pendiente")
             escalafon_ids = list(escalafones.values_list("id", flat=True))
             escalafones.update(estado="enviado")
             if escalafon_ids:
                 EscalafonItem.objects.filter(escalafon_id__in=escalafon_ids).update(indices_bloqueados=True)
-        return Response(ProvincialEtapaSerializer(etapa).data)
+        return Response(ProvincialEtapaSerializer(proceso).data)
 
 
 @extend_schema(
     tags=["Gestión"],
-    summary="Reiniciar el ciclo de etapas del proceso de ingreso",
+    summary="Preparar un ciclo de etapas anual",
     description=(
-        "Reinicia todas las etapas del catálogo a estado `no_iniciada`, limpiando sus fechas de inicio y "
-        "fin, para permitir comenzar un nuevo ciclo del proceso de ingreso. Solo puede invocarlo el Jefe "
-        "de Comisión (o superusuario/`superadmin`). Precondiciones: el catálogo de etapas debe estar "
-        "completo (debe existir exactamente una etapa por cada nombre definido en `ETAPAS_NOMBRES`, 400 "
-        "en caso contrario) y todas las etapas deben estar actualmente `completada` (400 en caso "
-        "contrario). No admite parámetros; devuelve la representación de la primera etapa tras el "
-        "reinicio."
+        "Crea las seis etapas del año indicado sin modificar ni borrar procesos anteriores. Solo puede "
+        "invocarlo el Jefe de Comisión (o superusuario/`superadmin`) cuando todas las etapas del ciclo vigente "
+        "estén completadas. El año debe ser el siguiente de cohorte; si se omite, se prepara el siguiente "
+        "año de cohorte. Los procesos "
+        "ya existentes para ese año se conservan."
     ),
-    request=None,
+    request=inline_serializer(
+        name="ProvincialNuevoCicloRequest",
+        fields={"anio": serializers.IntegerField(required=False)},
+    ),
     responses={
-        200: ProvincialEtapaSerializer,
+        201: inline_serializer(
+            name="ProvincialNuevoCicloResponse",
+            fields={
+                "anio": serializers.IntegerField(),
+                "etapas": ProvincialEtapaSerializer(many=True),
+            },
+        ),
         400: inline_serializer(
             name="ProvincialReiniciarEtapasBadRequest",
             fields={"detail": serializers.CharField()},
         ),
     },
-    examples=[
-        OpenApiExample(
-            "Respuesta al reiniciar el ciclo",
-            value={
-                "success": True,
-                "data": {
-                    "id": 1,
-                    "numero": 1,
-                    "nombre": "Escalafón",
-                    "fecha_inicio": None,
-                    "fecha_fin": None,
-                    "fecha_matematica": None,
-                    "fecha_espanol": None,
-                    "fecha_historia": None,
-                    "estado": "no_iniciada",
-                },
-                "error": None,
-            },
-            response_only=True,
-            status_codes=["200"],
-        ),
-    ],
 )
 class ProvincialReiniciarEtapasView(APIView):
     permission_classes = [IsCommissionChief]
 
     @transaction.atomic
     def post(self, request):
-        etapas = Etapa.objects.select_for_update().all()
-        if not etapas or etapas.count() != len(ETAPAS_NOMBRES):
+        current_year = get_current_cycle_year()
+        next_year = max(timezone.localdate().year, current_year + 1)
+        try:
+            year = int(request.data.get("anio", next_year))
+        except (TypeError, ValueError):
             return Response(
-                {"detail": "El catálogo de etapas no está completo."}, status=400
-            )
-        if not all(etapa.estado == "completada" for etapa in etapas):
-            return Response(
-                {"detail": "Solo se puede iniciar un nuevo ciclo cuando todas las etapas estén completadas."},
+                {"detail": "Indica un año válido para el nuevo ciclo."},
                 status=400,
             )
-        etapas.update(fecha_inicio=None, fecha_fin=None, estado="no_iniciada")
-        return Response(ProvincialEtapaSerializer(etapas.first()).data)
+        if year != next_year:
+            return Response(
+                {"detail": "El nuevo ciclo debe corresponder al siguiente año de cohorte."},
+                status=400,
+            )
+        current_processes = ensure_processes_for_year(current_year)
+        if any(
+            effective_stage_state(proceso) != "completada"
+            for proceso in current_processes
+        ):
+            return Response(
+                {"detail": "Solo se puede preparar un nuevo ciclo cuando todas las etapas del ciclo vigente estén completadas."},
+                status=400,
+            )
+        procesos = ensure_processes_for_year(year)
+        return Response(
+            {
+                "anio": year,
+                "etapas": ProvincialEtapaSerializer(procesos, many=True).data,
+            },
+            status=201,
+        )
 
+@extend_schema_view(
+    list=extend_schema(tags=["Gestión"], summary="Listar escuelas de la provincia",
+        description="Acotado a la provincia del usuario autenticado."),
+    create=extend_schema(tags=["Gestión"], summary="Crear una escuela"),
+    retrieve=extend_schema(tags=["Gestión"], summary="Consultar una escuela"),
+    partial_update=extend_schema(tags=["Gestión"], summary="Actualizar una escuela"),
+    destroy=extend_schema(tags=["Gestión"], summary="Eliminar una escuela"),
+)
 class ProvincialEscuelaViewSet(ProvincialScopedMixin, viewsets.ModelViewSet):
     serializer_class = ProvincialEscuelaSerializer
 
@@ -1116,6 +1272,14 @@ class ProvincialEscuelaViewSet(ProvincialScopedMixin, viewsets.ModelViewSet):
         serializer.save()
 
 
+@extend_schema_view(
+    list=extend_schema(tags=["Gestión"], summary="Listar representantes de ingreso municipal",
+        description="Solo cuentas con rol `ingreso_municipal` de la provincia del usuario autenticado."),
+    create=extend_schema(tags=["Gestión"], summary="Crear un representante municipal"),
+    retrieve=extend_schema(tags=["Gestión"], summary="Consultar un representante municipal"),
+    partial_update=extend_schema(tags=["Gestión"], summary="Actualizar un representante municipal"),
+    destroy=extend_schema(tags=["Gestión"], summary="Eliminar un representante municipal"),
+)
 class ProvincialUserViewSet(ProvincialScopedMixin, viewsets.ModelViewSet):
     serializer_class = ProvincialUserSerializer
 
@@ -1133,6 +1297,14 @@ class ProvincialUserViewSet(ProvincialScopedMixin, viewsets.ModelViewSet):
         serializer.save(rol="ingreso_municipal", provincia=municipality.provincia)
 
 
+@extend_schema_view(
+    list=extend_schema(tags=["Gestión"], summary="Listar carreras",
+        parameters=[OpenApiParameter("search", OpenApiTypes.STR, OpenApiParameter.QUERY, required=False, description="Búsqueda parcial e insensible a mayúsculas sobre el nombre de la carrera.")]),
+    create=extend_schema(tags=["Gestión"], summary="Crear una carrera"),
+    retrieve=extend_schema(tags=["Gestión"], summary="Consultar una carrera"),
+    partial_update=extend_schema(tags=["Gestión"], summary="Actualizar una carrera"),
+    destroy=extend_schema(tags=["Gestión"], summary="Eliminar una carrera"),
+)
 class ProvincialCarreraViewSet(viewsets.ModelViewSet):
     serializer_class = ProvincialCarreraSerializer
     permission_classes = [IsCareerManager]
@@ -1145,6 +1317,15 @@ class ProvincialCarreraViewSet(viewsets.ModelViewSet):
         return queryset
 
 
+@extend_schema_view(
+    list=extend_schema(tags=["Gestión"], summary="Listar las plazas del plan",
+        description="Acotado a la provincia del usuario autenticado salvo para superadmin. La escritura solo está permitida mientras la etapa 3 (Plan de plazas y boleta de solicitud) esté en curso.",
+        parameters=[OpenApiParameter("proceso", OpenApiTypes.INT, OpenApiParameter.QUERY, required=False, description="ID del proceso. Si se omite, se devuelve el plan de plazas del proceso de la etapa 3 del año en curso.")]),
+    create=extend_schema(tags=["Gestión"], summary="Crear una plaza del plan"),
+    retrieve=extend_schema(tags=["Gestión"], summary="Consultar una plaza del plan"),
+    partial_update=extend_schema(tags=["Gestión"], summary="Actualizar una plaza del plan"),
+    destroy=extend_schema(tags=["Gestión"], summary="Eliminar una plaza del plan"),
+)
 class PlanPlazaViewSet(viewsets.ModelViewSet):
     serializer_class = PlanPlazaSerializer
     permission_classes = [IsCommissionChief]
@@ -1167,7 +1348,7 @@ class PlanPlazaViewSet(viewsets.ModelViewSet):
         if proceso_id:
             return queryset.filter(proceso_id=proceso_id)
 
-        current_process = Proceso.get_for_stage_and_year(timezone.now().year, ETAPAS_NOMBRES[3])
+        current_process = Proceso.get_for_stage_and_year(get_current_cycle_year(), ETAPAS_NOMBRES[3])
         if current_process is None:
             return queryset.none()
         return queryset.filter(proceso=current_process)

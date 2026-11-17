@@ -13,11 +13,14 @@ const NAV_LINKS = [
 
 export default function LandingNav({ user, visualConfig, onLogout }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  // Con los dos botones de sesión visibles no queda sitio para el logo en
+  // pantallas estrechas, así que la marca se oculta solo en ese caso.
+  const [showsBothAuthActions, setShowsBothAuthActions] = useState(false);
 
   return (
     <nav className={styles.nav}>
       <div className={styles.bar}>
-        <div className={styles.brand}>
+        <div className={`${styles.brand} ${showsBothAuthActions ? styles.brandCrowded : ""}`}>
           <Link to="/" className={styles.brandLink}>
             {visualConfig?.logo_url ? <img src={visualConfig.logo_url} alt="Logo" className={styles.logo} /> : "🎓"}
             <span className={styles.brandName}>{visualConfig?.nombre_sistema || "IngresoSUP"}</span>
@@ -36,7 +39,7 @@ export default function LandingNav({ user, visualConfig, onLogout }) {
         </div>
 
         <div className={styles.actions}>
-          <AuthActions user={user} onLogout={onLogout} />
+          <AuthActions user={user} onLogout={onLogout} onBothActionsChange={setShowsBothAuthActions} />
           <button
             type="button"
             className={styles.menuButton}

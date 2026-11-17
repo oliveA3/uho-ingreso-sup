@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { API_BASE } from "../../api/httpClient";
+import { apiDocsUrl, apiSchemaUrl } from "../../api/httpClient";
 import { Input, Select } from "../../components";
 import styles from "./ApiPage.module.css";
 
@@ -21,7 +21,10 @@ const groups = [
       item("POST", "/authentication/token/refresh/", "Renueva la cookie de acceso usando la cookie refresh.", "Cookie refresh"),
       item("POST", "/authentication/register/", "Registra un estudiante durante la etapa 1 y envía verificación.", "Público; sujeto a etapa"),
       item("POST", "/authentication/verify-email/", "Verifica una cuenta con username y código recibido.", "Público"),
+      item("POST", "/authentication/resend-verification-code/", "Reenvía el código de verificación a una cuenta pendiente.", "Público"),
       item("POST", "/authentication/change-pending-email/", "Actualiza el correo de una cuenta pendiente de verificación.", "Público"),
+      item("POST", "/authentication/password-reset/", "Solicita el envío del enlace de restablecimiento de contraseña.", "Público"),
+      item("POST", "/authentication/password-reset/confirm/", "Fija una contraseña nueva con el token recibido por correo.", "Público"),
       item("POST", "/authentication/logout/", "Cierra la sesión y revoca el refresh token de la cookie.", "Sesión propia"),
       item("GET", "/authentication/me/", "Retorna los datos de la cuenta autenticada.", "Sesión propia"),
       item("POST", "/authentication/change-password/", "Cambia la contraseña de la cuenta autenticada.", "Sesión propia"),
@@ -48,10 +51,10 @@ const groups = [
     description: "Operaciones protegidas por permisos del backend; conocer una ruta no concede acceso.",
     endpoints: [
       item("GET", "/gestion-provincial/dashboard/", "Consulta indicadores agregados de la provincia.", "JWT: jefe de comisión, ingreso provincial o superadmin"),
-      item("GET", "/gestion-provincial/etapas/", "Consulta el estado y fechas de las etapas.", "JWT: jefe, director/secretario, estudiante o superadmin"),
+      item("GET", "/gestion-provincial/etapas/?anio={anio}", "Consulta el estado y fechas de las etapas del año seleccionado.", "JWT: jefe, director/secretario, estudiante o superadmin"),
       item("POST", "/gestion-provincial/etapas/{id}/activar/", "Activa una etapa con sus fechas.", "JWT: jefe de comisión o superadmin"),
       item("POST", "/gestion-provincial/etapas/{id}/cerrar/", "Cierra una etapa en curso.", "JWT: jefe de comisión o superadmin"),
-      item("POST", "/gestion-provincial/etapas/reiniciar/", "Reinicia el ciclo cuando todas las etapas están completadas.", "JWT: jefe de comisión o superadmin"),
+      item("POST", "/gestion-provincial/etapas/reiniciar/", "Prepara el ciclo del próximo año sin borrar procesos históricos; requiere que el ciclo actual esté completado.", "JWT: jefe de comisión o superadmin"),
       item("GET, POST", "/gestion-provincial/plan-plazas/", "Consulta o crea plazas para la provincia autorizada.", "JWT: jefe de comisión o superadmin"),
       item("GET, PATCH, DELETE", "/gestion-provincial/plan-plazas/{id}/", "Consulta, actualiza o elimina una plaza autorizada.", "JWT: jefe de comisión o superadmin"),
       item("GET, POST", "/gestion-provincial/carreras/", "Consulta o gestiona el catálogo de carreras.", "JWT: jefe de comisión, ingreso provincial o superadmin"),
@@ -97,11 +100,11 @@ export default function ApiPage() {
     }))
     .filter((group) => group.endpoints.length), [normalizedQuery, selectedGroup]);
   const endpointCount = groups.reduce((total, group) => total + group.endpoints.length, 0);
-  const apiOrigin = import.meta.env.VITE_API_ORIGIN || window.location.origin;
-  const apiDocsUrl = new URL(
-    `${API_BASE.replace(/\/+$/, "")}/docs/`,
-    `${apiOrigin.replace(/\/+$/, "")}/`,
-  ).href;
+  // Ambas URLs se derivan de la misma base que usa el cliente HTTP, así que
+  // apuntan al backend que realmente atiende las peticiones, esté desplegado
+  // en el mismo origen o en un dominio aparte.
+  const docsUrl = apiDocsUrl();
+  const schemaUrl = apiSchemaUrl();
 
   return (
     <div className={styles.page}>
@@ -111,7 +114,12 @@ export default function ApiPage() {
             <div>
               <h1 className={styles.title}>Interoperabilidad institucional</h1>
               <p className={styles.description}>
-                {" "}Consulta la <a href={apiDocsUrl} target="_blank" rel="noopener noreferrer">documentación interactiva de la API (Swagger UI)</a>.
+                Consulta la <a href={docsUrl} target="_blank" rel="noopener noreferrer">documentación interactiva de la API (Swagger UI)</a>
+                {" "}o descarga el <a href={schemaUrl} target="_blank" rel="noopener noreferrer">esquema OpenAPI 3.0</a>.
+              </p>
+              <p className={styles.docsUrl}>
+                <span className={styles.srOnly}>URL de la documentación: </span>
+                <code>{docsUrl}</code>
               </p>
             </div>
             <div className={styles.countBox}>

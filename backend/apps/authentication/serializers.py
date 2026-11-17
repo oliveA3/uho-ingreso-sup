@@ -4,12 +4,15 @@ from rest_framework import serializers
 import secrets
 from datetime import timedelta
 from apps.core.emailing import send_email_async
+from apps.core.passwords import generate_temporary_password
+from apps.core.role_scope import validate_unique_active_holder
 from django.db import transaction
 from django.utils import timezone
 
 from apps.authentication.models import EmailVerificationCode, PRIVACY_POLICY_VERSION, ROLES, Usuario, Estudiante
 from apps.gestion_escuela.models import EscalafonItem
 from apps.gestion_provincial.models import ETAPAS_NOMBRES
+from apps.gestion_provincial.services.etapas import get_current_cycle_year
 from apps.superadmin.models import Escuela
 
 logger = logging.getLogger(__name__)
@@ -138,26 +141,18 @@ class SuperAdminUserSerializer(serializers.ModelSerializer):
                 {"escuela": "La escuela no pertenece al municipio seleccionado."}
             )
 
-        scoped_roles = {
-            "jefe_comision": ("provincia", province, "Esta provincia ya tiene un jefe de comisión."),
-            "ingreso_provincial": ("provincia", province, "Esta provincia ya tiene un representante provincial."),
-            "ingreso_municipal": ("municipio", municipality, "Este municipio ya tiene un representante municipal."),
-            "director_escuela": ("escuela", school, "Esta escuela ya tiene un director."),
-            "secretario_escuela": ("escuela", school, "Esta escuela ya tiene un secretario."),
-        }
-        scope_field, scope_value, duplicate_message = scoped_roles.get(role, (None, None, None))
-        if scope_value:
-            duplicate_users = Usuario.objects.filter(rol=role, **{f"{scope_field}": scope_value})
-            if self.instance:
-                duplicate_users = duplicate_users.exclude(pk=self.instance.pk)
-            if duplicate_users.exists():
-                raise serializers.ValidationError(duplicate_message)
+        # Solo cuenta el titular ACTIVO: desactivar al anterior libera la plaza.
+        validate_unique_active_holder(
+            role,
+            {"provincia": province, "municipio": municipality, "escuela": school},
+            instance=self.instance,
+        )
         return attrs
 
     @transaction.atomic
     def create(self, validated_data):
         password = validated_data.pop("password", None)
-        generated_password = password or Usuario.objects.make_random_password()
+        generated_password = password or generate_temporary_password()
         user = Usuario(**validated_data)
         user.set_password(generated_password)
         user.debe_cambiar_password = True
@@ -224,7 +219,7 @@ class RegisterSerializer(serializers.Serializer):
             estudiante__ci=ci,
             estudiante__escuela=school,
             escalafon__escuela=school,
-            escalafon__proceso__anio__year=timezone.now().year,
+            escalafon__proceso__anio__year=get_current_cycle_year(),
             escalafon__proceso__etapa__nombre=ETAPAS_NOMBRES[1],
         ).select_related("estudiante").first()
         if not entry:

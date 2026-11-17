@@ -16,7 +16,7 @@ from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from rest_framework_simplejwt.serializers import TokenRefreshSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from .cookies import REFRESH_COOKIE_NAME, clear_auth_cookies, set_auth_cookies
+from .cookies import ACCESS_COOKIE_NAME, REFRESH_COOKIE_NAME, clear_auth_cookies, set_auth_cookies
 from .models import EmailVerificationCode, LoginAttempt, PRIVACY_POLICY_VERSION, Usuario
 from .serializers import ChangePasswordSerializer, LoginSerializer, RegisterSerializer, UserSerializer
 from apps.core.audit import record_audit
@@ -157,20 +157,30 @@ class LoginView(APIView):
     summary="Verificar correo electrónico",
     description=(
         "Confirma el código de verificación enviado por correo a un usuario recién registrado "
-        "(`username` + `code`). Requiere que el usuario ya haya aceptado la política de privacidad "
-        "en el registro. Al verificarse, activa la cuenta (`is_active=True`), asocia el estudiante "
-        "pendiente si corresponde, y envía por correo una copia de la política de privacidad aceptada."
+        "(`username` + `code`). Si la cuenta todavía no tiene la política de privacidad aceptada "
+        "—caso de las cuentas que crea la escuela— hay que enviar también "
+        "`politica_privacidad_aceptada: true`, porque la acepta el propio estudiante. Al verificarse, "
+        "activa la cuenta (`is_active=True`), asocia el estudiante pendiente y envía por correo una "
+        "copia de la política aceptada. Responde 409 si ese estudiante ya tiene otra cuenta verificada."
     ),
     request=inline_serializer(
         name="VerifyEmailRequest",
         fields={
             "username": serializers.CharField(),
             "code": serializers.CharField(),
+            "politica_privacidad_aceptada": serializers.BooleanField(
+                required=False,
+                help_text=(
+                    "Obligatorio si la cuenta aún no tiene la política aceptada (las que crea la "
+                    "escuela). El propio estudiante la acepta en este paso."
+                ),
+            ),
         },
     ),
     responses={
         200: inline_serializer(name="VerifyEmailResponse", fields={"detail": serializers.CharField()}),
         400: inline_serializer(name="VerifyEmailErrorResponse", fields={"detail": serializers.CharField()}),
+        409: inline_serializer(name="VerifyEmailConflictResponse", fields={"detail": serializers.CharField()}),
     },
     examples=[
         OpenApiExample(
@@ -212,21 +222,50 @@ class VerifyEmailView(APIView):
                 {"detail": "El código es inválido o ya venció."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        # La aceptacion la hace el titular de la cuenta, no quien la creo: las
+        # cuentas que abre la escuela llegan aqui sin aceptar y el estudiante la
+        # acepta en este paso. Las autorregistradas ya vienen aceptadas.
+        accept_now = bool(request.data.get("politica_privacidad_aceptada"))
+        policy_fields = []
         if not user.politica_privacidad_aceptada or not user.politica_privacidad_fecha_aceptacion:
-            return api_error(
-                {"detail": "Debes aceptar la política de privacidad antes de verificar el correo."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            if not accept_now:
+                return api_error(
+                    {"politica_privacidad_aceptada": "Debes aceptar la política de privacidad para activar tu cuenta."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            user.politica_privacidad_aceptada = True
+            user.politica_privacidad_fecha_aceptacion = timezone.now()
+            user.politica_privacidad_version = PRIVACY_POLICY_VERSION
+            policy_fields = [
+                "politica_privacidad_aceptada",
+                "politica_privacidad_fecha_aceptacion",
+                "politica_privacidad_version",
+            ]
+
+        if user.pending_student_id:
+            from .models import Estudiante
+            # El enlace tiene que cuajar antes de activar nada: si el estudiante ya
+            # fue reclamado por otra cuenta pendiente, activar esta dejaba un usuario
+            # activo sin perfil, que luego falla en todas las pantallas.
+            linked = Estudiante.objects.filter(
+                pk=user.pending_student_id, usuario__isnull=True,
+            ).update(usuario=user)
+            if not linked:
+                already_owned = Estudiante.objects.filter(
+                    pk=user.pending_student_id, usuario__isnull=False,
+                ).exclude(usuario=user).exists()
+                if already_owned:
+                    return api_error(
+                        {"detail": "Ese estudiante ya tiene una cuenta verificada. Contacta a la secretaría de tu escuela."},
+                        status=status.HTTP_409_CONFLICT,
+                    )
 
         verification.used_at = timezone.now()
         verification.save(update_fields=["used_at"])
-        if user.pending_student_id:
-            from .models import Estudiante
-            Estudiante.objects.filter(pk=user.pending_student_id, usuario__isnull=True).update(usuario=user)
-            user.pending_student = None
+        user.pending_student = None
         user.email_verificado = True
         user.is_active = True
-        user.save(update_fields=["email_verificado", "is_active", "pending_student"])
+        user.save(update_fields=["email_verificado", "is_active", "pending_student", *policy_fields])
 
         policy_text = (
             "Política de privacidad de IngresoSUP\n\n"
@@ -495,10 +534,10 @@ class ChangePendingEmailView(APIView):
     tags=["Autenticación"],
     summary="Renovar token de acceso",
     description=(
-        "Renueva el token de acceso JWT a partir del refresh token almacenado en la cookie "
-        "HttpOnly `refresh_token` (no se envía en el body). Si el refresh token es inválido o "
-        "expiró, limpia las cookies de autenticación. Establece las nuevas cookies `access_token` "
-        "y, si corresponde, `refresh_token` en la respuesta."
+        f"Renueva el token de acceso JWT a partir del refresh token almacenado en la cookie "
+        f"HttpOnly `{REFRESH_COOKIE_NAME}` (no se envía en el body). Si el refresh token es "
+        f"inválido o expiró, limpia las cookies de autenticación. Establece las nuevas cookies "
+        f"`{ACCESS_COOKIE_NAME}` y, si corresponde, `{REFRESH_COOKIE_NAME}` en la respuesta."
     ),
     request=None,
     responses={
@@ -615,12 +654,9 @@ class RegisterView(APIView):
         serializer = RegisterSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        from apps.gestion_provincial.models import ETAPAS_NOMBRES, Etapa
+        from apps.gestion_provincial.services.etapas import is_stage_active
 
-        registro_abierto = Etapa.objects.filter(
-            nombre=ETAPAS_NOMBRES[1],
-            estado="en_curso",
-        ).exists()
+        registro_abierto = is_stage_active(1)
         if not registro_abierto:
             return api_error(
                 {"detail": "El registro estudiantil solo está disponible durante la etapa 1."},

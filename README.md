@@ -6,7 +6,7 @@ IngresoSUP es un sistema modular para la gestión del proceso de ingreso a la Ed
 
 - `backend/`: API REST, autenticación JWT, RBAC, modelos de dominio y auditoría.
 - `frontend/`: SPA React para estudiantes, escuelas, municipios, provincia y administración.
-- `test_data/`: archivos de prueba y semilla territorial para una instalación inicial.
+- `test_data/`: archivos de prueba y semilla territorial segura para una instalación inicial.
 - `docs/`: documentación operativa y técnica ampliada.
 
 ## Inicio rápido
@@ -18,7 +18,7 @@ Consulta [docs/SETUP.md](docs/SETUP.md) para instalar y ejecutar el proyecto loc
 - [Índice de documentación](docs/README.md)
 - [Instalación y operación local](docs/SETUP.md)
 - [Despliegue y operación en producción](docs/DEPLOYMENT.md)
-- [Carga inicial en Cuba: provincias, municipios, escuelas y roles](docs/SEED_INITIAL_DATA.md)
+- [Carga inicial: territorios, catálogos y cuentas demo opcionales](docs/SEED_INITIAL_DATA.md)
 - [API REST y OpenAPI](docs/API.md)
 - [Revisión de seguridad](docs/SECURITY.md)
 - [Diagrama entidad-relación de la base de datos](docs/DIAGRAMA_ER.md)
@@ -39,6 +39,6 @@ Consulta [docs/SETUP.md](docs/SETUP.md) para instalar y ejecutar el proyecto loc
 - [x] Módulo de auditoría con historial de acciones.  
 - [x] Colas asíncronas con Redis y Celery.
 - [x] Revisión de seguridad y lista de comprobaciones para despliegue.
-- [x] Seed territorial idempotente para desarrollo y pruebas.
+- [x] Seed territorial idempotente (sin cuentas de usuario por defecto).
 - [x] Documentación para despliegue local e información adicional.
 - [x] Manual de usuario.

@@ -1,3 +1,4 @@
+from datetime import date
 from pathlib import Path
 
 from django.core.exceptions import ValidationError
@@ -104,31 +105,12 @@ class Noticia(models.Model):
         return result
 
 
-class EtapaQuerySet(models.QuerySet):
-    def en_curso(self):
-        return self.filter(estado='en_curso')
-
-
 class Etapa(models.Model):
-    ESTADOS = [
-        ('no_iniciada', 'No iniciada'),
-        ('en_curso', 'En curso'),
-        ('completada', 'Completada'),
-    ]
-
-    objects = EtapaQuerySet.as_manager()
-
     nombre = models.CharField(
         max_length=150,
         choices=[(nombre, nombre) for nombre in ETAPAS_NOMBRES.values()],
         unique=True,
     )
-    fecha_inicio = models.DateField(null=True, blank=True)
-    fecha_fin = models.DateField(null=True, blank=True)
-    fecha_matematica = models.DateField(null=True, blank=True)
-    fecha_espanol = models.DateField(null=True, blank=True)
-    fecha_historia = models.DateField(null=True, blank=True)
-    estado = models.CharField(max_length=20, choices=ESTADOS, default='no_iniciada')
 
     class Meta:
         ordering = ['id']
@@ -137,19 +119,37 @@ class Etapa(models.Model):
         if self.nombre not in ETAPAS_NOMBRES.values():
             raise ValidationError(
                 {'nombre': 'La etapa no está definida en el proceso de ingreso.'})
-        if self.fecha_inicio and self.fecha_fin and self.fecha_inicio > self.fecha_fin:
-            raise ValidationError(
-                {'fecha_fin': 'La fecha de fin debe ser posterior o igual a la de inicio.'})
 
     def save(self, *args, **kwargs):
         self.full_clean()
         return super().save(*args, **kwargs)
 
+
+class ProcesoQuerySet(models.QuerySet):
+    def en_curso(self):
+        return self.filter(estado="en_curso")
+
+
 class Proceso(models.Model):
+    ESTADOS = [
+        ("no_iniciada", "No iniciada"),
+        ("en_curso", "En curso"),
+        ("completada", "Completada"),
+    ]
+
+    objects = ProcesoQuerySet.as_manager()
+
     anio = models.DateField()
     etapa = models.ForeignKey(
         'Etapa', on_delete=models.PROTECT, related_name='procesos', null=False, blank=False
     )
+
+    fecha_inicio = models.DateField(null=True, blank=True)
+    fecha_fin = models.DateField(null=True, blank=True)
+    fecha_matematica = models.DateField(null=True, blank=True)
+    fecha_espanol = models.DateField(null=True, blank=True)
+    fecha_historia = models.DateField(null=True, blank=True)
+    estado = models.CharField(max_length=20, choices=ESTADOS, default="no_iniciada")
 
     config_consulta_nota_publica = models.BooleanField(default=False)
     config_consulta_otorg_publico = models.BooleanField(default=False)
@@ -173,6 +173,15 @@ class Proceso(models.Model):
 
     def __str__(self):
         return f"Proceso {self.anio.year} — {self.etapa.nombre}"
+
+
+def ensure_processes_for_year(year):
+    year_date = date(int(year), 1, 1)
+    stages = list(Etapa.objects.all())
+    for stage in stages:
+        if not Proceso.objects.filter(anio__year=year_date.year, etapa=stage).exists():
+            Proceso.objects.get_or_create(anio=year_date, etapa=stage)
+    return Proceso.objects.filter(anio__year=year_date.year).select_related("etapa").order_by("etapa_id")
 
 
 class PlanPlaza(models.Model):
@@ -200,6 +209,17 @@ class Otorgamiento(models.Model):
         Carrera, on_delete=models.PROTECT, related_name='otorgamiento')
     indice_otorgamiento = models.FloatField()
 
+    class Meta:
+        constraints = [
+            # A un estudiante se le otorga una sola carrera por proceso: sin esta
+            # restriccion un Excel con dos filas para el mismo CI creaba dos
+            # otorgamientos y las vistas mostraban uno cualquiera.
+            models.UniqueConstraint(
+                fields=["estudiante", "proceso"],
+                name="unique_otorgamiento_estudiante_proceso",
+            ),
+        ]
+
 
 class CorteCarrera(models.Model):
     proceso = models.ForeignKey(
@@ -207,3 +227,11 @@ class CorteCarrera(models.Model):
     carrera = models.ForeignKey(
         Carrera, on_delete=models.PROTECT, related_name='corte_carrera')
     indice_corte = models.FloatField()
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["proceso", "carrera"],
+                name="unique_corte_proceso_carrera",
+            ),
+        ]

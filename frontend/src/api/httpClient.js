@@ -1,4 +1,31 @@
-export const API_BASE = import.meta.env.VITE_API_BASE || "/api/v1";
+const RAW_API_BASE = import.meta.env.VITE_API_BASE || "/api/v1";
+const RAW_API_ORIGIN = (import.meta.env.VITE_API_ORIGIN || "").replace(/\/+$/, "");
+const IS_ABSOLUTE = /^https?:\/\//i.test(RAW_API_BASE);
+
+// Un solo punto decide a dónde apunta la API, para que la documentación
+// enlazada desde el panel no pueda apuntar a un host distinto del que
+// realmente atiende las peticiones:
+//   - VITE_API_BASE absoluta  -> se respeta tal cual.
+//   - VITE_API_BASE relativa + VITE_API_ORIGIN -> se cuelga de ese origen
+//     (frontend y backend desplegados en dominios distintos).
+//   - solo VITE_API_BASE relativa -> queda relativa y el navegador la
+//     resuelve contra el origen actual (despliegue same-origin detrás de un
+//     proxy inverso, y el proxy de Vite en desarrollo).
+export const API_BASE = (IS_ABSOLUTE ? RAW_API_BASE : `${RAW_API_ORIGIN}${RAW_API_BASE.startsWith("/") ? "" : "/"}${RAW_API_BASE}`).replace(/\/+$/, "");
+
+// El backend sirve Swagger UI y el esquema OpenAPI bajo la misma base
+// versionada (ver backend/backend/urls.py), así que estas URLs se derivan de
+// API_BASE en lugar de recomponerse por separado. Se resuelven contra el
+// documento actual para devolver siempre una URL absoluta, también cuando
+// API_BASE es relativa.
+function resolveApiUrl(path) {
+  const target = `${API_BASE}${path}`;
+  if (typeof window === "undefined") return target;
+  return new URL(target, window.location.href).href;
+}
+
+export const apiDocsUrl = () => resolveApiUrl("/docs/");
+export const apiSchemaUrl = () => resolveApiUrl("/schema/");
 
 const GET_CACHE_TTL_MS = 20_000;
 const MAX_GET_CACHE_ENTRIES = 100;

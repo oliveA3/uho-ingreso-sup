@@ -9,6 +9,7 @@ from rest_framework import serializers
 from apps.authentication.models import ROLES, Usuario
 from .models import Noticia, validate_news_upload
 from .services.noticias import fetch_open_graph_image
+from apps.core.passwords import generate_temporary_password
 
 
 MEDIA_TYPES = {
@@ -233,7 +234,7 @@ class NewsManagerSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         password = validated_data.pop("password", None)
         user = Usuario(**validated_data)
-        user.set_password(password or Usuario.objects.make_random_password())
+        user.set_password(password or generate_temporary_password())
         user.debe_cambiar_password = True
         user.save()
         return user

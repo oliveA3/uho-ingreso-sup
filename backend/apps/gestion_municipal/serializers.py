@@ -1,6 +1,8 @@
 from rest_framework import serializers
 
 from apps.authentication.models import ROLES, Usuario
+from apps.core.role_scope import validate_unique_active_holder
+from apps.core.passwords import generate_temporary_password
 from apps.superadmin.models import Escuela
 
 
@@ -46,12 +48,14 @@ class MunicipalUserSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Solo se permiten directores y secretarios de escuela.")
         if not school:
             raise serializers.ValidationError({"escuela": "La escuela es obligatoria."})
+        # Sin esto el choque con la restriccion unica llegaba como un 500 opaco.
+        validate_unique_active_holder(role, {"escuela": school}, instance=self.instance)
         return attrs
 
     def create(self, validated_data):
         password = validated_data.pop("password", None)
         user = Usuario(**validated_data)
-        user.set_password(password or Usuario.objects.make_random_password())
+        user.set_password(password or generate_temporary_password())
         user.debe_cambiar_password = True
         user.save()
         return user

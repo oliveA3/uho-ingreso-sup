@@ -201,17 +201,17 @@ erDiagram
     Etapa {
         int id PK
         string nombre UK
+    }
+    Proceso {
+        int id PK
+        date anio
+        int etapa FK
         date fecha_inicio
         date fecha_fin
         date fecha_matematica
         date fecha_espanol
         date fecha_historia
         string estado
-    }
-    Proceso {
-        int id PK
-        date anio
-        int etapa FK
         bool config_consulta_nota_publica
         bool config_consulta_otorg_publico
     }

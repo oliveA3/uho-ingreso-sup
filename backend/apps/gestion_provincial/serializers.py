@@ -1,6 +1,10 @@
+from datetime import date
+
 from rest_framework import serializers
 
 from apps.authentication.models import ROLES, Usuario
+from apps.core.role_scope import validate_unique_active_holder
+from apps.core.passwords import generate_temporary_password
 from apps.superadmin.models import Carrera, Ces, Escuela, Municipio, Provincia, TipoOtorgamiento
 from apps.superadmin.serializers import NormalizedTerritorialNameValidationMixin
 
@@ -12,26 +16,33 @@ class ProvincialProcesoSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Proceso
-        fields = ["id", "anio", "etapa"]
+        fields = [
+            "id", "anio", "etapa",
+            "config_consulta_nota_publica", "config_consulta_otorg_publico",
+        ]
 
     def validate(self, attrs):
         anio = attrs.get("anio")
         etapa = attrs.get("etapa")
-        if anio and etapa and Proceso.objects.filter(anio=anio, etapa=etapa).exists():
+        if anio and etapa and Proceso.objects.filter(anio__year=anio.year, etapa=etapa).exists():
             raise serializers.ValidationError({"detail": "Ya existe un proceso para ese año y esa etapa."})
+        if anio:
+            attrs["anio"] = date(anio.year, 1, 1)
         return attrs
 
 
 class ProvincialEtapaSerializer(serializers.ModelSerializer):
     numero = serializers.SerializerMethodField()
+    nombre = serializers.CharField(source="etapa.nombre", read_only=True)
+    anio = serializers.IntegerField(source="anio.year", read_only=True)
 
     class Meta:
-        model = Etapa
-        fields = ["id", "numero", "nombre", "fecha_inicio", "fecha_fin", "fecha_matematica", "fecha_espanol", "fecha_historia", "estado"]
-        read_only_fields = ["estado"]
+        model = Proceso
+        fields = ["id", "anio", "numero", "nombre", "fecha_inicio", "fecha_fin", "fecha_matematica", "fecha_espanol", "fecha_historia", "estado"]
+        read_only_fields = ["anio", "estado"]
 
     def get_numero(self, obj) -> int:
-        return next(numero for numero, nombre in ETAPAS_NOMBRES.items() if nombre == obj.nombre)
+        return next(numero for numero, nombre in ETAPAS_NOMBRES.items() if nombre == obj.etapa.nombre)
 
 
 class ActivarEtapaSerializer(serializers.Serializer):
@@ -148,10 +159,20 @@ class ProvincialUserSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("El municipio no pertenece a tu provincia.")
         return value
 
+    def validate(self, attrs):
+        # Este ViewSet solo gestiona representantes municipales (`rol` es de solo
+        # lectura y se fija en perform_create). Sin esta comprobacion, un segundo
+        # representante para el mismo municipio chocaba con la restriccion unica y
+        # salia un 500 en vez de un error de validacion.
+        municipality = attrs.get("municipio", getattr(self.instance, "municipio", None))
+        role = getattr(self.instance, "rol", None) or "ingreso_municipal"
+        validate_unique_active_holder(role, {"municipio": municipality}, instance=self.instance)
+        return attrs
+
     def create(self, validated_data):
         password = validated_data.pop("password", None)
         user = Usuario(**validated_data)
-        user.set_password(password or Usuario.objects.make_random_password())
+        user.set_password(password or generate_temporary_password())
         user.debe_cambiar_password = True
         user.save()
         return user

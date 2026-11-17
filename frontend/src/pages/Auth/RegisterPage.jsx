@@ -273,8 +273,7 @@ export default function RegisterPage() {
             {!pendingVerification && <div className={styles.registrationNotice} role="note">
                 <strong>Antes de registrarte</strong>
                 <p>
-                    Recopilaremos los datos necesarios para gestionar tu ingreso y te enviaremos un código al correo indicado.
-                    La cuenta permanecerá inactiva hasta que confirmes ese código y aceptes la política de privacidad.
+                    Te enviaremos un código al correo indicado y la cuenta permanecerá inactiva hasta que lo confirmes.
                 </p>
             </div>}
             {registrationDisabled && <FeedbackMessage type="warning" className={styles.feedbackMessage}>El registro estudiantil solo está disponible durante la Etapa 1 del proceso de ingreso.</FeedbackMessage>}
@@ -325,6 +324,7 @@ export default function RegisterPage() {
                 <FormField
                     htmlFor="register-username"
                     label="Usuario"
+                    className={styles.pairedField}
                     required
                     error={errors.username}
                     errorId="register-username-error"
@@ -342,6 +342,7 @@ export default function RegisterPage() {
                 <FormField
                     htmlFor="register-ci"
                     label="CI"
+                    className={styles.pairedField}
                     required
                     error={errors.ci}
                     errorId="register-ci-error"
@@ -360,6 +361,7 @@ export default function RegisterPage() {
                 <FormField
                     htmlFor="register-provincia"
                     label="Provincia"
+                    className={styles.pairedField}
                     required
                 >
                     <Select
@@ -368,7 +370,7 @@ export default function RegisterPage() {
                         onChange={(event) => setProvinciaId(event.target.value)}
                         required
                     >
-                        <option value="">Selecciona una provincia</option>
+                        <option value="">Selecciona provincia</option>
                         {provincias.map((provincia) => (
                             <option key={provincia.id} value={provincia.id}>
                                 {provincia.nombre}
@@ -379,6 +381,7 @@ export default function RegisterPage() {
                 <FormField
                     htmlFor="register-municipio"
                     label="Municipio"
+                    className={styles.pairedField}
                     required
                 >
                     <Select
@@ -388,7 +391,7 @@ export default function RegisterPage() {
                         required
                         disabled={!municipios.length}
                     >
-                        <option value="">Selecciona un municipio</option>
+                        <option value="">Selecciona municipio</option>
                         {municipios.map((municipio) => (
                             <option key={municipio.id} value={municipio.id}>
                                 {municipio.nombre}
@@ -409,7 +412,7 @@ export default function RegisterPage() {
                         required
                         disabled={!escuelas.length}
                     >
-                        <option value="">Selecciona una escuela</option>
+                        <option value="">Selecciona escuela</option>
                         {escuelas.map((escuela) => (
                             <option key={escuela.id} value={escuela.id}>
                                 {escuela.nombre}
@@ -420,6 +423,7 @@ export default function RegisterPage() {
                 <FormField
                     htmlFor="register-email"
                     label="Correo electrónico"
+                    className={styles.fieldFullMobile}
                     required
                     error={errors.email}
                     errorId="register-email-error"
@@ -438,6 +442,7 @@ export default function RegisterPage() {
                 <FormField
                     htmlFor="register-whatsapp"
                     label={<>WhatsApp <span className={styles.optionalHint}>(opcional)</span></>}
+                    className={styles.fieldFullMobile}
                     error={errors.whatsapp}
                     errorId="register-whatsapp-error"
                 >
@@ -454,6 +459,7 @@ export default function RegisterPage() {
                 <FormField
                     htmlFor="register-password"
                     label="Contraseña"
+                    className={styles.fieldFullMobile}
                     required
                     error={errors.password}
                     errorId="register-password-error"
@@ -480,6 +486,7 @@ export default function RegisterPage() {
                 <FormField
                     htmlFor="register-confirm-password"
                     label="Repetir contraseña"
+                    className={styles.fieldFullMobile}
                     required
                     error={errors.confirmPassword}
                     errorId="register-confirm-password-error"

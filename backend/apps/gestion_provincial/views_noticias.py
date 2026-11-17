@@ -3,7 +3,7 @@ from django.http import FileResponse, Http404
 from django.utils.text import get_valid_filename
 from django.utils import timezone
 from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import OpenApiResponse, extend_schema, inline_serializer
+from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema, extend_schema_view, inline_serializer
 from rest_framework import parsers, viewsets
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -26,6 +26,13 @@ def _news_landing_province(request):
     return Provincia.objects.filter(nombre__iexact="Holguín").order_by("id").first()
 
 
+@extend_schema_view(
+    list=extend_schema(tags=["Gestión"], summary="Listar noticias de la provincia", description="Noticias de la provincia del usuario autenticado, vigentes o no."),
+    create=extend_schema(tags=["Gestión"], summary="Publicar una noticia", description="Acepta JSON o `multipart/form-data` para adjuntar la imagen de portada y el archivo multimedia."),
+    retrieve=extend_schema(tags=["Gestión"], summary="Consultar una noticia de la provincia"),
+    partial_update=extend_schema(tags=["Gestión"], summary="Actualizar una noticia de la provincia"),
+    destroy=extend_schema(tags=["Gestión"], summary="Eliminar una noticia de la provincia"),
+)
 class ProvincialNoticiaViewSet(viewsets.ModelViewSet):
     serializer_class = NoticiaSerializer
     permission_classes = [IsNewsManager]
@@ -41,6 +48,13 @@ class ProvincialNoticiaViewSet(viewsets.ModelViewSet):
         instance.delete()
 
 
+@extend_schema_view(
+    list=extend_schema(tags=["Gestión"], summary="Listar gestores de noticias", description="Cuentas con rol `gestor_noticias`. Un superadmin ve todas; el jefe de comisión solo las de su provincia."),
+    create=extend_schema(tags=["Gestión"], summary="Crear un gestor de noticias"),
+    retrieve=extend_schema(tags=["Gestión"], summary="Consultar un gestor de noticias"),
+    partial_update=extend_schema(tags=["Gestión"], summary="Actualizar un gestor de noticias"),
+    destroy=extend_schema(tags=["Gestión"], summary="Eliminar un gestor de noticias"),
+)
 class ProvincialNewsManagerViewSet(viewsets.ModelViewSet):
     """CRUD de usuarios con rol `gestor_noticias`, acotado a la provincia del jefe de comisión
     autenticado (o de un superadmin, que ve todos)."""
@@ -68,6 +82,13 @@ class PublicNoticiasLandingView(APIView):
     permission_classes = [AllowAny]
 
     @extend_schema(
+        tags=["Gestión"],
+        summary="Noticias públicas de la provincia",
+        description=(
+            "Lista las noticias vigentes (permanentes o con fecha de expiración futura) de una provincia. "
+            "La provincia es la del usuario autenticado si la tiene; en caso contrario se usa Holguín como "
+            "provincia por defecto. No acepta parámetros de consulta."
+        ),
         responses=inline_serializer(
             name="PublicNoticiasLandingResponse",
             fields={
@@ -99,6 +120,17 @@ class PublicNoticiaDownloadView(APIView):
     permission_classes = [AllowAny]
 
     @extend_schema(
+        tags=["Gestión"],
+        summary="Descargar el archivo de una noticia",
+        description=(
+            "Devuelve la imagen de portada o el archivo multimedia de una noticia. Sin sesión solo sirve "
+            "noticias vigentes de la provincia pública; un gestor de noticias o jefe de comisión accede a "
+            "cualquier noticia de su provincia."
+        ),
+        parameters=[
+            OpenApiParameter("tipo", OpenApiTypes.STR, OpenApiParameter.QUERY, required=False, enum=["portada"], description="Con `portada` devuelve la imagen de portada; con cualquier otro valor (o ausente) el archivo multimedia."),
+            OpenApiParameter("inline", OpenApiTypes.STR, OpenApiParameter.QUERY, required=False, enum=["1"], description="Con `1` sirve el archivo embebido (`Content-Disposition: inline`) en vez de como descarga; solo se permite para imagen y vídeo (jpg, jpeg, png, webp, gif, mp4, webm, ogg), el resto responde 404."),
+        ],
         responses={
             200: OpenApiResponse(response=OpenApiTypes.BINARY, description="Archivo multimedia descargable."),
             404: OpenApiResponse(description="La noticia o el archivo no está disponible."),

@@ -1,9 +1,7 @@
 from .models import NotificationOutbox
-from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 import logging
-import threading
 
 
 logger = logging.getLogger(__name__)
@@ -12,21 +10,29 @@ logger = logging.getLogger(__name__)
 def notify_users(users, title, content, filter_students=True):
     from apps.gestion_escuela.models import EscalafonItem
     from apps.gestion_provincial.models import ETAPAS_NOMBRES
+    from apps.gestion_provincial.services.etapas import get_current_cycle_year
 
-    current_year = timezone.now().year
-    valid_users = []
-    for user in users:
-        if not user or not user.id:
-            continue
-        if filter_students and user.rol == "estudiante" and not EscalafonItem.objects.filter(
-            estudiante__usuario=user,
-            escalafon__proceso__anio__year=current_year,
-            escalafon__proceso__etapa__nombre=ETAPAS_NOMBRES[1],
-        ).exists():
-            continue
-        valid_users.append(user)
+    current_year = get_current_cycle_year()
+    candidates = [user for user in users if user and user.id]
 
-    user_ids = {user.id for user in valid_users}
+    # Una sola consulta para saber que estudiantes estan en el escalafon del ano,
+    # en vez de un `exists()` por usuario: `activate_stage` notifica a todo el
+    # sistema y esto eran miles de consultas.
+    students_in_escalafon = set()
+    if filter_students and any(user.rol == "estudiante" for user in candidates):
+        students_in_escalafon = set(
+            EscalafonItem.objects.filter(
+                escalafon__proceso__anio__year=current_year,
+                escalafon__proceso__etapa__nombre=ETAPAS_NOMBRES[1],
+                estudiante__usuario__isnull=False,
+            ).values_list("estudiante__usuario_id", flat=True)
+        )
+
+    user_ids = {
+        user.id
+        for user in candidates
+        if not (filter_students and user.rol == "estudiante" and user.id not in students_in_escalafon)
+    }
     if not user_ids:
         return 0
 
@@ -42,19 +48,14 @@ def notify_users(users, title, content, filter_students=True):
     entry_ids = [entry.id for entry in entries]
 
     def publish():
+        # Sin hilo propio: el timeout del broker (ver CELERY_BROKER_TRANSPORT_OPTIONS)
+        # hace que `.delay()` falle rapido si Redis no responde. Las entradas quedan
+        # en el outbox y `sweep_pending_notifications` las reencola.
         from .tasks import process_notification_batch
         try:
             process_notification_batch.delay(entry_ids)
         except Exception:
             logger.exception("No se pudo encolar el lote de notificaciones %s", entry_ids)
 
-    def enqueue_notifications():
-        # Se despacha en un hilo aparte (salvo en modo eager, usado en los tests) para que la
-        # petición HTTP que disparó la notificación no quede bloqueada si el broker no responde.
-        if settings.CELERY_TASK_ALWAYS_EAGER:
-            publish()
-        else:
-            threading.Thread(target=publish, daemon=True).start()
-
-    transaction.on_commit(enqueue_notifications)
+    transaction.on_commit(publish)
     return len(entry_ids)

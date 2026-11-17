@@ -87,9 +87,29 @@ def build_audit_action(request):
     return f"{action} de {resource}"
 
 
+def resource_from_path(path):
+    """Entidad afectada, deducida de la ruta (p. ej. "usuario", "etapa")."""
+    parts = [part for part in (path or "").strip("/").split("/") if part]
+    return next(
+        (RESOURCE_LABELS[part] for part in parts if part in RESOURCE_LABELS),
+        parts[-1] if parts else "recurso",
+    )
+
+
 def record_audit(user, action, module, request=None, previous=None, new=None):
     if not user or not user.is_authenticated:
         return
+    # Marca la peticion para que `AuditMiddleware` no escriba una segunda fila
+    # generica: la que registra la vista es mas precisa. Hay que marcar tambien el
+    # HttpRequest interno, porque el middleware ve ese y no el Request de DRF.
+    if request is not None:
+        for target in {request, getattr(request, "_request", None)}:
+            if target is None:
+                continue
+            try:
+                target._audit_recorded = True
+            except AttributeError:
+                pass
     ip = request.META.get("REMOTE_ADDR", "") if request else ""
     previous_json = json.dumps(previous or {}, default=str)
     new_json = json.dumps(new or {}, default=str)
@@ -100,7 +120,8 @@ def record_audit(user, action, module, request=None, previous=None, new=None):
             rol=user.rol,
             accion=action,
             modulo=module,
-            entidad=user.rol,
+            # La entidad afectada, no el rol de quien actua (eso ya esta en `rol`).
+            entidad=resource_from_path(module if isinstance(module, str) else ""),
             datos_anteriores=previous_json,
             datos_nuevos=new_json,
             ip=ip,

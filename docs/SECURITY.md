@@ -20,6 +20,8 @@ Corrige cualquier fallo antes de desplegar. El backend debe ejecutarse con `DJAN
 
 - No guardar contraseñas SMTP, claves Django, credenciales Redis ni tokens en Git.
 - Usar un gestor de secretos o variables protegidas de la plataforma.
+- No crear las cuentas demo de `seed_initial_data` en producción; usar una cuenta administrativa real con contraseña individual.
+- Confirmar que `DJANGO_SECRET_KEY` no conserva el valor de ejemplo antes de arrancar con `DJANGO_DEBUG=false`.
 - Configurar `CORS_ALLOWED_ORIGINS` y `CSRF_TRUSTED_ORIGINS` solo con dominios conocidos.
 - Confirmar `SECURE_PROXY_SSL_HEADER`, cookies seguras y redirección HTTPS detrás del proxy.
 - Separar credenciales y bases de datos de desarrollo, pruebas y producción.

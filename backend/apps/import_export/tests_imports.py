@@ -50,7 +50,7 @@ class ImportBase(APITestCase):
         self.secretario = self._user("sec.imp", "secretario_escuela", escuela=self.escuela)
         self.secretario_otra = self._user("sec.otra", "secretario_escuela", escuela=self.otra_escuela)
         self.director = self._user("dir.imp", "director_escuela", escuela=self.escuela)
-        self.year_start = timezone.now().date().replace(month=1, day=1)
+        self.year_start = timezone.localdate().replace(month=1, day=1)
 
     def _user(self, username, rol, **extra):
         return Usuario.objects.create_user(
@@ -65,9 +65,10 @@ class ImportBase(APITestCase):
 
     def stage(self, n, estado="en_curso"):
         etapa = Etapa.objects.get(nombre=ETAPAS_NOMBRES[n])
-        etapa.estado = estado
-        etapa.save(update_fields=["estado"])
-        return Proceso.objects.get_or_create(anio=self.year_start, etapa=etapa)[0]
+        proceso, _ = Proceso.objects.get_or_create(anio=self.year_start, etapa=etapa)
+        proceso.estado = estado
+        proceso.save(update_fields=["estado"])
+        return proceso
 
     def post_raw(self, url_name, user, file, data=None):
         self.client.force_authenticate(user)
@@ -108,6 +109,25 @@ class StageSixImportTests(ImportBase):
         self.assertEqual((body["inserted"], body["updated"], body["errors"]), (2, 0, []))
         self.assertEqual(Otorgamiento.objects.filter(proceso=self.proceso).count(), 2)
         self.assertEqual(Otorgamiento.objects.get(estudiante=self.student).indice_otorgamiento, 91.5)
+
+    def test_jefe_cannot_import_awards_for_students_in_another_province(self):
+        other_student = self.make_student("90010112347", escuela=self.otra_escuela)
+        other_career = Carrera.objects.create(
+            codigo="IMP-OTHER",
+            nombre="Carrera Otra Provincia",
+            ces=self.ces,
+            provincia=self.otra_provincia,
+        )
+        file = make_xlsx([
+            self.OTORG_HEADERS,
+            [other_student.ci, other_career.codigo, other_career.nombre, 91.5],
+        ])
+
+        code, body = self.run_import("import-otorgamiento", self.jefe, file)
+
+        self.assertEqual(code, 400, body)
+        self.assertIn("provincia", str(body["errors"]).lower())
+        self.assertFalse(Otorgamiento.objects.filter(estudiante=other_student).exists())
 
     def test_otorgamiento_is_atomic(self):
         file = make_xlsx([
@@ -396,3 +416,121 @@ class SecretarioReadOnlyStageTests(ImportBase):
         response = self.client.get(reverse("school-otorgamiento-list"))
         self.assertEqual(response.status_code, 200)
         self.assertIs(response.data["stage_active"], False)
+
+
+class OtorgamientoUniquenessTests(ImportBase):
+    """Un estudiante recibe una sola carrera por proceso (restriccion y import)."""
+
+    HEADERS = ["CI", "Codigo_Carrera", "Nombre_Carrera", "Indice_Otorgamiento"]
+
+    def setUp(self):
+        super().setUp()
+        self.proceso = self.stage(6)
+        self.otra_carrera = Carrera.objects.create(
+            codigo="IMP-2", nombre="Carrera Imp Dos", ces=self.ces, provincia=self.provincia,
+        )
+        self.student = self.make_student("90010300001")
+
+    def test_dos_filas_con_el_mismo_ci_son_error(self):
+        file = make_xlsx([
+            self.HEADERS,
+            [self.student.ci, self.carrera.codigo, self.carrera.nombre, 90],
+            [self.student.ci, self.otra_carrera.codigo, self.otra_carrera.nombre, 95],
+        ])
+        code, body = self.run_import("import-otorgamiento", self.jefe, file, None)
+        self.assertEqual(code, 400, body)
+        self.assertIn("repetido", str(body["errors"]))
+        self.assertEqual(Otorgamiento.objects.count(), 0)
+
+    def test_reimportar_reemplaza_la_carrera_otorgada(self):
+        primera = make_xlsx([self.HEADERS, [self.student.ci, self.carrera.codigo, self.carrera.nombre, 90]])
+        self.assertEqual(self.run_import("import-otorgamiento", self.jefe, primera, None)[0], 201)
+
+        segunda = make_xlsx([self.HEADERS, [self.student.ci, self.otra_carrera.codigo, self.otra_carrera.nombre, 95]])
+        code, body = self.run_import("import-otorgamiento", self.jefe, segunda, None)
+        self.assertEqual(code, 201, body)
+        self.assertEqual((body["inserted"], body["updated"]), (0, 1))
+
+        awards = Otorgamiento.objects.filter(estudiante=self.student, proceso=self.proceso)
+        self.assertEqual(awards.count(), 1, "no debe acumular otorgamientos")
+        self.assertEqual(awards.first().carrera_id, self.otra_carrera.id)
+
+    def test_la_base_rechaza_un_segundo_otorgamiento(self):
+        from django.db import IntegrityError, transaction
+
+        Otorgamiento.objects.create(
+            estudiante=self.student, proceso=self.proceso, carrera=self.carrera, indice_otorgamiento=90,
+        )
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                Otorgamiento.objects.create(
+                    estudiante=self.student, proceso=self.proceso, carrera=self.otra_carrera, indice_otorgamiento=95,
+                )
+
+    def test_la_base_rechaza_un_corte_duplicado(self):
+        from django.db import IntegrityError, transaction
+
+        CorteCarrera.objects.create(proceso=self.proceso, carrera=self.carrera, indice_corte=88)
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                CorteCarrera.objects.create(proceso=self.proceso, carrera=self.carrera, indice_corte=90)
+
+
+class ResultadosImportRobustnessTests(ImportBase):
+    """Cabeceras insensibles, fecha limite actualizable y aviso de no confirmados."""
+
+    def setUp(self):
+        super().setUp()
+        self.proceso = self.stage(5)
+        self.confirm_process = self.stage(4, estado="completada")
+        self.matematica = Asignatura.objects.create(nombre="Matemática")
+        self.confirmado = self.make_student("90010400001")
+        self.sin_confirmar = self.make_student("90010400002")
+        self.no_asistira = self.make_student("90010400003")
+        ConfirmacionPrueba.objects.create(
+            estudiante=self.confirmado, proceso=self.confirm_process, asignatura=self.matematica,
+            confirmada=True, fecha_prueba=timezone.now(),
+        )
+        ConfirmacionPrueba.objects.create(
+            estudiante=self.sin_confirmar, proceso=self.confirm_process, asignatura=self.matematica,
+            confirmada=None, fecha_prueba=timezone.now(),
+        )
+        ConfirmacionPrueba.objects.create(
+            estudiante=self.no_asistira, proceso=self.confirm_process, asignatura=self.matematica,
+            confirmada=False, fecha_prueba=timezone.now(),
+        )
+        self.data = {"asignatura": "Matematica", "fecha_limite_reclamo": "2030-01-31"}
+
+    def test_las_cabeceras_no_son_sensibles_a_mayusculas_ni_acentos(self):
+        file = make_xlsx([["ci", "asignatura ", "NOTA"], [self.confirmado.ci, "Matematica", 88]])
+        code, body = self.run_import("import-resultados", self.jefe, file, self.data)
+        self.assertEqual(code, 201, body)
+        self.assertEqual(body["inserted"], 1)
+
+    def test_reimportar_actualiza_la_fecha_limite(self):
+        file = make_xlsx([["CI", "Asignatura", "Nota"], [self.confirmado.ci, "Matematica", 88]])
+        self.assertEqual(self.run_import("import-resultados", self.jefe, file, self.data)[0], 201)
+
+        nueva = make_xlsx([["CI", "Asignatura", "Nota"], [self.confirmado.ci, "Matematica", 91]])
+        code, body = self.run_import(
+            "import-resultados", self.jefe, nueva,
+            {"asignatura": "Matematica", "fecha_limite_reclamo": "2031-06-15"},
+        )
+        self.assertEqual(code, 201, body)
+        resultado = ResultadoExamen.objects.get(estudiante=self.confirmado, proceso=self.proceso)
+        self.assertEqual(resultado.nota, 91)
+        self.assertEqual(resultado.fecha_limite_reclamo, date(2031, 6, 15))
+
+    def test_avisa_de_quien_no_confirmo_pero_importa_la_nota(self):
+        file = make_xlsx([
+            ["CI", "Asignatura", "Nota"],
+            [self.confirmado.ci, "Matematica", 88],
+            [self.sin_confirmar.ci, "Matematica", 75],
+            [self.no_asistira.ci, "Matematica", 60],
+        ])
+        code, body = self.run_import("import-resultados", self.jefe, file, self.data)
+        self.assertEqual(code, 201, body)
+        self.assertEqual(body["inserted"], 3, "la nota se importa igualmente")
+        avisos = body["advertencias"]
+        self.assertEqual([a["ci"] for a in avisos], [self.sin_confirmar.ci, self.no_asistira.ci])
+        self.assertIn("No confirmó", avisos[0]["detalle"])

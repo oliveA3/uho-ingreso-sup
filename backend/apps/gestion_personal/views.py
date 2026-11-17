@@ -1,5 +1,6 @@
 from django.http import HttpResponse
 from django.db import transaction
+from django.db.models import Max
 from apps.core.pdf import render_pdf
 from django.utils import timezone
 from drf_spectacular.openapi import AutoSchema
@@ -14,8 +15,9 @@ from apps.core.models import Notificacion
 from apps.core.audit import record_audit
 from apps.authentication.models import Usuario
 from apps.gestion_escuela.models import EscalafonItem
-from apps.gestion_provincial.models import CorteCarrera, ETAPAS_NOMBRES, Etapa, PlanPlaza, Proceso
+from apps.gestion_provincial.models import CorteCarrera, ETAPAS_NOMBRES, PlanPlaza, Proceso
 from apps.gestion_provincial.models import Otorgamiento
+from apps.gestion_provincial.services.etapas import effective_stage_state, get_active_stage, get_current_cycle_year
 from apps.superadmin.models import Carrera
 from .models import BoletaInteres, BoletaInteresItem, BoletaSolicitud, BoletaSolicitudItem, ConfirmacionPrueba
 from .services import solicitud as solicitud_service
@@ -30,11 +32,13 @@ def current_interest_context(request):
 		student = request.user.estudiante
 	except Exception:
 		return None, None, Response({"detail": "El usuario no tiene un perfil de estudiante."}, status=400)
-	stage = Etapa.objects.filter(nombre=ETAPAS_NOMBRES[2]).first()
-	process = Proceso.get_for_stage_and_year(timezone.now().year, stage) if stage else None
-	if stage and stage.estado == "en_curso" and stage.fecha_fin and stage.fecha_fin < timezone.localdate():
-		stage.estado = "completada"
-		stage.save(update_fields=["estado"])
+	stage = Proceso.get_for_stage_and_year(get_current_cycle_year(), ETAPAS_NOMBRES[2])
+	process = stage
+	# Si la etapa venció se trata como completada sin escribir en la base: esta
+	# función se llama también desde peticiones de lectura. El cierre lo persiste
+	# `close_expired_stages` (Celery Beat).
+	if stage is not None:
+		stage.estado = effective_stage_state(stage)
 	return student, (process, stage), None
 
 
@@ -232,7 +236,11 @@ class StudentInterestItemView(APIView):
 		career = serializer.validated_data["carrera"]
 		if ballot.boleta_interes.filter(carrera=career).exists():
 			return Response({"detail": "Ya seleccionaste esta carrera."}, status=400)
-		item = BoletaInteresItem.objects.create(boleta_interes=ballot, carrera=career, prioridad=ballot.boleta_interes.count() + 1)
+		# Siguiente prioridad a partir del maximo, no de `count()`: si alguna vez
+		# quedara un hueco en la numeracion, `count()+1` chocaria con la
+		# restriccion unica (boleta, prioridad).
+		next_priority = (ballot.boleta_interes.aggregate(Max("prioridad"))["prioridad__max"] or 0) + 1
+		item = BoletaInteresItem.objects.create(boleta_interes=ballot, carrera=career, prioridad=next_priority)
 		record_audit(request.user, "Adición de carrera a boleta de interés", request.path, request=request, new={"carrera": career.codigo, "prioridad": item.prioridad})
 		return Response(BoletaInteresItemSerializer(item).data, status=201)
 
@@ -259,12 +267,16 @@ class StudentInterestItemView(APIView):
 		item = ballot.boleta_interes.filter(pk=item_id).first()
 		if not item:
 			return Response({"detail": "La carrera no está en tu boleta."}, status=404)
-		item.delete()
-		record_audit(request.user, "Eliminación de carrera de boleta de interés", request.path, request=request, previous={"carrera": item.carrera.codigo, "prioridad": item.prioridad})
-		for priority, remaining in enumerate(ballot.boleta_interes.order_by("prioridad"), start=1):
-			if remaining.prioridad != priority:
-				remaining.prioridad = priority
-				remaining.save(update_fields=["prioridad"])
+		removed = {"carrera": item.carrera.codigo, "prioridad": item.prioridad}
+		# Borrado y renumerado en la misma transaccion: a medias dejaria la boleta
+		# con prioridades inconsistentes.
+		with transaction.atomic():
+			item.delete()
+			for priority, remaining in enumerate(ballot.boleta_interes.order_by("prioridad"), start=1):
+				if remaining.prioridad != priority:
+					remaining.prioridad = priority
+					remaining.save(update_fields=["prioridad"])
+		record_audit(request.user, "Eliminación de carrera de boleta de interés", request.path, request=request, previous=removed)
 		return Response(status=204)
 
 	@extend_schema(
@@ -411,8 +423,10 @@ def current_solicitud_context(request):
 		student = request.user.estudiante
 	except Exception:
 		return None, None, Response({"detail": "El usuario no tiene un perfil de estudiante."}, status=400)
-	stage = Etapa.objects.filter(nombre=ETAPAS_NOMBRES[3]).first()
-	process = Proceso.get_for_stage_and_year(timezone.now().year, stage) if stage else None
+	stage = Proceso.get_for_stage_and_year(get_current_cycle_year(), ETAPAS_NOMBRES[3])
+	process = stage
+	if stage is not None:
+		stage.estado = effective_stage_state(stage)
 	return student, (process, stage), None
 
 
@@ -432,7 +446,7 @@ class StudentSolicitudView(APIView):
 	@extend_schema(
 		tags=["Gestión"],
 		summary="Consultar boleta de solicitud del estudiante",
-		description="Devuelve (creándola si no existe) la boleta de solicitud del estudiante autenticado para el proceso vigente de la etapa 3 (solicitud de plazas), junto con los datos del estudiante, los planes de plaza disponibles en su provincia y el estado de la etapa. Solo accesible por usuarios con rol 'estudiante'.",
+		description="Devuelve (creándola si no existe) la boleta de solicitud del estudiante autenticado para el proceso vigente de la etapa 3 (solicitud de plazas), junto con los datos del estudiante, los planes de plaza disponibles en su provincia y elegibles según su sexo (las plazas 'A' son abiertas), y el estado de la etapa. Solo accesible por usuarios con rol 'estudiante'.",
 		responses={
 			200: inline_serializer(name="StudentSolicitudBallot", fields={
 				"id": serializers.IntegerField(), "proceso": serializers.IntegerField(), "estado": serializers.CharField(),
@@ -477,9 +491,9 @@ class StudentSolicitudView(APIView):
 		plans = PlanPlaza.objects.filter(
 			proceso=process,
 			provincia_id=province_id,
+			sexo__in=("A", student.sexo),
 		).select_related("carrera", "ces", "provincia", "otorgamiento_tipo").order_by("carrera__nombre") if escalafon_valido else PlanPlaza.objects.none()
-		active_stage = Etapa.objects.filter(estado="en_curso").order_by("id").first()
-		active_stage_number = next((number for number, name in ETAPAS_NOMBRES.items() if active_stage and name == active_stage.nombre), None)
+		active_stage_number = solicitud_service.active_stage_number()
 		allow_modification = active_stage_number == 3
 		stage_is_active = solicitud_service.stage_is_active(stage)
 		return Response({
@@ -507,7 +521,7 @@ class StudentSolicitudView(APIView):
 		tags=["Gestión"],
 		summary="Enviar o modificar boleta de solicitud",
 		description=(
-			"Envía la boleta de solicitud del estudiante autenticado con exactamente 10 planes de plaza priorizados, de su propia provincia. "
+			"Envía la boleta de solicitud del estudiante autenticado con exactamente 10 planes de plaza priorizados, de su propia provincia y elegibles según su sexo (las plazas 'A' son abiertas). "
 			"Requiere 'confirmar: true' en el cuerpo; si se omite o es falso, devuelve 200 con 'confirmacion_requerida: true' sin persistir cambios. "
 			"Con 'modificacion: true' una boleta aprobada pasa a 'modificada' y se guardan los items dentro de una sola transacción (si algo falla, no queda ningún cambio). Solo válido durante la etapa 3 ('en_curso'). Si la boleta ya estaba en estado 'modificada' notifica al jefe de comisión provincial; en caso contrario notifica al secretario de la escuela. Solo accesible por usuarios con rol 'estudiante'."
 		),
@@ -581,8 +595,7 @@ class StudentSolicitudEditView(APIView):
 			return error
 		process, _ = context
 		ballot = BoletaSolicitud.objects.filter(estudiante=student, proceso=process).first() if process else None
-		active_stage = Etapa.objects.filter(estado="en_curso").order_by("id").first()
-		active_stage_number = next((number for number, name in ETAPAS_NOMBRES.items() if active_stage and name == active_stage.nombre), None)
+		active_stage_number = solicitud_service.active_stage_number()
 		if not ballot:
 			return Response({"detail": "No existe una boleta de solicitud para este estudiante."}, status=404)
 		if active_stage_number != 3:
@@ -648,8 +661,10 @@ class StudentExamConfirmationView(APIView):
 			student = request.user.estudiante
 		except Exception:
 			return None, None, Response({"detail": "El usuario no tiene un perfil de estudiante."}, status=400)
-		stage = Etapa.objects.filter(nombre=ETAPAS_NOMBRES[4]).first()
-		process = Proceso.get_for_stage_and_year(timezone.now().year, ETAPAS_NOMBRES[4])
+		stage = Proceso.get_for_stage_and_year(get_current_cycle_year(), ETAPAS_NOMBRES[4])
+		process = stage
+		if stage is not None:
+			stage.estado = effective_stage_state(stage)
 		return student, (process, stage), None
 
 	@extend_schema(
@@ -782,8 +797,8 @@ class StudentDashboardView(APIView):
 			return Response({"detail": "Solo un estudiante puede consultar este resumen."}, status=403)
 
 		student = request.user.estudiante
-		escalafon_process = Proceso.get_for_stage_and_year(timezone.now().year, ETAPAS_NOMBRES[1])
-		interest_process = Proceso.get_for_stage_and_year(timezone.now().year, ETAPAS_NOMBRES[2])
+		escalafon_process = Proceso.get_for_stage_and_year(get_current_cycle_year(), ETAPAS_NOMBRES[1])
+		interest_process = Proceso.get_for_stage_and_year(get_current_cycle_year(), ETAPAS_NOMBRES[2])
 		current_entry = EscalafonItem.objects.filter(
 			estudiante__usuario=request.user,
 			escalafon__proceso=escalafon_process,
@@ -795,12 +810,12 @@ class StudentDashboardView(APIView):
 
 		position = next((index for index, entry in enumerate(school_entries, start=1) if entry.id == getattr(current_entry, "id", None)), None)
 		interest = student.boleta_interes.filter(proceso=interest_process).first() if interest_process else None
-		confirmations_process = Proceso.get_for_stage_and_year(timezone.now().year, ETAPAS_NOMBRES[4])
+		confirmations_process = Proceso.get_for_stage_and_year(get_current_cycle_year(), ETAPAS_NOMBRES[4])
 		confirmations = ConfirmacionPrueba.objects.filter(estudiante=student, proceso=confirmations_process) if confirmations_process else ConfirmacionPrueba.objects.none()
-		active_stage = Etapa.objects.filter(estado="en_curso").order_by("id").first()
+		active_stage = get_active_stage()
 		stages = []
 		for number, name in ETAPAS_NOMBRES.items():
-			stage = Etapa.objects.filter(nombre=name).first()
+			stage = Proceso.get_for_stage_and_year(get_current_cycle_year(), name)
 			stages.append({"numero": number, "nombre": name, "estado": stage.estado if stage else "no_iniciada",
 				"fecha_inicio": stage.fecha_inicio if stage else None, "fecha_fin": stage.fecha_fin if stage else None})
 
@@ -813,8 +828,8 @@ class StudentDashboardView(APIView):
 				"municipio": student.escuela.municipio.nombre,
 			},
 			"active_stage": {
-				"numero": next((number for number, name in ETAPAS_NOMBRES.items() if name == active_stage.nombre), None),
-				"nombre": active_stage.nombre,
+				"numero": next((number for number, name in ETAPAS_NOMBRES.items() if name == active_stage.etapa.nombre), None),
+				"nombre": active_stage.etapa.nombre,
 				"fecha_fin": active_stage.fecha_fin,
 			} if active_stage else None,
 			"academic": {
@@ -875,7 +890,7 @@ class StudentOtorgamientoView(APIView):
 		if not student:
 			return Response({"detail": "El usuario no tiene un perfil de estudiante."}, status=400)
 		try:
-			year = int(request.query_params.get("anio", timezone.now().year))
+			year = int(request.query_params.get("anio", get_current_cycle_year()))
 		except (TypeError, ValueError):
 			return Response({"detail": "El año indicado no es válido."}, status=400)
 		process = Proceso.get_for_stage_and_year(year, ETAPAS_NOMBRES[6])

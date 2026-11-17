@@ -1,7 +1,11 @@
+/* La barra de navegación es sticky y ocupa su espacio en el flujo, así que al alto
+   disponible hay que restarle su altura: si no, la página siempre mide nav + 100vh
+   y genera un scroll sobrante. */
 .page {
   --nav-height: 4.5rem;
   display: flex;
-  min-height: 100vh;
+  min-height: calc(100vh - var(--nav-height));
+  min-height: calc(100dvh - var(--nav-height));
   flex-direction: column;
   background-color: var(--color-fondo, #d6e4f0);
   color: var(--gris-900);
@@ -11,12 +15,6 @@
   .page {
     --nav-height: 5rem;
   }
-}
-
-/* Páginas de contenido corto (login/registro): sin estirar a 100vh, para que el footer
-   quede justo debajo del formulario en lugar de pegado al final de la pantalla. */
-.pageCompact {
-  min-height: auto;
 }
 
 .body {

@@ -19,6 +19,7 @@ from openpyxl import load_workbook
 from apps.authentication.models import Estudiante, Usuario
 from apps.core.audit import record_audit
 from apps.gestion_provincial.models import ETAPAS_NOMBRES, CorteCarrera, Etapa, Otorgamiento, PlanPlaza, Proceso
+from apps.gestion_provincial.services.etapas import get_current_cycle_year, is_stage_active
 from apps.superadmin.models import Carrera, Ces, Escuela, Provincia, TipoOtorgamiento
 from .carreras_service import CareerExcelService
 from .escalafon_service import EscalafonExcelService
@@ -53,7 +54,7 @@ def _get_active_process():
     stage = Etapa.objects.filter(nombre=ETAPAS_NOMBRES[3]).first()
     if not stage:
         raise ValueError("No existe la etapa para planes de plaza.")
-    process = Proceso.objects.filter(anio__year=timezone.now().year, etapa=stage).order_by("-id").first()
+    process = Proceso.objects.filter(anio__year=get_current_cycle_year(), etapa=stage).order_by("-id").first()
     if process is None:
         process = Proceso.objects.create(
             anio=timezone.now().date().replace(month=1, day=1),
@@ -182,10 +183,10 @@ def _normalize_import_header(value):
 
 def _get_stage_six_process():
     stage = Etapa.objects.filter(nombre=ETAPAS_NOMBRES[6]).first()
-    process = Proceso.get_for_stage_and_year(timezone.now().year, ETAPAS_NOMBRES[6])
+    process = Proceso.get_for_stage_and_year(get_current_cycle_year(), ETAPAS_NOMBRES[6])
     if not stage or not process:
         raise ValueError("No existe un proceso de otorgamiento para el año actual.")
-    if stage.estado != "en_curso":
+    if not is_stage_active(6):
         raise ValueError("La importación solo está disponible durante la etapa 6.")
     return process
 
@@ -212,7 +213,7 @@ def _resolve_stage_six_career(data):
     return carrera
 
 
-def import_stage_six(file_obj, kind):
+def import_stage_six(file_obj, kind, user):
     required_headers = (
         ["CI", "Codigo_Carrera", "Nombre_Carrera", "Indice_Otorgamiento"]
         if kind == "otorgamiento"
@@ -251,6 +252,8 @@ def import_stage_six(file_obj, kind):
                 student = Estudiante.objects.filter(ci=ci).first()
                 if not student:
                     row_errors.append("El CI no existe en la base de datos.")
+                elif user.rol == "jefe_comision" and student.escuela.municipio.provincia_id != user.provincia_id:
+                    row_errors.append("El estudiante no pertenece a la provincia del Jefe de Comisión.")
         try:
             carrera = _resolve_stage_six_career(data)
         except ValueError as error:
@@ -262,9 +265,16 @@ def import_stage_six(file_obj, kind):
             data["indice"] = float(indice)
         except (InvalidOperation, TypeError, ValueError):
             row_errors.append("El índice debe ser un decimal entre 0 y 100, con máximo 2 decimales.")
-        key = (student.id if student else data["ci"], carrera.id if carrera else data["codigo_carrera"])
+        if kind == "otorgamiento":
+            # A cada estudiante se le otorga una sola carrera por proceso, asi que
+            # dos filas con el mismo CI son un conflicto aunque la carrera difiera.
+            key = student.id if student else data["ci"]
+            duplicate_message = "El CI está repetido dentro del Excel: a un estudiante solo se le puede otorgar una carrera."
+        else:
+            key = carrera.id if carrera else data["codigo_carrera"]
+            duplicate_message = "La carrera está repetida dentro del Excel."
         if key in seen:
-            row_errors.append("La combinación indicada está repetida dentro del Excel.")
+            row_errors.append(duplicate_message)
         else:
             seen.add(key)
         if row_errors:
@@ -277,12 +287,16 @@ def import_stage_six(file_obj, kind):
     inserted = updated = 0
     with transaction.atomic():
         for student, carrera, indice in rows:
-            lookup = {"proceso": process, "carrera": carrera}
             if kind == "otorgamiento":
-                lookup["estudiante"] = student
-                _, created = Otorgamiento.objects.update_or_create(**lookup, defaults={"indice_otorgamiento": indice})
+                _, created = Otorgamiento.objects.update_or_create(
+                    estudiante=student, proceso=process,
+                    defaults={"carrera": carrera, "indice_otorgamiento": indice},
+                )
             else:
-                _, created = CorteCarrera.objects.update_or_create(**lookup, defaults={"indice_corte": indice})
+                _, created = CorteCarrera.objects.update_or_create(
+                    proceso=process, carrera=carrera,
+                    defaults={"indice_corte": indice},
+                )
             if created:
                 inserted += 1
             else:
@@ -291,7 +305,7 @@ def import_stage_six(file_obj, kind):
 
 
 def import_otorgamiento(file, user, audit_request):
-    result = import_stage_six(file, "otorgamiento")
+    result = import_stage_six(file, "otorgamiento", user)
     if not result["errors"]:
         record_audit(user, "Importación de otorgamientos", audit_request.path, request=audit_request, new={"inserted": result["inserted"], "updated": result["updated"]})
         from apps.core.notifications import notify_users
@@ -302,14 +316,14 @@ def import_otorgamiento(file, user, audit_request):
         notify_users(
             students,
             "Otorgamientos publicados",
-            f"Se publicaron los otorgamientos de carreras del proceso {timezone.now().year}. Ya puedes consultar tu resultado.",
+            f"Se publicaron los otorgamientos de carreras del proceso {get_current_cycle_year()}. Ya puedes consultar tu resultado.",
             filter_students=False,
         )
     return _result(400 if result["errors"] else 201, result)
 
 
 def import_corte(file, user, audit_request):
-    result = import_stage_six(file, "corte")
+    result = import_stage_six(file, "corte", user)
     if not result["errors"]:
         record_audit(user, "Importación de índices de corte", audit_request.path, request=audit_request, new={"inserted": result["inserted"], "updated": result["updated"]})
     return _result(400 if result["errors"] else 201, result)
@@ -372,8 +386,13 @@ def import_resultados(file, user, audit_request, params):
         f"Ya puedes consultar tus resultados de {selected_subject} del proceso {proceso.anio.year}.",
         filter_students=False,
     )
-    record_audit(user, "Importación de resultados de exámenes", audit_request.path, request=audit_request, new={"inserted": result.inserted, "updated": result.updated, "anio": proceso.anio.year, "asignatura": selected_subject})
-    return _result(201, {"inserted": result.inserted, "updated": result.updated, "errors": []})
+    record_audit(user, "Importación de resultados de exámenes", audit_request.path, request=audit_request, new={"inserted": result.inserted, "updated": result.updated, "anio": proceso.anio.year, "asignatura": selected_subject, "advertencias": len(result.warnings)})
+    return _result(201, {
+        "inserted": result.inserted,
+        "updated": result.updated,
+        "errors": [],
+        "advertencias": result.warnings,
+    })
 
 
 @shared_task(name="import_export.run_import")

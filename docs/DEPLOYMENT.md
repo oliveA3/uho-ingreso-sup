@@ -4,12 +4,16 @@ Esta guía reúne los pasos necesarios para desplegar IngresoSUP. Compleméntala
 
 ## Requisitos
 
-- Python compatible con las dependencias de `backend/requirements.txt`.
+- Python compatible con las dependencias de `backend/requirements.txt` y Node.js 20 LTS o superior para compilar el frontend.
 - **PostgreSQL 14 o superior**, respaldado y accesible por el backend (ver la sección siguiente). SQLite solo sirve para pruebas rápidas: no soporta el bloqueo de filas (`select_for_update`) que usa el sistema para proteger la activación de etapas.
 - Redis accesible desde el backend y el worker Celery.
 - Un servidor SMTP institucional o proveedor transaccional.
-- Un proxy HTTPS y un servidor WSGI/ASGI para el backend.
-- Un servidor web para los archivos compilados del frontend.
+- Un proxy HTTPS (por ejemplo Nginx) y Gunicorn para el backend.
+- Un servidor web para servir `frontend/dist` y los estáticos recolectados por Django.
+
+Esta guía describe despliegue en un servidor tradicional. `docker-compose.yml` solo
+levanta PostgreSQL y Redis para desarrollo local; no es una configuración de
+producción ni contiene el frontend, el backend, Celery o un proxy HTTPS.
 
 ## Base de datos: PostgreSQL 14+
 
@@ -33,7 +37,7 @@ Variables que lee `backend/backend/settings.py`:
 
 Las variables pueden definirse en el entorno del servidor o en un archivo `.env` en la raíz del proyecto (el backend lo carga solo; las variables ya definidas en el entorno tienen prioridad). El repositorio incluye una plantilla, [`.env.example`](../.env.example). **Nunca subas `.env` a Git**: ya está en `.gitignore`.
 
-### Opción 1 (recomendada para desarrollo): PostgreSQL y Redis con Docker
+### Opción 1 (desarrollo local): PostgreSQL y Redis con Docker
 
 Requiere Docker con Compose. En la raíz del proyecto:
 
@@ -60,15 +64,22 @@ ALTER ROLE ingresosup CREATEDB;
 
 3. Pon los mismos datos en `DB_USER`, `DB_PASSWORD` y `DB_NAME`, con `DB_ENGINE=postgresql`.
 
-### Puesta en marcha con PostgreSQL
+### Inicializar PostgreSQL
 
 ```bash
 cd backend
 python -m pip install -r requirements.txt
-python manage.py check                     # comprueba la configuración
-python manage.py migrate                   # crea todas las tablas (incluye las 6 etapas)
-python manage.py createsuperuser           # o carga los datos iniciales: docs/SEED_INITIAL_DATA.md
-python manage.py runserver                 # en desarrollo
+python manage.py check
+python manage.py migrate
+```
+
+Para desarrollo local puedes cargar territorios y catálogos y luego iniciar el
+servidor de desarrollo:
+
+```bash
+python manage.py seed_initial_data          # no crea cuentas demo
+python manage.py createsuperuser
+python manage.py runserver
 ```
 
 Para comprobar que Django usa PostgreSQL y no SQLite:
@@ -132,11 +143,29 @@ CELERY_BROKER_URL=redis://redis:6379/0
 CELERY_RESULT_BACKEND=redis://redis:6379/1
 ```
 
-Configura los dominios reales del frontend en `CORS_ALLOWED_ORIGINS` y `CSRF_TRUSTED_ORIGINS` de `backend/backend/settings.py`. Si frontend y backend están separados, crea `frontend/.env.production` con:
+Los dominios reales del frontend se declaran con la variable `FRONTEND_ORIGINS` (lista separada
+por comas); de ella salen `CORS_ALLOWED_ORIGINS` y `CSRF_TRUSTED_ORIGINS`, así que no hay que
+editar `settings.py`. Con `DJANGO_DEBUG=false` es obligatoria: sin ella el arranque aborta, porque
+CORS y CSRF rechazarían todas las peticiones del cliente.
 
 ```env
-VITE_API_ORIGIN=https://api.ingresosup.cu
+FRONTEND_ORIGINS=https://ingresosup.cu
 ```
+
+Si frontend y backend están en dominios distintos, además de `FRONTEND_ORIGINS` hay que:
+
+1. Crear `frontend/.env.production` con el origen de la API:
+
+   ```env
+   VITE_API_ORIGIN=https://api.ingresosup.cu
+   ```
+
+2. Solo si frontend y API están en **sitios distintos** (no simplemente en subdominios distintos),
+   poner `CROSS_SITE_COOKIES=true` en el backend. Las cookies pasan a `SameSite=None; Secure`,
+   necesario para enviarlas entre sitios; con el valor por defecto (`Lax`) el navegador las bloquea.
+
+El arranque también aborta si `DJANGO_ALLOWED_HOSTS` declara hosts públicos con `DJANGO_DEBUG`
+todavía activo, o si se desactiva `DEBUG` sin definir `DJANGO_SECRET_KEY`.
 
 `FRONTEND_URL` es el origen público del sitio web; el backend lo usa para construir enlaces de restablecimiento de contraseña en los correos.
 
@@ -147,18 +176,43 @@ cd backend
 python -m pip install -r requirements.txt
 python manage.py check --deploy
 python manage.py migrate --noinput
+python manage.py seed_initial_data
+python manage.py createsuperuser
 python manage.py collectstatic --noinput
 ```
 
-Sirve el backend con Gunicorn, Uvicorn o el servidor WSGI/ASGI equivalente de la plataforma. No uses `python manage.py runserver` en producción. Compila el frontend y publica `frontend/dist` detrás de HTTPS:
+`seed_initial_data` carga solo catálogos y territorios; no crea usuarios. Crea
+cuentas reales con `createsuperuser` y configura sus roles y alcances desde el
+panel. Importa o registra los datos oficiales de escuelas antes de habilitar el
+proceso; la semilla no crea escuelas ficticias. No ejecutes la semilla con
+`--with-demo-users` en producción.
+
+Compila el frontend (por defecto usará `/api/v1` en el mismo dominio):
 
 ```bash
-cd frontend
+cd ../frontend
 npm ci
 npm run build
 ```
 
-El proxy debe reenviar `X-Forwarded-Proto: https`. En modo producción Django activa HTTPS y cookies seguras.
+Si el frontend y la API tienen dominios distintos, configura
+`VITE_API_ORIGIN=https://api.ejemplo.cu` antes de `npm run build`.
+
+Vuelve a `backend` e inicia el servidor WSGI con Gunicorn:
+
+```bash
+cd ../backend
+gunicorn backend.wsgi:application --bind 127.0.0.1:8000 --workers 3 --timeout 120
+```
+
+Ejecuta Gunicorn, el worker Celery y Celery Beat como servicios supervisados
+separados. Configura el proxy HTTPS para servir `frontend/dist`, enrutar `/api/`
+y `/admin/` a Gunicorn, reenviar el encabezado `X-Forwarded-Proto` y servir
+`/static/` desde `STATIC_ROOT` (por defecto `backend/staticfiles`). No uses
+`runserver` en producción; permite en el proxy subidas de al menos 10 MB para
+los Excel. No publiques `MEDIA_ROOT` como directorio web: los
+archivos se entregan mediante los endpoints de descarga de la API. En modo
+producción Django activa HTTPS y cookies seguras.
 
 ## Archivos multimedia de noticias
 
@@ -187,7 +241,10 @@ Programa este comando periódicamente como mecanismo de recuperación y supervis
 
 ## Datos iniciales
 
-No ejecutes la semilla de `test_data/` en producción sin revisar su contenido y sus credenciales. Realiza una copia de seguridad antes de cada migración y conserva un procedimiento probado de restauración.
+Ejecuta la semilla territorial con el comportamiento seguro predeterminado; no
+crea usuarios ni contraseñas demo. No uses `--with-demo-users` en producción.
+Realiza una copia de seguridad antes de cada migración y conserva un
+procedimiento probado de restauración.
 
 ## Validación posterior
 
@@ -209,12 +266,16 @@ Comprueba como mínimo:
 - **Documentación API**: Swagger UI en `/api/v1/docs/` y esquema OpenAPI 3.0 en `/api/v1/schema/`.
 - **Base de datos**: SQLite por defecto en desarrollo. Para PostgreSQL define `DB_ENGINE=postgresql`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT`.
 - **Archivos**: `STATIC_ROOT` (por defecto `backend/staticfiles`) y `MEDIA_ROOT` (por defecto `backend/media`) son configurables por entorno.
+- **Tareas periódicas (Celery Beat)**: `backend/celery.py` programa el cierre de etapas vencidas (00:10), el reencolado de notificaciones atascadas (cada 15 min) y la copia de seguridad diaria (02:00). Requiere un proceso aparte del worker: `celery -A backend beat -l info`. Sin Beat el sistema funciona, pero esas tres cosas no ocurren solas.
 - **Cola de tareas (Celery + Redis)**: las notificaciones y los correos de autenticación (verificación, bienvenida, política de privacidad) se envían de forma asíncrona. Arranca el worker con `celery -A backend worker -l info`.
 - **Importaciones Excel asíncronas**: las 6 importaciones (plan de plazas, otorgamientos, cortes, carreras, escalafón, resultados) se encolan en Celery y el cliente consulta `GET /api/v1/import-export/tareas/<task_id>/`; sin `celery -A backend worker -l info` en ejecución permanecen en estado `pendiente`. Los archivos temporales se guardan en `MEDIA_ROOT/imports/` y se eliminan al terminar.
 
 ## Copias de seguridad de la base de datos
 
-**Estado: el mecanismo está implementado pero NO está programado.** Las copias no se harán solas hasta que se active una de las opciones de "Programación" más abajo. Requisito del sistema: copia automática con frecuencia mínima diaria y procedimientos de restauración documentados y verificados.
+La tarea de copia diaria ya está programada en `backend/celery.py` a las 02:00
+(zona horaria configurada por Django). Se ejecuta solo si Celery Beat está
+activo. La verificación de restauración no está programada automáticamente:
+debe ejecutarse semanalmente con cron o manualmente.
 
 ### Qué hay implementado
 
@@ -257,29 +318,26 @@ python manage.py verify_backup        # restaura la más reciente en una base te
 
 `verify_backup` comprueba (1) la suma SHA-256, (2) que la copia se restaura sin errores y (3) que contiene datos (tablas de usuarios, etapas y migraciones con filas). Si algo falla, el comando termina con error (código distinto de 0).
 
-### Programación (para activarla cuando corresponda)
+### Programación y verificación
 
-Opción A, con Celery Beat (ya se usa Celery + Redis). Añade en `backend/settings.py`:
+En producción, mantén **una sola instancia** de Celery Beat junto al worker:
 
-```python
-from celery.schedules import crontab
-
-CELERY_BEAT_SCHEDULE = {
-    "copia-diaria-bd": {"task": "apps.core.tasks.backup_database_task", "schedule": crontab(hour=2, minute=0)},
-    "verificar-restauracion-semanal": {"task": "apps.core.tasks.verify_backup_task", "schedule": crontab(hour=4, minute=0, day_of_week="sunday")},
-}
+```bash
+cd backend
+celery -A backend worker --loglevel=INFO
+celery -A backend beat --loglevel=INFO
 ```
 
-y arranca, además del worker, el planificador: `celery -A backend beat -l info`.
-
-Opción B, con `cron` (no depende de Celery):
+Programa semanalmente una restauración de prueba. Por ejemplo, con `cron`:
 
 ```cron
-0 2 * * *  cd /ruta/backend && /ruta/.venv/bin/python manage.py backup_database   >> /var/log/ingresosup-backup.log 2>&1
 0 4 * * 0  cd /ruta/backend && /ruta/.venv/bin/python manage.py verify_backup     >> /var/log/ingresosup-backup.log 2>&1
 ```
 
-Recomendación: copia diaria en horario de baja carga (02:00) y verificación de restauración semanal, además de una prueba completa manual al menos una vez al trimestre.
+La copia diaria y la verificación semanal requieren que el almacenamiento remoto
+esté disponible, que existan `pg_dump`/`pg_restore` y que las credenciales
+permitan crear y eliminar la base temporal de verificación. Revisa logs y
+alertas; realiza además una prueba completa manual al menos una vez al trimestre.
 
 ### Copia fuera del servidor (obligatoria en producción)
 

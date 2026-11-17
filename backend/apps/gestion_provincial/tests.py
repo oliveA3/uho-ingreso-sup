@@ -1,6 +1,7 @@
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone as datetime_timezone
+import importlib
 import tempfile
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import override_settings
@@ -13,13 +14,51 @@ from apps.gestion_escuela.models import Escalafon, EscalafonItem
 from apps.gestion_personal.models import BoletaInteres, BoletaInteresItem, BoletaSolicitud, BoletaSolicitudItem
 from apps.superadmin.models import Carrera, Ces, Escuela, Municipio, Provincia, TipoOtorgamiento
 
-from .models import ETAPAS_NOMBRES, Etapa, Noticia, PlanPlaza, Proceso
+from .models import ETAPAS_NOMBRES, Etapa, Noticia, PlanPlaza, Proceso, ensure_processes_for_year
+
+
+class AnnualStageStateMigrationTests(APITestCase):
+    def test_legacy_stage_state_moves_only_to_the_latest_process_year(self):
+        migration = importlib.import_module(
+            "apps.gestion_provincial.migrations.0012_annual_process_stage_state"
+        )
+        legacy_stage = Mock(
+            pk=4,
+            estado="completada",
+            fecha_inicio=date(2025, 1, 10),
+            fecha_fin=date(2025, 1, 20),
+            fecha_matematica=None,
+            fecha_espanol=None,
+            fecha_historia=None,
+        )
+        older_process = Mock(anio=date(2024, 1, 1))
+        older_state = older_process.estado
+        latest_process = Mock(anio=date(2025, 1, 1))
+        etapa_model = Mock()
+        etapa_model.objects.all.return_value = [legacy_stage]
+        proceso_model = Mock()
+        proceso_model.objects.only.return_value = [older_process, latest_process]
+        proceso_model.objects.filter.return_value.order_by.return_value.first.return_value = latest_process
+        apps = Mock()
+        apps.get_model.side_effect = [etapa_model, proceso_model]
+
+        migration.move_current_stage_state_to_latest_year(apps, None)
+
+        self.assertEqual(latest_process.estado, "completada")
+        self.assertEqual(latest_process.fecha_inicio, date(2025, 1, 10))
+        self.assertIs(older_process.estado, older_state)
+        proceso_model.objects.filter.assert_called_once_with(anio__year=2025, etapa_id=4)
+        latest_process.save.assert_called_once()
 
 
 class ProvincialNewsTests(APITestCase):
     @classmethod
     def setUpClass(cls):
-        cls.media_directory = tempfile.TemporaryDirectory()
+        # `ignore_cleanup_errors` porque las descargas se sirven con FileResponse y
+        # en las pruebas nadie cierra la respuesta: en Windows el fichero sigue
+        # abierto y el borrado del temporal falla. En producción es el servidor WSGI
+        # el que cierra la respuesta, así que no hay fuga real que arreglar aquí.
+        cls.media_directory = tempfile.TemporaryDirectory(ignore_cleanup_errors=True)
         cls.media_settings = override_settings(MEDIA_ROOT=cls.media_directory.name)
         cls.media_settings.enable()
         super().setUpClass()
@@ -286,10 +325,18 @@ class EtapaActivationTests(APITestCase):
             rol="jefe_comision",
         )
         self.client.force_authenticate(self.user)
+        self.year = timezone.localdate().year
         self.stage = Etapa.objects.get(nombre=ETAPAS_NOMBRES[1])
-        self.proceso = Proceso.objects.create(
-            anio=date(2025, 1, 1),
+        ensure_processes_for_year(self.year)
+        self.proceso = Proceso.objects.get(
+            anio__year=self.year,
             etapa=self.stage,
+        )
+
+    def stage_process(self, number, year=None):
+        return Proceso.objects.get(
+            anio__year=year or self.year,
+            etapa__nombre=ETAPAS_NOMBRES[number],
         )
 
     def test_creates_six_stages_for_a_process(self):
@@ -302,7 +349,7 @@ class EtapaActivationTests(APITestCase):
             Etapa.objects.create(nombre="Etapa inventada")
 
     def test_cannot_activate_stage_out_of_sequence(self):
-        stage = Etapa.objects.get(nombre=ETAPAS_NOMBRES[2])
+        stage = self.stage_process(2)
 
         response = self.client.post(
             reverse("provincial-etapa-activar", args=[stage.pk]),
@@ -314,8 +361,8 @@ class EtapaActivationTests(APITestCase):
         self.assertIn("secuencia", response.data["detail"])
 
     def test_activation_returns_current_status(self):
-        stage = Etapa.objects.get(nombre=ETAPAS_NOMBRES[1])
-        today = date.today()
+        stage = self.stage_process(1)
+        today = timezone.localdate()
         response = self.client.post(
             reverse("provincial-etapa-activar", args=[stage.pk]),
             {
@@ -328,25 +375,21 @@ class EtapaActivationTests(APITestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["estado"], "en_curso")
 
-    def test_activation_does_not_require_a_process(self):
+    def test_activation_requires_a_process_for_the_year(self):
+        process_id = self.proceso.pk
         self.proceso.delete()
-        stage = Etapa.objects.get(nombre=ETAPAS_NOMBRES[1])
-        today = date.today()
-
+        today = timezone.localdate()
         response = self.client.post(
-            reverse("provincial-etapa-activar", args=[stage.pk]),
-            {
-                "fecha_inicio": today.isoformat(),
-                "fecha_fin": (today + timedelta(days=5)).isoformat(),
-            },
+            reverse("provincial-etapa-activar", args=[process_id]),
+            {"fecha_inicio": today.isoformat(), "fecha_fin": (today + timedelta(days=5)).isoformat()},
             format="json",
         )
 
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 404)
 
     def test_can_close_stage_before_planned_end_date(self):
-        stage = Etapa.objects.get(nombre=ETAPAS_NOMBRES[1])
-        today = date.today()
+        stage = self.stage_process(1)
+        today = timezone.localdate()
         self.client.post(
             reverse("provincial-etapa-activar", args=[stage.pk]),
             {"fecha_inicio": today.isoformat(), "fecha_fin": (today + timedelta(days=30)).isoformat()},
@@ -359,8 +402,8 @@ class EtapaActivationTests(APITestCase):
         self.assertEqual(response.data["estado"], "completada")
 
     def test_can_close_stage_before_its_start_date(self):
-        stage = Etapa.objects.get(nombre=ETAPAS_NOMBRES[1])
-        today = date.today()
+        stage = self.stage_process(1)
+        today = timezone.localdate()
         planned_start = today + timedelta(days=1)
         planned_end = today + timedelta(days=10)
         self.client.post(
@@ -376,8 +419,8 @@ class EtapaActivationTests(APITestCase):
         self.assertEqual(response.data["fecha_fin"], planned_end.isoformat())
 
     def test_closing_stage_auto_sends_pending_escalafones(self):
-        stage = Etapa.objects.get(nombre=ETAPAS_NOMBRES[1])
-        today = date.today()
+        stage = self.stage_process(1)
+        today = timezone.localdate()
         self.client.post(
             reverse("provincial-etapa-activar", args=[stage.pk]),
             {"fecha_inicio": today.isoformat(), "fecha_fin": (today + timedelta(days=10)).isoformat()},
@@ -423,7 +466,7 @@ class EtapaActivationTests(APITestCase):
         self.assertFalse(item_sent.indices_bloqueados)
 
     def test_rejects_end_date_before_start_date(self):
-        stage = Etapa.objects.get(nombre=ETAPAS_NOMBRES[1])
+        stage = self.stage_process(1)
         response = self.client.post(
             reverse("provincial-etapa-activar", args=[stage.pk]),
             {"fecha_inicio": "2026-02-10", "fecha_fin": "2026-02-01"},
@@ -433,35 +476,201 @@ class EtapaActivationTests(APITestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn("fecha", str(response.data).lower())
 
-    def test_expired_stage_is_closed_when_stages_are_listed(self):
-        stage = Etapa.objects.get(nombre=ETAPAS_NOMBRES[1])
-        stage.fecha_inicio = date.today() - timedelta(days=5)
-        stage.fecha_fin = date.today() - timedelta(days=1)
+    def _expire_stage_one(self):
+        stage = self.stage_process(1)
+        stage.fecha_inicio = timezone.localdate() - timedelta(days=5)
+        stage.fecha_fin = timezone.localdate() - timedelta(days=1)
         stage.estado = "en_curso"
         stage.save()
+        return stage
+
+    def test_expired_stage_is_reported_as_completed_without_writing(self):
+        """Listar etapas es una lectura: informa del vencimiento sin tocar la base."""
+        stage = self._expire_stage_one()
 
         response = self.client.get(reverse("provincial-etapas"))
 
         self.assertEqual(response.status_code, 200)
+        listed = next(item for item in response.data if item["id"] == stage.id)
+        self.assertEqual(listed["estado"], "completada")
+        stage.refresh_from_db()
+        self.assertEqual(stage.estado, "en_curso", "un GET no debe escribir el estado")
+
+    def test_expired_stage_is_read_only_before_the_task_runs(self):
+        """Una etapa vencida no admite escrituras aunque la fila siga en_curso."""
+        from apps.gestion_provincial.services.etapas import is_stage_active
+
+        self._expire_stage_one()
+        self.assertFalse(is_stage_active(1))
+
+    def test_close_expired_stages_task_persists_the_state(self):
+        from apps.gestion_provincial.tasks import close_expired_stages_task
+
+        stage = self._expire_stage_one()
+        self.assertEqual(close_expired_stages_task(), 1)
         stage.refresh_from_db()
         self.assertEqual(stage.estado, "completada")
+        # Idempotente: una segunda pasada no cambia nada.
+        self.assertEqual(close_expired_stages_task(), 0)
 
-    def test_cannot_reset_until_all_stages_are_completed(self):
+    def test_next_stage_can_start_after_previous_expiry_before_cleanup_task(self):
+        self._expire_stage_one()
+        stage_two = self.stage_process(2)
+        today = timezone.localdate()
+
+        response = self.client.post(
+            reverse("provincial-etapa-activar", args=[stage_two.pk]),
+            {"fecha_inicio": today.isoformat(), "fecha_fin": (today + timedelta(days=5)).isoformat()},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200, response.content)
+        self.assertEqual(response.data["estado"], "en_curso")
+
+    def test_next_stage_stays_in_the_same_cohort_after_calendar_year_changes(self):
+        from apps.gestion_provincial.services.etapas import activate_stage, get_current_cycle_year
+
+        cohort_year = self.year - 1
+        ensure_processes_for_year(cohort_year)
+        previous_stage = self.stage_process(1, cohort_year)
+        previous_stage.estado = "completada"
+        previous_stage.save(update_fields=["estado"])
+        next_stage = self.stage_process(2, cohort_year)
+
+        with patch(
+            "apps.gestion_provincial.services.etapas.timezone.localdate",
+            return_value=date(cohort_year + 1, 1, 2),
+        ):
+            activate_stage(
+                next_stage.pk,
+                {
+                    "fecha_inicio": date(cohort_year + 1, 1, 2),
+                    "fecha_fin": date(cohort_year + 1, 1, 10),
+                },
+                self.user,
+                None,
+                "/api/v1/gestion-provincial/etapas/",
+            )
+            next_stage.refresh_from_db()
+            self.assertEqual(get_current_cycle_year(), cohort_year)
+
+        self.assertEqual(next_stage.estado, "en_curso")
+        self.assertEqual(next_stage.anio.year, cohort_year)
+
+    def test_exam_confirmations_use_the_local_process_year_at_utc_year_boundary(self):
+        from apps.gestion_provincial.services.etapas import activate_stage
+        from apps.gestion_personal.models import ConfirmacionPrueba
+        from apps.superadmin.models import Asignatura
+
+        province = Provincia.objects.create(nombre="Provincia de cambio de año")
+        municipality = Municipio.objects.create(nombre="Municipio de cambio de año", provincia=province)
+        school = Escuela.objects.create(nombre="Escuela de cambio de año", municipio=municipality)
+        student = Estudiante.objects.create(
+            ci="11010100001", nombre="Estudiante", apellidos="Prueba", sexo="F",
+            direccion="Calle", escuela=school,
+        )
+        process_year = date(2025, 1, 1).year
+        ensure_processes_for_year(process_year)
+        escalafon = Escalafon.objects.create(
+            proceso=self.stage_process(1, process_year), escuela=school
+        )
+        EscalafonItem.objects.create(
+            escalafon=escalafon, estudiante=student, indice_10=90, indice_11=90,
+            indice_12=90, indice_general=90,
+        )
+        for name in ("Matemática", "Español", "Historia de Cuba"):
+            Asignatura.objects.create(nombre=name)
+        Proceso.objects.filter(
+            anio__year=process_year,
+            etapa__nombre__in=[ETAPAS_NOMBRES[2], ETAPAS_NOMBRES[3]],
+        ).update(estado="completada")
+        stage_four = self.stage_process(4, process_year)
+
+        with patch(
+            "apps.gestion_provincial.services.etapas.timezone.localdate",
+            return_value=date(2025, 12, 31),
+        ), patch(
+            "apps.gestion_provincial.services.etapas.timezone.now",
+            return_value=datetime(2026, 1, 1, 1, tzinfo=datetime_timezone.utc),
+        ):
+            activate_stage(
+                stage_four.pk,
+                {
+                    "fecha_inicio": date(2025, 12, 31),
+                    "fecha_fin": date(2026, 1, 2),
+                    "fecha_matematica": date(2026, 1, 1),
+                    "fecha_espanol": date(2026, 1, 1),
+                    "fecha_historia": date(2026, 1, 1),
+                },
+                self.user,
+                None,
+                "/api/v1/gestion-provincial/etapas/",
+            )
+
+        self.assertEqual(
+            ConfirmacionPrueba.objects.filter(estudiante=student).count(),
+            3,
+        )
+
+    def test_new_cycle_requires_all_current_year_stages_to_be_completed(self):
         response = self.client.post(reverse("provincial-etapas-reiniciar"))
-
         self.assertEqual(response.status_code, 400)
 
-    def test_reset_clears_dates_and_states_after_all_stages_complete(self):
-        Etapa.objects.update(
+    def test_new_cycle_preserves_completed_year(self):
+        Proceso.objects.filter(anio__year=self.year).update(
             fecha_inicio=date.today(), fecha_fin=date.today(), estado="completada"
         )
 
-        response = self.client.post(reverse("provincial-etapas-reiniciar"))
+        response = self.client.post(
+            reverse("provincial-etapas-reiniciar"),
+            {"anio": self.year + 1},
+            format="json",
+        )
 
-        self.assertEqual(response.status_code, 200)
-        self.assertFalse(Etapa.objects.exclude(fecha_inicio=None).exists())
-        self.assertFalse(Etapa.objects.exclude(fecha_fin=None).exists())
-        self.assertFalse(Etapa.objects.exclude(estado="no_iniciada").exists())
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(Proceso.objects.filter(anio__year=self.year).count(), 6)
+        self.assertTrue(Proceso.objects.filter(anio__year=self.year, estado="completada").exists())
+        self.assertEqual(Proceso.objects.filter(anio__year=self.year + 1, estado="no_iniciada").count(), 6)
+
+        next_stage = self.stage_process(1, self.year + 1)
+        next_start = date(self.year + 1, 1, 10)
+        activation = self.client.post(
+            reverse("provincial-etapa-activar", args=[next_stage.pk]),
+            {
+                "fecha_inicio": next_start.isoformat(),
+                "fecha_fin": (next_start + timedelta(days=10)).isoformat(),
+            },
+            format="json",
+        )
+        self.assertEqual(activation.status_code, 200, activation.content)
+        self.assertEqual(Proceso.objects.filter(anio__year=self.year, estado="completada").count(), 6)
+        self.assertEqual(Proceso.objects.filter(anio__year=self.year + 1, estado="en_curso").count(), 1)
+
+    def test_prepared_cycle_becomes_current_before_its_first_stage_is_activated(self):
+        from apps.gestion_provincial.services.etapas import get_current_cycle_year
+
+        Proceso.objects.filter(anio__year=self.year).update(estado="completada")
+        response = self.client.post(
+            reverse("provincial-etapas-reiniciar"),
+            {"anio": self.year + 1},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(get_current_cycle_year(), self.year + 1)
+
+    def test_new_cycle_rejects_skipping_a_cohort_year(self):
+        Proceso.objects.filter(anio__year=self.year).update(estado="completada")
+        next_year = max(timezone.localdate().year, self.year + 1)
+
+        response = self.client.post(
+            reverse("provincial-etapas-reiniciar"),
+            {"anio": next_year + 1},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(Proceso.objects.filter(anio__year=next_year + 1).count(), 0)
 
     def test_provincial_representative_cannot_manage_stages(self):
         provincial = Usuario.objects.create_user(
@@ -554,9 +763,7 @@ class EtapaActivationTests(APITestCase):
         request_career = Carrera.objects.create(
             codigo="SOL-1", nombre="Carrera de solicitud", ces=ces, provincia=own_province,
         )
-        interest_process = Proceso.objects.create(
-            anio=date(timezone.now().year, 1, 1), etapa=Etapa.objects.get(nombre=ETAPAS_NOMBRES[2]),
-        )
+        interest_process = self.stage_process(2)
         own_interest = BoletaInteres.objects.create(
             estudiante=own_student, proceso=interest_process, enviada=True,
         )
@@ -566,22 +773,18 @@ class EtapaActivationTests(APITestCase):
         BoletaInteresItem.objects.create(boleta_interes=own_interest, carrera=interest_career, prioridad=1)
         BoletaInteresItem.objects.create(boleta_interes=other_interest, carrera=request_career, prioridad=1)
 
-        stage_2 = Etapa.objects.get(nombre=ETAPAS_NOMBRES[2])
-        stage_2.estado = "en_curso"
-        stage_2.save(update_fields=["estado"])
+        interest_process.estado = "en_curso"
+        interest_process.save(update_fields=["estado"])
         interest_response = self.client.get(reverse("provincial-dashboard"))
 
         self.assertEqual(interest_response.status_code, 200)
         self.assertEqual(interest_response.data["top_carreras"], [{"carrera__nombre": "Carrera de interés", "total": 1}])
 
-        stage_2.estado = "completada"
-        stage_2.save(update_fields=["estado"])
-        stage_3 = Etapa.objects.get(nombre=ETAPAS_NOMBRES[3])
-        stage_3.estado = "en_curso"
-        stage_3.save(update_fields=["estado"])
-        request_process = Proceso.objects.create(
-            anio=date(timezone.now().year, 1, 1), etapa=stage_3,
-        )
+        interest_process.estado = "completada"
+        interest_process.save(update_fields=["estado"])
+        request_process = self.stage_process(3)
+        request_process.estado = "en_curso"
+        request_process.save(update_fields=["estado"])
         tipo_provincial, _ = TipoOtorgamiento.objects.get_or_create(nombre="Provincial")
         plan = PlanPlaza.objects.create(
             proceso=request_process, carrera=request_career, cantidad_plazas=1,
@@ -639,11 +842,21 @@ class PlanPlazaImportTests(APITestCase):
         self.provincia = Provincia.objects.create(nombre="La Habana")
         self.ces = self._create_ces("Universidad de La Habana")
         self.carrera = self._create_carrera("CS-101", "Ingeniería en Informática")
-        self.active_stage = Etapa.objects.get(nombre=ETAPAS_NOMBRES[1])
-        self.active_stage.estado = "en_curso"
+        self.year = timezone.localdate().year
+        ensure_processes_for_year(self.year)
+        self.active_stage = self.stage_process(1)
+        self.active_stage.estado = "completada"
         self.active_stage.save(update_fields=["estado"])
-        self.proceso = Proceso.objects.create(anio=date(2025, 1, 1), etapa=self.active_stage)
-        Etapa.objects.filter(nombre=ETAPAS_NOMBRES[3]).update(estado="en_curso")
+        self.proceso = self.active_stage
+        self.plan_stage = self.stage_process(3)
+        self.plan_stage.estado = "en_curso"
+        self.plan_stage.save(update_fields=["estado"])
+
+    def stage_process(self, number):
+        return Proceso.objects.get(
+            anio__year=self.year,
+            etapa__nombre=ETAPAS_NOMBRES[number],
+        )
 
     def _create_ces(self, nombre):
         from apps.superadmin.models import Ces
@@ -704,23 +917,17 @@ class PlanPlazaImportTests(APITestCase):
         self.assertIsNotNone(plan)
         self.assertEqual(plan.carrera_id, self.carrera.id)
         self.assertEqual(plan.otorgamiento_tipo.nombre, "Municipal")
-        plan_stage = Etapa.objects.get(nombre=ETAPAS_NOMBRES[3])
-        self.assertEqual(plan.proceso.etapa_id, plan_stage.id)
+        self.assertEqual(plan.proceso_id, self.plan_stage.id)
         self.assertEqual(plan.cantidad_plazas, 12)
         self.assertEqual(plan.sexo, "A")
 
-    def test_import_uses_user_province_and_creates_process_automatically(self):
+    def test_import_uses_user_province_and_active_annual_process(self):
         from io import BytesIO
         from openpyxl import Workbook
         from django.core.files.uploadedfile import SimpleUploadedFile
 
         self.user.provincia = self.provincia
         self.user.save(update_fields=["provincia"])
-
-        plan_stage = Etapa.objects.get(nombre=ETAPAS_NOMBRES[3])
-        plan_stage.estado = "en_curso"
-        plan_stage.save(update_fields=["estado"])
-        Proceso.objects.filter(etapa=plan_stage).delete()
 
         workbook = Workbook()
         sheet = workbook.active
@@ -738,8 +945,8 @@ class PlanPlazaImportTests(APITestCase):
         plan = self.carrera.plan_plaza.order_by("-id").first()
         self.assertIsNotNone(plan)
         self.assertEqual(plan.provincia_id, self.provincia.id)
-        self.assertEqual(plan.proceso.etapa_id, plan_stage.id)
-        self.assertEqual(plan.proceso.anio.year, 2026)
+        self.assertEqual(plan.proceso_id, self.plan_stage.id)
+        self.assertEqual(plan.proceso.anio.year, self.year)
 
     def test_import_resolves_national_career_code_for_user_province(self):
         from io import BytesIO
@@ -792,7 +999,7 @@ class PlanPlazaImportTests(APITestCase):
         self.user.save(update_fields=["provincia"])
 
         plan_stage = Etapa.objects.get(nombre=ETAPAS_NOMBRES[3])
-        Proceso.objects.filter(etapa=plan_stage, anio__year=timezone.now().year).delete()
+        Proceso.objects.filter(etapa=plan_stage, anio__year=timezone.localdate().year).delete()
 
         response = self.client.get(reverse("plan-plazas"))
 
@@ -803,11 +1010,7 @@ class PlanPlazaImportTests(APITestCase):
         self.user.provincia = self.provincia
         self.user.save(update_fields=["provincia"])
 
-        plan_stage = Etapa.objects.get(nombre=ETAPAS_NOMBRES[3])
-        plan_stage.estado = "en_curso"
-        plan_stage.save(update_fields=["estado"])
-
-        active_process = Proceso.objects.create(anio=date(timezone.now().year, 1, 1), etapa=plan_stage)
+        active_process = self.plan_stage
         PlanPlaza.objects.create(
             proceso=active_process,
             carrera=self.carrera,
@@ -821,7 +1024,7 @@ class PlanPlazaImportTests(APITestCase):
         response = self.client.get(reverse("plan-plazas-landing"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data["year"], timezone.now().year)
+        self.assertEqual(response.data["year"], timezone.localdate().year)
         self.assertEqual(response.data["provincia_nombre"], self.provincia.nombre)
         self.assertEqual(len(response.data["items"]), 1)
         self.assertEqual(response.data["items"][0]["cantidad_plazas"], 20)
@@ -933,10 +1136,13 @@ class JefeStageReadOnlyTests(APITestCase):
             rol="jefe_comision", provincia=self.provincia,
         )
         self.client.force_authenticate(self.jefe)
-        self.etapa = Etapa.objects.get(nombre=ETAPAS_NOMBRES[3])
-        self.etapa.estado = "completada"
-        self.etapa.save(update_fields=["estado"])
-        self.proceso = Proceso.objects.get_or_create(anio=timezone.now().date().replace(month=1, day=1), etapa=self.etapa)[0]
+        stage = Etapa.objects.get(nombre=ETAPAS_NOMBRES[3])
+        self.proceso = Proceso.objects.get_or_create(
+            anio=timezone.localdate().replace(month=1, day=1),
+            etapa=stage,
+        )[0]
+        self.proceso.estado = "completada"
+        self.proceso.save(update_fields=["estado"])
         self.plan = PlanPlaza.objects.create(
             proceso=self.proceso, carrera=self.carrera, ces=self.ces, provincia=self.provincia,
             otorgamiento_tipo=self.tipo, cantidad_plazas=5, sexo="A",
@@ -962,8 +1168,8 @@ class JefeStageReadOnlyTests(APITestCase):
         self.assertEqual(self.plan.cantidad_plazas, 5)
 
     def test_crud_allowed_when_stage_in_progress(self):
-        self.etapa.estado = "en_curso"
-        self.etapa.save(update_fields=["estado"])
+        self.proceso.estado = "en_curso"
+        self.proceso.save(update_fields=["estado"])
         response = self.client.patch(reverse("plan-plaza-detail", args=[self.plan.id]), {"cantidad_plazas": 9}, format="json")
         self.assertEqual(response.status_code, 200, response.content)
 

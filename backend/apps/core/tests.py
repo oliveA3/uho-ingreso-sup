@@ -6,7 +6,9 @@ from celery.exceptions import Retry
 
 from apps.authentication.models import Usuario
 
-from .models import NotificationOutbox, Notificacion
+from rest_framework.test import APIClient
+
+from .models import LogAuditoria, NotificationOutbox, Notificacion
 from .notifications import notify_users
 from .tasks import process_notification_batch
 
@@ -94,3 +96,48 @@ class BackupServiceTests(TestCase):
         self.assertIn("ingresosup-20260928-020000.dump", kept)
         self.assertLess(len(kept), len(paths))
         self.assertNotIn("ingresosup-20260701-020000.dump", kept)
+
+
+class AuditNoDuplicateTests(TestCase):
+    """El middleware ya no añade una fila genérica cuando la vista registró la
+    acción con su nombre concreto, y `entidad` guarda el recurso afectado."""
+
+    def setUp(self):
+        from apps.superadmin.models import Escuela, Municipio, Provincia
+
+        province = Provincia.objects.create(nombre="Provincia auditada")
+        municipality = Municipio.objects.create(nombre="Municipio auditado", provincia=province)
+        school = Escuela.objects.create(nombre="Escuela auditada", municipio=municipality)
+        self.user = Usuario.objects.create_user(
+            username="audit.user", email="audit.user@example.com", password="Secreta1234",
+            rol="estudiante", escuela=school, municipio=municipality, provincia=province,
+            email_verificado=True,
+        )
+
+    def test_el_login_deja_una_sola_fila(self):
+        LogAuditoria.objects.all().delete()
+        client = APIClient()
+        response = client.post(
+            "/api/v1/authentication/login/",
+            {"username": "audit.user", "password": "Secreta1234"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 200, response.content)
+        acciones = list(LogAuditoria.objects.values_list("accion", flat=True))
+        self.assertEqual(acciones, ["Inicio de sesión"], acciones)
+
+    def test_las_consultas_se_siguen_auditando(self):
+        LogAuditoria.objects.all().delete()
+        client = APIClient()
+        client.force_authenticate(self.user)
+        for _ in range(2):
+            client.get("/api/v1/authentication/me/")
+        self.assertEqual(LogAuditoria.objects.count(), 2)
+
+    def test_entidad_guarda_el_recurso_no_el_rol(self):
+        from apps.core.audit import record_audit
+
+        record_audit(self.user, "Prueba", "/api/v1/superadmin/usuarios/")
+        entry = LogAuditoria.objects.latest("created_at")
+        self.assertEqual(entry.entidad, "usuario")
+        self.assertEqual(entry.rol, "estudiante")

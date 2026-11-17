@@ -1,8 +1,10 @@
+/* Seis muestras de color: en móvil van de dos en dos, porque apiladas obligan a
+   recorrer toda la pantalla para llegar al formulario de abajo. */
 .colorGrid {
   margin-top: 1.5rem;
   display: grid;
-  gap: 1rem;
-  grid-template-columns: repeat(1, minmax(0, 1fr));
+  gap: 1rem 0.75rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 @media (min-width: 640px) {
@@ -31,6 +33,7 @@
 
 .colorLabel {
   display: block;
+  overflow-wrap: anywhere;
 }
 
 /* Live preview swatches — the value is the user's chosen brand color, so it
@@ -58,6 +61,24 @@
   font-size: 0.75rem;
   font-weight: 400;
   color: var(--gris-700);
+}
+
+/* Con dos columnas en pantallas estrechas la muestra necesita menos relleno
+   para que el selector y el código hexadecimal sigan cabiendo. */
+@media (max-width: 480px) {
+  .colorSwatch {
+    padding: 0.875rem;
+    border-radius: 1.25rem;
+  }
+
+  .colorPicker {
+    height: 3.5rem;
+    width: 3.5rem;
+  }
+
+  .colorHex {
+    padding: 0.5rem 0.25rem;
+  }
 }
 
 .fieldsGrid {

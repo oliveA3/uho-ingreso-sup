@@ -5,6 +5,22 @@
   gap: 0.75rem;
 }
 
+/* En móvil los botones comparten la barra con el menú: se compactan para que
+   quepan en una sola línea y no crezca el alto de la cabecera. */
+@media (max-width: 639px) {
+  .container {
+    gap: 0.375rem;
+  }
+
+  .container a,
+  .container button {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+    font-size: 0.8125rem;
+    white-space: nowrap;
+  }
+}
+
 .userName {
   display: none;
   font-size: 0.875rem;

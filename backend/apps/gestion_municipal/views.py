@@ -1,3 +1,4 @@
+from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import serializers, viewsets
 from rest_framework.permissions import BasePermission
 
@@ -27,6 +28,13 @@ class MunicipalScopeMixin:
 		return queryset.filter(municipio_id=municipality_id)
 
 
+@extend_schema_view(
+	list=extend_schema(tags=["Gestión"], summary="Listar escuelas del municipio", description="Acotado al municipio del representante autenticado; un superadmin ve todas."),
+	create=extend_schema(tags=["Gestión"], summary="Crear una escuela del municipio", description="La escuela se asigna automáticamente al municipio del representante autenticado."),
+	retrieve=extend_schema(tags=["Gestión"], summary="Consultar una escuela del municipio"),
+	partial_update=extend_schema(tags=["Gestión"], summary="Actualizar una escuela del municipio"),
+	destroy=extend_schema(tags=["Gestión"], summary="Eliminar una escuela del municipio"),
+)
 class MunicipalEscuelaViewSet(MunicipalScopeMixin, viewsets.ModelViewSet):
 	serializer_class = MunicipalEscuelaSerializer
 
@@ -40,6 +48,13 @@ class MunicipalEscuelaViewSet(MunicipalScopeMixin, viewsets.ModelViewSet):
 		serializer.save(municipio_id=municipality_id)
 
 
+@extend_schema_view(
+	list=extend_schema(tags=["Gestión"], summary="Listar directores y secretarios de escuela", description="Solo cuentas con rol `director_escuela` o `secretario_escuela` del municipio del representante autenticado."),
+	create=extend_schema(tags=["Gestión"], summary="Crear un director o secretario de escuela", description="La escuela indicada debe pertenecer al municipio del representante autenticado."),
+	retrieve=extend_schema(tags=["Gestión"], summary="Consultar un director o secretario de escuela"),
+	partial_update=extend_schema(tags=["Gestión"], summary="Actualizar un director o secretario de escuela"),
+	destroy=extend_schema(tags=["Gestión"], summary="Eliminar un director o secretario de escuela"),
+)
 class MunicipalUserViewSet(MunicipalScopeMixin, viewsets.ModelViewSet):
 	serializer_class = MunicipalUserSerializer
 

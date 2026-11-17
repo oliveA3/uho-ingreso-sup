@@ -7,25 +7,16 @@
 Desde la raíz del repositorio:
 
 ```cmd
-cd /d C:\Amanda\College\IngresoSup
-.venv\Scripts\activate.bat
-cd backend      
-python -m pip install -r requirements.txt
-python manage.py migrate
-cd ..
-python test_data\seed_initial_data.py
-cd backend
-python manage.py runserver
-```
-
-Si el entorno virtual todavía no existe:
-
-```cmd
-cd /d C:\Amanda\College\IngresoSup
 python -m venv .venv
 .venv\Scripts\activate.bat
 cd backend
-python -m pip install -r requirements.txt
+python -m pip install -r requirements-dev.txt
+python manage.py migrate
+python manage.py seed_initial_data
+python manage.py createsuperuser
+cd ..
+cd backend
+python manage.py runserver
 ```
 
 El backend queda disponible en `http://127.0.0.1:8000/` y la API versionada en `/api/v1/`.
@@ -35,8 +26,8 @@ El backend queda disponible en `http://127.0.0.1:8000/` y la API versionada en `
 En otra ventana de CMD:
 
 ```cmd
-cd /d C:\Amanda\College\IngresoSup\frontend
-npm install
+cd frontend
+npm ci
 npm run dev
 ```
 
@@ -49,7 +40,7 @@ VITE_API_ORIGIN=https://api.ingresosup.cu
 ## Comprobaciones rápidas
 
 ```cmd
-cd /d C:\Amanda\College\IngresoSup\backend
+cd backend
 ..\.venv\Scripts\python.exe manage.py check
 ..\.venv\Scripts\python.exe manage.py test
 ```

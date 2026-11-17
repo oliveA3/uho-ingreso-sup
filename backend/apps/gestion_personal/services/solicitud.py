@@ -4,6 +4,8 @@ from django.utils import timezone
 from apps.authentication.models import Usuario
 from apps.gestion_escuela.models import EscalafonItem
 from apps.gestion_provincial.models import ETAPAS_NOMBRES, Etapa, PlanPlaza
+from apps.gestion_provincial.services.etapas import effective_stage_state, get_active_stage
+
 from apps.gestion_personal.models import BoletaSolicitud, BoletaSolicitudItem, BoletaSolicitudItemAnterior
 
 MAX_ITEMS = 10
@@ -29,12 +31,12 @@ class SolicitudError(Exception):
 
 
 def active_stage_number():
-	active_stage = Etapa.objects.filter(estado="en_curso").order_by("id").first()
-	return next((number for number, name in ETAPAS_NOMBRES.items() if active_stage and name == active_stage.nombre), None)
+	active_stage = get_active_stage()
+	return next((number for number, name in ETAPAS_NOMBRES.items() if active_stage and name == active_stage.etapa.nombre), None)
 
 
 def stage_is_active(stage):
-	return bool(stage and stage.estado == "en_curso") and active_stage_number() == 3
+	return bool(stage and effective_stage_state(stage) == "en_curso") and active_stage_number() == 3
 
 
 def can_edit(ballot, stage):
@@ -63,7 +65,12 @@ def _validate_plans(student, process, raw_ids):
 		plan_ids = []
 	if len(plan_ids) != MAX_ITEMS or len(set(plan_ids)) != len(plan_ids):
 		raise SolicitudError(f"Debes seleccionar exactamente {MAX_ITEMS} carreras sin repetir.")
-	plans = list(PlanPlaza.objects.filter(id__in=plan_ids, proceso=process, provincia_id=student.escuela.municipio.provincia_id))
+	plans = list(PlanPlaza.objects.filter(
+		id__in=plan_ids,
+		proceso=process,
+		provincia_id=student.escuela.municipio.provincia_id,
+		sexo__in=("A", student.sexo),
+	))
 	if len(plans) != len(plan_ids):
 		raise SolicitudError("Una o más carreras no pertenecen al plan de plazas disponible.")
 	return plan_ids, plans

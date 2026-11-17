@@ -1,5 +1,5 @@
 from django.db.models import Count
-from apps.gestion_provincial.services.etapas import stage_readonly_message
+from apps.gestion_provincial.services.etapas import get_active_stage, get_current_cycle_year, is_stage_active, stage_readonly_message
 from django.utils import timezone
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiExample, OpenApiParameter, extend_schema, inline_serializer
@@ -11,15 +11,15 @@ from django.db import transaction
 from apps.authentication.models import Estudiante, Usuario
 from apps.core.notifications import notify_users
 from apps.core.audit import record_audit
+from apps.core.passwords import generate_temporary_password
 from apps.gestion_personal.models import BoletaInteres, BoletaInteresItem, BoletaSolicitud, ConfirmacionPrueba
 from apps.gestion_personal.serializers import BoletaSolicitudSerializer
-from apps.gestion_provincial.models import ETAPAS_NOMBRES, Etapa, PlanPlaza, Proceso
+from apps.gestion_provincial.models import ETAPAS_NOMBRES, PlanPlaza, Proceso
 from .models import EscalafonItem
 from .permissions import CanViewStudentsWithoutAccount, IsSchoolSecretary
 from .serializers import StudentsWithoutAccountSerializer
 
-from django.utils import timezone as dj_timezone
-from apps.authentication.models import PRIVACY_POLICY_VERSION, Usuario
+from apps.authentication.models import Usuario
 from apps.core.emailing import send_email_async
 
 
@@ -50,7 +50,7 @@ from apps.core.emailing import send_email_async
                 "success": True,
                 "data": {
                     "students": [
-                        {"id": 12, "ci": "01010199912345", "nombre": "Ana", "apellidos": "Pérez López", "indice_general": 92.5},
+                        {"id": 12, "ci": "01010112345", "nombre": "Ana", "apellidos": "Pérez López", "indice_general": 92.5},
                     ]
                 },
                 "error": None,
@@ -63,7 +63,7 @@ class StudentsWithoutAccountView(APIView):
     permission_classes = [CanViewStudentsWithoutAccount]
 
     def get(self, request):
-        process = Proceso.get_for_stage_and_year(timezone.now().year, ETAPAS_NOMBRES[1])
+        process = Proceso.get_for_stage_and_year(get_current_cycle_year(), ETAPAS_NOMBRES[1])
         students = Estudiante.objects.filter(
             escuela_id=request.user.escuela_id,
             usuario__isnull=True,
@@ -150,7 +150,7 @@ class SchoolDashboardView(APIView):
     permission_classes = [CanViewStudentsWithoutAccount]
 
     def get(self, request):
-        year = timezone.now().year
+        year = get_current_cycle_year()
         escalafon_process = Proceso.get_for_stage_and_year(year, ETAPAS_NOMBRES[1])
         interest_process = Proceso.get_for_stage_and_year(year, ETAPAS_NOMBRES[2])
         solicitud_process = Proceso.get_for_stage_and_year(year, ETAPAS_NOMBRES[3])
@@ -158,12 +158,12 @@ class SchoolDashboardView(APIView):
         students = Estudiante.objects.filter(id__in=entries.values("estudiante_id"))
         interest = BoletaInteres.objects.filter(estudiante__in=students, proceso=interest_process) if interest_process else BoletaInteres.objects.none()
         solicitud = BoletaSolicitud.objects.filter(estudiante__in=students, proceso=solicitud_process) if solicitud_process else BoletaSolicitud.objects.none()
-        active_stage = Etapa.objects.filter(estado="en_curso").order_by("id").first()
-        active_stage_number = next((number for number, name in ETAPAS_NOMBRES.items() if active_stage and name == active_stage.nombre), None)
+        active_stage = get_active_stage()
+        active_stage_number = next((number for number, name in ETAPAS_NOMBRES.items() if active_stage and name == active_stage.etapa.nombre), None)
         return Response({
             "year": year,
-            "active_stage": {"numero": active_stage_number, "nombre": active_stage.nombre} if active_stage else None,
-            "ballot_stage": {"numero": active_stage_number, "nombre": active_stage.nombre} if active_stage else None,
+            "active_stage": {"numero": active_stage_number, "nombre": active_stage.etapa.nombre} if active_stage else None,
+            "ballot_stage": {"numero": active_stage_number, "nombre": active_stage.etapa.nombre} if active_stage else None,
             "students": students.count(),
             "students_with_account": students.filter(usuario__isnull=False).count(),
             "escalafon": {"sent": entries.filter(escalafon__estado="enviado").values("escalafon_id").distinct().count(), "accepted": entries.filter(estado="aceptado").count(), "review": entries.filter(estado="por_revisar").count(), "no_response": entries.filter(estado="sin_respuesta").count()},
@@ -212,7 +212,7 @@ class CreateStudentAccountView(APIView):
 
         username = request.data.get("username")
         email = request.data.get("email")
-        password = request.data.get("password") or Usuario.objects.make_random_password()
+        password = request.data.get("password") or generate_temporary_password()
         if not username or not email:
             return Response({"detail": "Se requiere username y email."}, status=400)
 
@@ -241,14 +241,14 @@ class CreateStudentAccountView(APIView):
                 user.username = username
                 user.set_password(password)
             else:
+                # La politica de privacidad NO se acepta aqui: la escuela no puede
+                # aceptarla en nombre del estudiante. La acepta el propio estudiante
+                # al verificar su correo (ver VerifyEmailView).
                 user = Usuario.objects.create_user(username=username, email=email, password=password,
                                                    first_name=estudiante.nombre, last_name=estudiante.apellidos,
                                                    rol="estudiante", escuela=estudiante.escuela,
                                                    municipio=estudiante.escuela.municipio,
-                                                   provincia=estudiante.escuela.municipio.provincia,
-                                                   politica_privacidad_aceptada=True,
-                                                   politica_privacidad_fecha_aceptacion=dj_timezone.now(),
-                                                   politica_privacidad_version=PRIVACY_POLICY_VERSION)
+                                                   provincia=estudiante.escuela.municipio.provincia)
             user.is_active = False
             user.email_verificado = False
             user.pending_student = estudiante
@@ -268,8 +268,8 @@ class CreateStudentAccountView(APIView):
                         f"Hola {estudiante.nombre},\n\n"
                         f"Tu cuenta ha sido creada por la escuela.\nUsuario: {user.username}\nContraseña temporal: {password}\n\n"
                         "Para activar tu cuenta, inicia sesión con estas credenciales. En ese momento te enviaremos "
-                        "un código de verificación válido por 15 minutos. Después de verificar el correo, deberás "
-                        "cambiar la contraseña temporal."
+                        "un código de verificación válido por 15 minutos. Al verificar el correo deberás aceptar la "
+                        "política de privacidad y cambiar la contraseña temporal."
                     ),
                     recipient_list=[user.email],
                 )
@@ -360,17 +360,13 @@ class SchoolInterestMetricsView(APIView):
     permission_classes = [CanViewStudentsWithoutAccount]
 
     def get(self, request):
-        stage = Etapa.objects.filter(nombre=ETAPAS_NOMBRES[2]).first()
-        if stage and stage.estado == "en_curso" and stage.fecha_fin and stage.fecha_fin < timezone.localdate():
-            stage.estado = "completada"
-            stage.save(update_fields=["estado"])
-        process = Proceso.get_for_stage_and_year(timezone.now().year, ETAPAS_NOMBRES[2])
-        active_stage = Etapa.objects.filter(estado="en_curso").order_by("id").first()
+        process = Proceso.get_for_stage_and_year(get_current_cycle_year(), ETAPAS_NOMBRES[2])
+        active_stage = get_active_stage()
         active_stage_number = next(
-            (number for number, name in ETAPAS_NOMBRES.items() if active_stage and name == active_stage.nombre),
+            (number for number, name in ETAPAS_NOMBRES.items() if active_stage and name == active_stage.etapa.nombre),
             None,
         )
-        escalafon_process = Proceso.get_for_stage_and_year(timezone.now().year, ETAPAS_NOMBRES[1])
+        escalafon_process = Proceso.get_for_stage_and_year(get_current_cycle_year(), ETAPAS_NOMBRES[1])
         students = Estudiante.objects.filter(
             escuela_id=request.user.escuela_id,
             escalafones__escalafon__proceso=escalafon_process,
@@ -393,7 +389,7 @@ class SchoolInterestMetricsView(APIView):
             "stage": {
                 "active": bool(active_stage_number == 2),
                 "numero": active_stage_number,
-                "nombre": active_stage.nombre if active_stage else None,
+                "nombre": active_stage.etapa.nombre if active_stage else None,
                 "fecha_inicio": active_stage.fecha_inicio if active_stage else None,
                 "fecha_fin": active_stage.fecha_fin if active_stage else None,
             },
@@ -475,7 +471,7 @@ class SchoolExamConfirmationMetricsView(APIView):
     permission_classes = [IsSchoolSecretary]
 
     def get(self, request):
-        year = timezone.now().year
+        year = get_current_cycle_year()
         process = Proceso.get_for_stage_and_year(year, ETAPAS_NOMBRES[4])
         confirmations = ConfirmacionPrueba.objects.filter(
             proceso=process,
@@ -502,7 +498,7 @@ class SchoolExamConfirmationMetricsView(APIView):
         return Response({
             "year": year,
             "process_id": process.id if process else None,
-            "stage_active": bool(process and process.etapa.estado == "en_curso"),
+            "stage_active": is_stage_active(4),
             "subjects": [
                 {"name": name, "pending": values["pending"], "confirmed": values["confirmed"], "rejected": values["rejected"], "confirmed_students": values["confirmed_students"]}
                 for name, values in sorted(subjects.items())
@@ -605,9 +601,8 @@ class SchoolSolicitudView(APIView):
         ],
     )
     def get(self, request):
-        stage = Etapa.objects.filter(nombre=ETAPAS_NOMBRES[3]).first()
-        process = Proceso.get_for_stage_and_year(timezone.now().year, ETAPAS_NOMBRES[3])
-        escalafon_process = Proceso.get_for_stage_and_year(timezone.now().year, ETAPAS_NOMBRES[1])
+        process = Proceso.get_for_stage_and_year(get_current_cycle_year(), ETAPAS_NOMBRES[3])
+        escalafon_process = Proceso.get_for_stage_and_year(get_current_cycle_year(), ETAPAS_NOMBRES[1])
         ballots = BoletaSolicitud.objects.filter(
             estudiante__escuela_id=request.user.escuela_id,
             proceso=process,
@@ -643,9 +638,9 @@ class SchoolSolicitudView(APIView):
                 tipo = item.plan_plaza.otorgamiento_tipo.nombre
                 type_counts[tipo] = type_counts.get(tipo, 0) + 1
         return Response({
-            "items": [{**BoletaSolicitudSerializer(ballot).data, "student": {"nombre": ballot.estudiante.nombre, "apellidos": ballot.estudiante.apellidos, "ci": ballot.estudiante.ci, "indice_general": (EscalafonItem.objects.filter(estudiante=ballot.estudiante, escalafon__proceso__anio__year=timezone.now().year).order_by("-escalafon_id", "-id").values_list("indice_general", flat=True).first() or ballot.estudiante.indice_general)}} for ballot in ballots],
-            "stage_active": bool(stage and stage.estado == "en_curso"),
-            "puede_aprobar": bool(stage and stage.estado == "en_curso"),
+            "items": [{**BoletaSolicitudSerializer(ballot).data, "student": {"nombre": ballot.estudiante.nombre, "apellidos": ballot.estudiante.apellidos, "ci": ballot.estudiante.ci, "indice_general": (EscalafonItem.objects.filter(estudiante=ballot.estudiante, escalafon__proceso__anio__year=get_current_cycle_year()).order_by("-escalafon_id", "-id").values_list("indice_general", flat=True).first() or ballot.estudiante.indice_general)}} for ballot in ballots],
+            "stage_active": is_stage_active(3),
+            "puede_aprobar": is_stage_active(3),
             "metrics": {
                 "enviadas": submitted_count,
                 "pendientes": sum(ballot.estado == "pendiente" for ballot in all_ballots),
@@ -737,8 +732,7 @@ class SchoolSolicitudView(APIView):
     def post(self, request, ballot_id):
         if request.user.rol != "secretario_escuela" and not request.user.is_superuser:
             return Response({"detail": "Solo el Secretario de Escuela puede aprobar boletas."}, status=403)
-        stage = Etapa.objects.filter(nombre=ETAPAS_NOMBRES[3]).first()
-        if not stage or stage.estado != "en_curso":
+        if not is_stage_active(3):
             return Response({"detail": stage_readonly_message(3, "aprobar boletas de solicitud")}, status=403)
         ballot = BoletaSolicitud.objects.filter(pk=ballot_id, estudiante__escuela_id=request.user.escuela_id).first()
         if not ballot:

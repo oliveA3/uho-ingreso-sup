@@ -4,6 +4,7 @@ import Modal from "./Modal";
 import FormField from "../FormField/FormField";
 import Select from "../Select/Select";
 import PrimaryButton from "../Buttons/PrimaryButton";
+import SecondaryButton from "../Buttons/SecondaryButton";
 import DataTable from "../DataTable/DataTable";
 import styles from "./ResultadosModal.module.css";
 
@@ -26,8 +27,12 @@ const columns = [
   { key: "province", header: "Provincia" },
 ];
 
-export default function ResultadosModal({ onClose }) {
-  const [filters, setFilters] = useState(emptyFilters);
+export default function ResultadosModal({ onClose, user }) {
+  const [filters, setFilters] = useState(() => ({
+    ...emptyFilters,
+    provincia: user?.rol === "estudiante" ? user.provincia_nombre || "" : "",
+  }));
+  const [page, setPage] = useState(1);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -36,14 +41,16 @@ export default function ResultadosModal({ onClose }) {
   useEffect(() => {
     let active = true;
     setLoading(true);
-    fetchLandingResults(filters)
+    fetchLandingResults({ ...filters, page })
       .then((nextData) => { if (active) { setData(nextData); setError(""); } })
       .catch((requestError) => { if (active) setError(requestError.message); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [filters]);
+  }, [filters, page]);
 
   function changeFilter(field, value) {
+    // Cambiar un filtro reinicia la paginación.
+    setPage(1);
     setFilters((current) => ({ ...current, [field]: field === "anio" ? Number(value) : value }));
   }
 
@@ -109,9 +116,27 @@ export default function ResultadosModal({ onClose }) {
           data={results}
           loading={loading}
           loadingMessage="Cargando resultados..."
-          emptyMessage="No hay notas para los filtros seleccionados."
+          emptyMessage={
+            data && data.publicacion_habilitada === false
+              ? "La consulta pública de estos datos aún no ha sido habilitada por la Comisión de Ingreso."
+              : "No hay notas para los filtros seleccionados."
+          }
         />
       </div>
+
+      {data?.total_pages > 1 && (
+        <div className={styles.paginationRow}>
+          <SecondaryButton type="button" onClick={() => setPage((current) => Math.max(1, current - 1))} disabled={loading || page <= 1}>
+            Anterior
+          </SecondaryButton>
+          <span className={styles.pageSummary}>
+            Página {data.page} de {data.total_pages} · {data.count} registros
+          </span>
+          <SecondaryButton type="button" onClick={() => setPage((current) => Math.min(data.total_pages, current + 1))} disabled={loading || page >= data.total_pages}>
+            Siguiente
+          </SecondaryButton>
+        </div>
+      )}
     </Modal>
   );
 }

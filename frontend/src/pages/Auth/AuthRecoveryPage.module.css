@@ -48,3 +48,29 @@
   font-weight: 600;
   text-decoration: underline;
 }
+
+.privacyConsentRow {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.privacyConsentLabel {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  font-size: 0.875rem;
+  color: var(--gris-700);
+  line-height: 1.5;
+}
+
+.privacyConsentLabel input {
+  margin-top: 0.125rem;
+  width: 1rem;
+  height: 1rem;
+}
+
+.privacyConsentLabel a {
+  color: var(--color-primario, #1f4e79);
+  text-decoration: underline;
+}

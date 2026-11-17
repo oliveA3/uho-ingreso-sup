@@ -3,7 +3,7 @@ from rest_framework.authentication import CSRFCheck
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from drf_spectacular.extensions import OpenApiAuthenticationExtension
 
-from .cookies import ACCESS_COOKIE_NAME
+from .cookies import ACCESS_COOKIE_NAME, REFRESH_COOKIE_NAME
 
 PASSWORD_CHANGE_ALLOWED_SUFFIXES = ("/authentication/change-password", "/authentication/me", "/authentication/logout", "/authentication/csrf", "/authentication/token/refresh")
 
@@ -47,13 +47,45 @@ class CookieJWTAuthentication(JWTAuthentication):
 
 
 class CookieJWTAuthenticationScheme(OpenApiAuthenticationExtension):
+    """Declara en OpenAPI los dos mecanismos que `CookieJWTAuthentication` acepta.
+
+    `authenticate()` lee primero la cookie HttpOnly y, si no está presente,
+    delega en `JWTAuthentication`, que lee el header `Authorization`. Declarar
+    solo uno de los dos dejaría la documentación desalineada del código.
+    """
+
     target_class = "apps.authentication.cookie_auth.CookieJWTAuthentication"
-    name = "BearerAuth"
+    name = ["CookieAuth", "BearerAuth"]
+
+    def get_security_requirement(self, auto_schema):
+        # Lista de dicts => alternativas (OR): basta la cookie o basta el header.
+        return [{"CookieAuth": []}, {"BearerAuth": []}]
 
     def get_security_definition(self, auto_schema):
-        return {
-            "type": "http",
-            "scheme": "bearer",
-            "bearerFormat": "JWT",
-            "description": "Token JWT emitido al iniciar sesión. La aplicación también usa la cookie HttpOnly access_token para mantener la sesión autentica.",
-        }
+        return [
+            {
+                "type": "apiKey",
+                "in": "cookie",
+                "name": ACCESS_COOKIE_NAME,
+                "description": (
+                    f"Cookie HttpOnly `{ACCESS_COOKIE_NAME}` con el JWT de acceso; la establece "
+                    f"`POST /api/v1/authentication/login/` y la renueva "
+                    f"`POST /api/v1/authentication/token/refresh/` a partir de la cookie "
+                    f"`{REFRESH_COOKIE_NAME}`. Es el mecanismo que usa el cliente web y no es legible "
+                    "desde JavaScript. Como el navegador la envía automáticamente, los métodos que "
+                    "modifican estado (POST, PUT, PATCH, DELETE) exigen además el header `X-CSRFToken` "
+                    "con el valor de la cookie `csrftoken`, que se obtiene en "
+                    "`GET /api/v1/authentication/csrf/`."
+                ),
+            },
+            {
+                "type": "http",
+                "scheme": "bearer",
+                "bearerFormat": "JWT",
+                "description": (
+                    "Header `Authorization: Bearer <access>` con el JWT emitido al iniciar sesión. "
+                    "Alternativa para clientes no navegador (integraciones servidor a servidor), que "
+                    "no requiere CSRF porque el token se envía de forma explícita."
+                ),
+            },
+        ]

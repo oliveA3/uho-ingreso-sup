@@ -1,4 +1,4 @@
-"""Carga datos territoriales y cuentas demo en una instalación Django nueva.
+"""Carga datos territoriales y catálogos en una instalación Django nueva.
 
 Ejecutar desde la raíz del repositorio:
     python test_data/seed_initial_data.py
@@ -27,9 +27,17 @@ def main():
         action="store_true",
         help="Actualiza la contraseña de las cuentas seed existentes.",
     )
+    parser.add_argument(
+        "--with-demo-users",
+        action="store_true",
+        help="Crea cuentas demo; requiere --password o INGRESOSUP_SEED_PASSWORD.",
+    )
     args = parser.parse_args()
     django.setup()
-    command_options = {"reset_password": args.reset_password}
+    command_options = {
+        "reset_password": args.reset_password,
+        "with_demo_users": args.with_demo_users,
+    }
     if args.password:
         command_options["password"] = args.password
     call_command("seed_initial_data", **command_options)

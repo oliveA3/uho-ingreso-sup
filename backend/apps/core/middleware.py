@@ -39,6 +39,9 @@ class AuditMiddleware:
             request.user.is_authenticated
             and request.path.startswith("/api/")
             and not request.path.startswith(self.excluded_prefixes)
+            # Si la vista ya registro la accion (con su nombre concreto), no se
+            # anade la fila generica: antes un login dejaba dos entradas.
+            and not getattr(request, "_audit_recorded", False)
         ):
             audit_data = getattr(request, "_audit_data", None)
             if audit_data is None:

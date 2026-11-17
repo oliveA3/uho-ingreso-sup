@@ -32,15 +32,19 @@
   background-color: var(--color-secundario, #2e75b6) !important;
 }
 
+/* Contadores cortos: se reparten en las columnas que quepan en móvil en lugar
+   de apilarse uno debajo de otro. */
 .summaryGrid {
   margin-top: 1.5rem;
   display: grid;
-  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(6.5rem, 1fr));
+  gap: 1rem 0.5rem;
 }
 
 @media (min-width: 640px) {
   .summaryGrid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1rem;
   }
 }
 

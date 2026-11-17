@@ -14,10 +14,42 @@ try:
 except ImportError:
     pass
 
-SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "django-insecure-change-this-for-production")
+INSECURE_SECRET_KEY = "django-insecure-change-this-for-production"
+SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", INSECURE_SECRET_KEY)
+
+RUNNING_TESTS = "test" in sys.argv
 DEBUG = os.getenv("DJANGO_DEBUG", "true").lower() == "true"
+
 ALLOWED_HOSTS = [host.strip() for host in os.getenv("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if host.strip()]
 FRONTEND_URL = os.getenv("FRONTEND_URL", "").rstrip("/")
+
+# Guardias de arranque. El default de DEBUG sigue siendo `true` para que el
+# arranque en limpio de docs/SETUP.md funcione sin configurar nada, pero las dos
+# combinaciones que delatan un despliegue mal configurado abortan de inmediato en
+# vez de servir el sistema de forma insegura.
+_LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1", "0.0.0.0", "testserver"}
+_PUBLIC_HOSTS = [host for host in ALLOWED_HOSTS if host not in _LOCAL_HOSTS]
+
+
+def _fail_configuration(message):
+    from django.core.exceptions import ImproperlyConfigured
+
+    raise ImproperlyConfigured(message)
+
+
+if not RUNNING_TESTS:
+    if DEBUG and _PUBLIC_HOSTS:
+        # Se sirve un dominio publico pero nadie desactivo DEBUG: Django publicaria
+        # trazas de error con configuracion y consultas SQL.
+        _fail_configuration(
+            f"DJANGO_ALLOWED_HOSTS declara hosts públicos ({', '.join(_PUBLIC_HOSTS)}) pero "
+            "DJANGO_DEBUG sigue activo. Define DJANGO_DEBUG=false para desplegar."
+        )
+    if not DEBUG and SECRET_KEY == INSECURE_SECRET_KEY:
+        _fail_configuration(
+            "DJANGO_SECRET_KEY no está definida y DEBUG es False: define una clave larga y "
+            "aleatoria antes de arrancar en producción (ver .env.example)."
+        )
 
 # Correo de notificaciones. EMAIL_PROVIDER: mailtrap (desarrollo), sendgrid (producción),
 # smtp (SMTP institucional) o console (imprime en consola).
@@ -42,17 +74,23 @@ DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "no-reply@ingresosup.local"
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
 # En desarrollo (DEBUG) sin REDIS_URL definido se usa caché local para poder arrancar sin Redis;
 # en producción Redis es obligatorio.
-if "test" in sys.argv or os.getenv("CACHE_BACKEND", "").lower() == "locmem" or (DEBUG and "REDIS_URL" not in os.environ):
+if RUNNING_TESTS or os.getenv("CACHE_BACKEND", "").lower() == "locmem" or (DEBUG and "REDIS_URL" not in os.environ):
     CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
 else:
     CACHES = {"default": {"BACKEND": "django.core.cache.backends.redis.RedisCache", "LOCATION": f"{REDIS_URL}/1"}}
 
 CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", f"{REDIS_URL}/0")
 CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", CELERY_BROKER_URL)
-CELERY_TASK_ALWAYS_EAGER = os.getenv("CELERY_TASK_ALWAYS_EAGER", "true" if "test" in sys.argv else "false").lower() == "true"
+CELERY_TASK_ALWAYS_EAGER = os.getenv("CELERY_TASK_ALWAYS_EAGER", "true" if RUNNING_TESTS else "false").lower() == "true"
 CELERY_TASK_EAGER_PROPAGATES = True
 CELERY_TASK_DEFAULT_RETRY_DELAY = 60
 CELERY_TASK_TRACK_STARTED = True
+# Si Redis no responde, `.delay()` debe fallar en segundos y no bloquear la
+# petición HTTP que lo llamó: de eso dependen `send_email_async` y `notify_users`,
+# que ya no despachan en un hilo aparte.
+CELERY_BROKER_TRANSPORT_OPTIONS = {"socket_timeout": 2, "socket_connect_timeout": 2}
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+CELERY_BROKER_CONNECTION_MAX_RETRIES = 1
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -178,11 +216,25 @@ LOGGING = {
             "filename": LOG_DIR / "audit.log",
             "encoding": "utf-8",
         },
+        # Los errores de la API no se persistian en ningun sitio: iban al handler
+        # de consola por defecto, que en Windows usa cp1252 y revienta con
+        # UnicodeEncodeError al registrar una traza con acentos.
+        "error_file": {
+            "class": "logging.FileHandler",
+            "filename": LOG_DIR / "errors.log",
+            "encoding": "utf-8",
+            "level": "WARNING",
+        },
     },
     "loggers": {
         "audit": {
             "handlers": ["audit_file"],
             "level": "INFO",
+            "propagate": False,
+        },
+        "django.request": {
+            "handlers": ["error_file"],
+            "level": "WARNING",
             "propagate": False,
         },
     },
@@ -219,17 +271,9 @@ SPECTACULAR_SETTINGS = {
     "DESCRIPTION": "API REST para la interoperabilidad del sistema de ingreso a la Educación Superior.",
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
-    "SECURITY": [{"BearerAuth": []}],
-    "COMPONENTS": {
-        "securitySchemes": {
-            "BearerAuth": {
-                "type": "http",
-                "scheme": "bearer",
-                "bearerFormat": "JWT",
-                "description": "Token JWT obtenido al iniciar sesión en la API.",
-            }
-        }
-    },
+    # Los esquemas de seguridad (CookieAuth y BearerAuth) los declara
+    # `apps.authentication.cookie_auth.CookieJWTAuthenticationScheme` a partir de
+    # la clase de autenticación real, para que no se dupliquen ni se desalineen.
     "TAGS": [
         {"name": "Autenticación", "description": "Registro, verificación de correo, inicio y cierre de sesión, y tokens JWT."},
         {"name": "Core", "description": "Salud del servicio y notificaciones del usuario."},
@@ -256,31 +300,56 @@ SIMPLE_JWT = {
 SESSION_COOKIE_AGE = int(os.getenv("SESSION_COOKIE_AGE", "28800"))
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 
-CORS_ALLOW_ALL_ORIGINS = False
-CORS_ALLOWED_ORIGINS = [
+# Origenes del frontend. En desarrollo el proxy de Vite mantiene todo en el mismo
+# origen; en produccion se declaran con FRONTEND_ORIGINS (lista separada por comas)
+# para no tener que editar este archivo en cada despliegue.
+_DEV_FRONTEND_ORIGINS = [
     "http://localhost:4173",
     "http://127.0.0.1:4173",
     "http://localhost:5173",
     "http://127.0.0.1:5173",
 ]
+_configured_origins = [
+    origin.strip().rstrip("/")
+    for origin in os.getenv("FRONTEND_ORIGINS", "").split(",")
+    if origin.strip()
+]
+if not _configured_origins and FRONTEND_URL:
+    _configured_origins = [FRONTEND_URL]
+
+CORS_ALLOW_ALL_ORIGINS = False
+CORS_ALLOWED_ORIGINS = _configured_origins or _DEV_FRONTEND_ORIGINS
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_HEADERS = [
     "*",
 ]
-CSRF_TRUSTED_ORIGINS = [
-    "http://localhost:4173",
-    "http://127.0.0.1:4173",
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-]
-# The Vite proxy keeps frontend and API requests same-origin in development.
-SESSION_COOKIE_SAMESITE = "Lax"
-CSRF_COOKIE_SAMESITE = "Lax"
+CSRF_TRUSTED_ORIGINS = CORS_ALLOWED_ORIGINS
+
+if not DEBUG and not _configured_origins and not RUNNING_TESTS:
+    _fail_configuration(
+        "Define FRONTEND_ORIGINS (o FRONTEND_URL) con el origen público del frontend: sin "
+        "él CORS y CSRF rechazarían todas las peticiones del cliente en producción."
+    )
+
+# El frontend y la API pueden vivir en dominios distintos (ver VITE_API_ORIGIN en
+# docs/DEPLOYMENT.md). En ese caso la cookie es cross-site y necesita
+# `SameSite=None; Secure`; con `Lax` el navegador no la enviaria.
+_SPLIT_DOMAIN = os.getenv("CROSS_SITE_COOKIES", "").lower() == "true"
+_COOKIE_SAMESITE = "None" if _SPLIT_DOMAIN else "Lax"
+SESSION_COOKIE_SAMESITE = _COOKIE_SAMESITE
+CSRF_COOKIE_SAMESITE = _COOKIE_SAMESITE
 SESSION_COOKIE_SECURE = False
 CSRF_COOKIE_SECURE = False
 
+if _SPLIT_DOMAIN and not DEBUG:
+    # SameSite=None sin Secure es ignorado por los navegadores.
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+
 if not DEBUG:
-    SECURE_SSL_REDIRECT = True
+    # El cliente de pruebas habla HTTP: con el redirect activo toda la suite
+    # recibiria 301 y no se podria validar la configuracion de produccion.
+    SECURE_SSL_REDIRECT = not RUNNING_TESTS
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True

@@ -40,30 +40,34 @@ class Usuario(AbstractUser):
         'Estudiante', on_delete=models.SET_NULL, related_name='pending_users', null=True, blank=True)
 
     class Meta:
+        # Un solo titular ACTIVO por alcance. La condicion incluye `is_active`
+        # porque desactivar a un titular debe liberar la plaza: sin eso, crear al
+        # sustituto chocaba con la fila del desactivado y el error llegaba como un
+        # 500 opaco.
         constraints = [
             models.UniqueConstraint(
                 fields=["provincia"],
-                condition=Q(rol="jefe_comision"),
+                condition=Q(rol="jefe_comision", is_active=True),
                 name="unique_jefe_comision_provincia",
             ),
             models.UniqueConstraint(
                 fields=["provincia"],
-                condition=Q(rol="ingreso_provincial"),
+                condition=Q(rol="ingreso_provincial", is_active=True),
                 name="unique_repr_provincial_provincia",
             ),
             models.UniqueConstraint(
                 fields=["municipio"],
-                condition=Q(rol="ingreso_municipal"),
+                condition=Q(rol="ingreso_municipal", is_active=True),
                 name="unique_repr_municipal_municipio",
             ),
             models.UniqueConstraint(
                 fields=["escuela"],
-                condition=Q(rol="director_escuela"),
+                condition=Q(rol="director_escuela", is_active=True),
                 name="unique_director_escuela",
             ),
             models.UniqueConstraint(
                 fields=["escuela"],
-                condition=Q(rol="secretario_escuela"),
+                condition=Q(rol="secretario_escuela", is_active=True),
                 name="unique_secretario_escuela",
             ),
         ]

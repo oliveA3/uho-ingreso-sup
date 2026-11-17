@@ -50,6 +50,7 @@ urlpatterns = [
     path("gestores-noticias/", ProvincialNewsManagerViewSet.as_view({"get": "list", "post": "create"}), name="provincial-gestores-noticias"),
     path("gestores-noticias/<int:pk>/", ProvincialNewsManagerViewSet.as_view({"get": "retrieve", "patch": "partial_update", "delete": "destroy"}), name="provincial-gestor-noticia-detail"),
     path("procesos/", ProvincialProcesoViewSet.as_view({"get": "list", "post": "create"}), name="provincial-procesos"),
+    path("procesos/<int:pk>/", ProvincialProcesoViewSet.as_view({"patch": "partial_update"}), name="provincial-proceso-detail"),
     path("etapas/<int:pk>/activar/", ProvincialActivarEtapaView.as_view(), name="provincial-etapa-activar"),
     path("etapas/<int:pk>/cerrar/", ProvincialCerrarEtapaView.as_view(), name="provincial-etapa-cerrar"),
     path("etapas/reiniciar/", ProvincialReiniciarEtapasView.as_view(), name="provincial-etapas-reiniciar"),

@@ -566,3 +566,70 @@ class SuperAdminUserScopeTests(TestCase):
         user = Usuario.objects.get(username=payload["username"])
         self.assertTrue(user.check_password(payload["password"]))
         self.assertTrue(user.debe_cambiar_password)
+
+
+class RoleScopeReplacementTests(TestCase):
+    """Desactivar al titular libera la plaza; crear un segundo activo da 400, no 500."""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.province = Provincia.objects.create(nombre="Provincia de relevo")
+        self.municipality = Municipio.objects.create(nombre="Municipio de relevo", provincia=self.province)
+        self.school = Escuela.objects.create(nombre="Escuela de relevo", municipio=self.municipality)
+        self.superadmin = Usuario.objects.create_user(
+            username="super.relevo", email="super.relevo@example.com", password="secret1234",
+            rol="superadmin", is_superuser=True,
+        )
+        self.client.force_authenticate(self.superadmin)
+
+    def _create_jefe(self, username):
+        return self.client.post(reverse("superadmin-usuarios"), {
+            "username": username, "email": f"{username}@example.com",
+            "first_name": "N", "last_name": "A", "rol": "jefe_comision",
+            "provincia": self.province.id, "password": "secret1234",
+        }, format="json")
+
+    def test_no_se_puede_crear_un_segundo_jefe_activo(self):
+        self.assertEqual(self._create_jefe("jefe.uno").status_code, 201)
+        segundo = self._create_jefe("jefe.dos")
+        self.assertEqual(segundo.status_code, 400, segundo.content)
+        self.assertIn("provincia", str(segundo.data).lower())
+
+    def test_desactivar_al_titular_permite_crear_al_sustituto(self):
+        self.assertEqual(self._create_jefe("jefe.saliente").status_code, 201)
+        Usuario.objects.filter(username="jefe.saliente").update(is_active=False)
+
+        sustituto = self._create_jefe("jefe.entrante")
+        self.assertEqual(sustituto.status_code, 201, sustituto.content)
+        self.assertEqual(
+            Usuario.objects.filter(rol="jefe_comision", provincia=self.province, is_active=True).count(), 1,
+        )
+
+    def test_la_base_permite_un_inactivo_y_un_activo(self):
+        Usuario.objects.create_user(
+            username="jefe.inactivo", email="jefe.inactivo@example.com", password="secret1234",
+            rol="jefe_comision", provincia=self.province, is_active=False,
+        )
+        Usuario.objects.create_user(
+            username="jefe.activo", email="jefe.activo@example.com", password="secret1234",
+            rol="jefe_comision", provincia=self.province, is_active=True,
+        )
+        self.assertEqual(Usuario.objects.filter(rol="jefe_comision", provincia=self.province).count(), 2)
+
+    def test_segundo_director_de_escuela_responde_400(self):
+        """Antes esta ruta no validaba el alcance y el choque salia como 500."""
+        repr_municipal = Usuario.objects.create_user(
+            username="repr.relevo", email="repr.relevo@example.com", password="secret1234",
+            rol="ingreso_municipal", provincia=self.province, municipio=self.municipality,
+        )
+        Usuario.objects.create_user(
+            username="dir.titular", email="dir.titular@example.com", password="secret1234",
+            rol="director_escuela", provincia=self.province, municipio=self.municipality, escuela=self.school,
+        )
+        self.client.force_authenticate(repr_municipal)
+        response = self.client.post(reverse("municipal-usuarios"), {
+            "username": "dir.segundo", "email": "dir.segundo@example.com",
+            "first_name": "N", "last_name": "A", "rol": "director_escuela",
+            "escuela": self.school.id, "password": "secret1234",
+        }, format="json")
+        self.assertEqual(response.status_code, 400, response.content)

@@ -3,6 +3,7 @@ import {
   activateProvincialEtapa,
   closeProvincialEtapa,
   fetchProvincialEtapas,
+  fetchProvincialProceso,
   resetProvincialEtapas,
 } from "../../api/provincial.service";
 import FeedbackMessage from "../../components/FeedbackMessage/FeedbackMessage";
@@ -33,6 +34,9 @@ function formatDates(stage) {
 export default function EtapasPage() {
   const confirm = useConfirm();
   const [etapas, setEtapas] = useState([]);
+  const [year, setYear] = useState(null);
+  const [currentYear, setCurrentYear] = useState(null);
+  const [availableYears, setAvailableYears] = useState([]);
   const [dates, setDates] = useState({ fecha_inicio: "", fecha_fin: "" });
   const [examDates, setExamDates] = useState({ fecha_matematica: "", fecha_espanol: "", fecha_historia: "" });
   const [selectedStage, setSelectedStage] = useState(null);
@@ -41,10 +45,20 @@ export default function EtapasPage() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
 
-  async function loadEtapas() {
+  async function loadEtapas(targetYear = year) {
     setLoading(true);
     try {
-      setEtapas(await fetchProvincialEtapas());
+      const [stages, processes] = await Promise.all([
+        fetchProvincialEtapas(targetYear),
+        fetchProvincialProceso(),
+      ]);
+      const resolvedYear = targetYear || stages[0]?.anio || new Date().getFullYear();
+      const processYears = processes.map((process) => Number(String(process.anio).slice(0, 4)));
+      const years = [...new Set([resolvedYear, ...processYears])].sort((a, b) => b - a);
+      setEtapas(stages);
+      setYear(resolvedYear);
+      setAvailableYears(years);
+      if (currentYear === null) setCurrentYear(resolvedYear);
       setError("");
     } catch (requestError) {
       setError(requestError.message);
@@ -53,7 +67,7 @@ export default function EtapasPage() {
     }
   }
 
-  useEffect(() => { loadEtapas(); }, []);
+  useEffect(() => { loadEtapas(null); }, []);
 
   function openActivation(stage) {
     setSelectedStage(stage);
@@ -110,18 +124,19 @@ export default function EtapasPage() {
   }
 
   async function handleReset() {
+    const nextYear = Math.max(year + 1, new Date().getFullYear());
     const ok = await confirm({
-      title: "Reiniciar ciclo de etapas",
-      message: "¿Deseas reiniciar el ciclo de etapas? Se borrarán todas las fechas.",
-      confirmLabel: "Reiniciar",
-      tone: "danger",
+      title: "Preparar nuevo ciclo anual",
+      message: `Se crearán las etapas de ${nextYear} sin borrar ni modificar las de ${year}. ¿Deseas continuar?`,
+      confirmLabel: "Preparar ciclo",
     });
     if (!ok) return;
     setSaving(true);
     try {
-      await resetProvincialEtapas();
-      setNotice("El ciclo de etapas fue reiniciado.");
-      await loadEtapas();
+      await resetProvincialEtapas(nextYear);
+      setNotice(`Se preparó el ciclo ${nextYear}; el historial de ${year} se conserva.`);
+      setCurrentYear(nextYear);
+      await loadEtapas(nextYear);
     } catch (requestError) {
       setError(requestError.message);
     } finally {
@@ -129,18 +144,31 @@ export default function EtapasPage() {
     }
   }
 
-  const allCompleted = etapas.length > 0 && etapas.every((stage) => stage.estado === "completada");
+  const allCompleted = year === currentYear && etapas.length > 0 && etapas.every((stage) => stage.estado === "completada");
 
   return (
     <div className={styles.page}>
       <Card padding="p-6">
         <div>
           <h1 className={styles.title}>Activación secuencial del proceso</h1>
-          <p className={styles.description}>Solo se puede activar la etapa inmediata después de la última en curso o completada.</p>
+          <p className={styles.description}>Cada año conserva sus propias fechas y estados. Las etapas se abren al activarlas, aunque su fecha de inicio sea futura.</p>
         </div>
 
         {notice && <FeedbackMessage type="success" className={styles.notice}>{notice}</FeedbackMessage>}
         {error && <FeedbackMessage type="error" className={styles.notice}>{error}</FeedbackMessage>}
+
+        <FormField label="Año del proceso">
+          <select
+            className={styles.yearSelect}
+            value={year || ""}
+            onChange={(event) => loadEtapas(Number(event.target.value))}
+            disabled={loading || saving}
+          >
+            {availableYears.map((availableYear) => (
+              <option key={availableYear} value={availableYear}>{availableYear}</option>
+            ))}
+          </select>
+        </FormField>
 
         <div className={styles.stageList}>
           {loading && <p className={styles.stageDates}>Cargando etapas...</p>}
@@ -155,9 +183,9 @@ export default function EtapasPage() {
                 </div>
                 <div className={styles.stageActions}>
                   <span className={styles[statusStyles[status]]}>{statusLabels[status]}</span>
-                  {status === "en_curso" ? (
+                  {status === "en_curso" && year === currentYear ? (
                     <PrimaryButton className={styles.closeButton} onClick={() => handleClose(stage)} disabled={saving}>Cerrar</PrimaryButton>
-                  ) : status === "no_iniciada" ? (
+                  ) : status === "no_iniciada" && year === currentYear ? (
                     <PrimaryButton className={styles.stageButton} onClick={() => openActivation(stage)}>Activar</PrimaryButton>
                   ) : null}
                 </div>
@@ -168,7 +196,7 @@ export default function EtapasPage() {
         </div>
         {!loading && allCompleted && (
           <PrimaryButton className={styles.resetButton} onClick={handleReset} disabled={saving}>
-            Reiniciar ciclo
+            Preparar ciclo {year + 1}
           </PrimaryButton>
         )}
       </Card>

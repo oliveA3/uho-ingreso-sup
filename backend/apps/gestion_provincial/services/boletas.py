@@ -5,6 +5,7 @@ from apps.core.audit import record_audit
 from apps.gestion_personal.models import BoletaSolicitud, BoletaSolicitudItem, BoletaSolicitudItemAnterior
 
 from ..models import ETAPAS_NOMBRES, Etapa
+from .etapas import get_active_stage
 
 
 class BoletaRuleError(Exception):
@@ -17,8 +18,8 @@ class BoletaRuleError(Exception):
 
 def resolve_modification(ballot_id, action, actor, request, path):
     """Aprueba o rechaza una modificación de boleta pendiente (etapa 3)."""
-    current_stage = Etapa.objects.en_curso().order_by("id").first()
-    if not current_stage or current_stage.nombre != ETAPAS_NOMBRES[3]:
+    current_stage = get_active_stage()
+    if not current_stage or current_stage.etapa.nombre != ETAPAS_NOMBRES[3]:
         raise BoletaRuleError("Las decisiones del Jefe de Comisión solo están disponibles durante la etapa 3.", 403)
     if action not in {"approve", "reject"}:
         raise BoletaRuleError("Acción inválida.", 400)

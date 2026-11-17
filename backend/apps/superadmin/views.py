@@ -1,4 +1,5 @@
-from drf_spectacular.utils import OpenApiExample, OpenApiParameter, extend_schema, inline_serializer
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import OpenApiExample, OpenApiParameter, extend_schema, extend_schema_view, inline_serializer
 from rest_framework import filters, serializers, status, viewsets
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import AllowAny
@@ -32,6 +33,38 @@ class CatalogPagination(PageNumberPagination):
     max_page_size = 100
 
 
+TAG_SUPERADMIN = "Superadministración"
+
+
+def catalog_schema(singular, plural, list_parameters=()):
+    """Documenta en OpenAPI las acciones CRUD de un nomenclador.
+
+    Sin esto drf-spectacular agrupa estas operaciones bajo la etiqueta
+    automática `api` y sin resumen, por lo que Swagger UI no refleja ni el
+    módulo al que pertenecen ni los filtros que el `get_queryset` sí aplica.
+    """
+
+    read_parameters = [
+        OpenApiParameter("search", OpenApiTypes.STR, OpenApiParameter.QUERY, required=False, description="Búsqueda parcial e insensible a mayúsculas sobre los campos de texto del nomenclador."),
+        OpenApiParameter("page", OpenApiTypes.INT, OpenApiParameter.QUERY, required=False, description="Número de página (20 elementos por página)."),
+        OpenApiParameter("page_size", OpenApiTypes.INT, OpenApiParameter.QUERY, required=False, description="Elementos por página (máximo 100)."),
+        *list_parameters,
+    ]
+    return extend_schema_view(
+        list=extend_schema(tags=[TAG_SUPERADMIN], summary=f"Listar {plural}", parameters=read_parameters),
+        create=extend_schema(tags=[TAG_SUPERADMIN], summary=f"Crear {singular}"),
+        retrieve=extend_schema(tags=[TAG_SUPERADMIN], summary=f"Consultar {singular}"),
+        update=extend_schema(tags=[TAG_SUPERADMIN], summary=f"Reemplazar {singular}"),
+        partial_update=extend_schema(tags=[TAG_SUPERADMIN], summary=f"Actualizar {singular}"),
+        destroy=extend_schema(
+            tags=[TAG_SUPERADMIN],
+            summary=f"Desactivar {singular}",
+            description="Baja lógica: marca el registro como inactivo en vez de borrarlo, para no romper el historial que lo referencia.",
+        ),
+    )
+
+
+@catalog_schema("una provincia", "provincias")
 class ProvinciaViewSet(SoftDeleteModelMixin, viewsets.ModelViewSet):
     queryset = Provincia.objects.all().order_by("nombre")
     serializer_class = ProvinciaSerializer
@@ -49,6 +82,11 @@ class ProvinciaViewSet(SoftDeleteModelMixin, viewsets.ModelViewSet):
         return [IsSuperAdmin()]
 
 
+@catalog_schema(
+    "un municipio",
+    "municipios",
+    [OpenApiParameter("provincia", OpenApiTypes.INT, OpenApiParameter.QUERY, required=False, description="ID de la provincia por la que filtrar los municipios.")],
+)
 class MunicipioViewSet(SoftDeleteModelMixin, viewsets.ModelViewSet):
     serializer_class = MunicipioSerializer
     permission_classes = [IsSuperAdmin]
@@ -71,6 +109,11 @@ class MunicipioViewSet(SoftDeleteModelMixin, viewsets.ModelViewSet):
         return queryset
 
 
+@catalog_schema(
+    "una escuela",
+    "escuelas",
+    [OpenApiParameter("municipio", OpenApiTypes.INT, OpenApiParameter.QUERY, required=False, description="ID del municipio por el que filtrar las escuelas.")],
+)
 class EscuelaViewSet(SoftDeleteModelMixin, viewsets.ModelViewSet):
     serializer_class = EscuelaSerializer
     permission_classes = [IsSuperAdmin]
@@ -93,6 +136,7 @@ class EscuelaViewSet(SoftDeleteModelMixin, viewsets.ModelViewSet):
         return queryset
 
 
+@catalog_schema("un CES", "centros de educación superior (CES)")
 class CesViewSet(SoftDeleteModelMixin, viewsets.ModelViewSet):
     queryset = Ces.objects.all().order_by("nombre")
     serializer_class = CesSerializer
@@ -103,6 +147,7 @@ class CesViewSet(SoftDeleteModelMixin, viewsets.ModelViewSet):
     active_field = "activa"
 
 
+@catalog_schema("una carrera", "carreras")
 class CarreraViewSet(SoftDeleteModelMixin, viewsets.ModelViewSet):
     queryset = Carrera.objects.all().order_by("nombre")
     serializer_class = CarreraSerializer
@@ -113,6 +158,7 @@ class CarreraViewSet(SoftDeleteModelMixin, viewsets.ModelViewSet):
     active_field = "activa"
 
 
+@catalog_schema("una asignatura", "asignaturas")
 class AsignaturaViewSet(SoftDeleteModelMixin, viewsets.ModelViewSet):
     queryset = Asignatura.objects.all().order_by("nombre")
     serializer_class = AsignaturaSerializer
@@ -123,6 +169,7 @@ class AsignaturaViewSet(SoftDeleteModelMixin, viewsets.ModelViewSet):
     active_field = "activa"
 
 
+@catalog_schema("un tipo de otorgamiento", "tipos de otorgamiento")
 class TipoOtorgamientoViewSet(SoftDeleteModelMixin, viewsets.ModelViewSet):
     queryset = TipoOtorgamiento.objects.all().order_by("nombre")
     serializer_class = TipoOtorgamientoSerializer
@@ -133,6 +180,24 @@ class TipoOtorgamientoViewSet(SoftDeleteModelMixin, viewsets.ModelViewSet):
     active_field = "activa"
 
 
+@extend_schema_view(
+    list=extend_schema(
+        tags=[TAG_SUPERADMIN],
+        summary="Listar usuarios administrativos",
+        description="Lista todas las cuentas del sistema excepto las de rol `estudiante`. Sin paginación.",
+        parameters=[
+            OpenApiParameter("search", OpenApiTypes.STR, OpenApiParameter.QUERY, required=False, description="Búsqueda parcial sobre username, nombre, apellidos y correo."),
+            OpenApiParameter("rol", OpenApiTypes.STR, OpenApiParameter.QUERY, required=False, enum=[rol for rol, _ in ROLES], description="Filtra por rol exacto."),
+            OpenApiParameter("provincia", OpenApiTypes.INT, OpenApiParameter.QUERY, required=False, description="ID de la provincia asignada al usuario."),
+            OpenApiParameter("estado", OpenApiTypes.STR, OpenApiParameter.QUERY, required=False, enum=["activo", "inactivo"], description="Filtra por cuentas activas o inactivas. Cualquier otro valor se ignora."),
+        ],
+    ),
+    create=extend_schema(tags=[TAG_SUPERADMIN], summary="Crear usuario administrativo"),
+    retrieve=extend_schema(tags=[TAG_SUPERADMIN], summary="Consultar usuario administrativo"),
+    update=extend_schema(tags=[TAG_SUPERADMIN], summary="Reemplazar usuario administrativo"),
+    partial_update=extend_schema(tags=[TAG_SUPERADMIN], summary="Actualizar usuario administrativo"),
+    destroy=extend_schema(tags=[TAG_SUPERADMIN], summary="Eliminar usuario administrativo"),
+)
 class SuperAdminUserViewSet(viewsets.ModelViewSet):
     serializer_class = SuperAdminUserSerializer
     permission_classes = [IsSuperAdmin]

@@ -159,8 +159,8 @@ export default function LandingPage({ user }) {
             onClose={() => setPlanModalOpen(false)}
           />
         )}
-        {resultadosModalOpen && <ResultadosModal onClose={() => setResultadosModalOpen(false)} />}
-        {otorgamientosModalOpen && <OtorgamientosModal onClose={() => setOtorgamientosModalOpen(false)} />}
+        {resultadosModalOpen && <ResultadosModal user={user} onClose={() => setResultadosModalOpen(false)} />}
+        {otorgamientosModalOpen && <OtorgamientosModal user={user} onClose={() => setOtorgamientosModalOpen(false)} />}
         {cortesModalOpen && <OtorgamientosModal mode="cortes" onClose={() => setCortesModalOpen(false)} />}
       </div>
     </div>

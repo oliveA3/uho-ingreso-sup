@@ -11,6 +11,10 @@ export default function VerifyEmailPage() {
   const navigate = useNavigate();
   const [username, setUsername] = useState(searchParams.get("usuario") || "");
   const [code, setCode] = useState("");
+  // Las cuentas que crea la escuela llegan sin la política aceptada: la acepta el
+  // propio estudiante aquí. En las autorregistradas el backend ya la tiene y
+  // simplemente ignora este campo.
+  const [policyAccepted, setPolicyAccepted] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
@@ -21,7 +25,11 @@ export default function VerifyEmailPage() {
     setError("");
     setMessage("");
     try {
-      await verifyEmail({ username: username.trim(), code: code.trim() });
+      await verifyEmail({
+        username: username.trim(),
+        code: code.trim(),
+        politica_privacidad_aceptada: policyAccepted,
+      });
       setMessage("Correo verificado. Ya puedes iniciar sesión.");
       setTimeout(() => navigate("/login"), 1200);
     } catch (err) {
@@ -60,7 +68,21 @@ export default function VerifyEmailPage() {
           <FormField htmlFor="verify-code" label="Código de verificación" required>
             <Input id="verify-code" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} value={code} onChange={(event) => setCode(event.target.value)} required />
           </FormField>
-          <PrimaryButton type="submit" disabled={busy}>{busy ? "Verificando..." : "Verificar correo"}</PrimaryButton>
+          <div className={styles.privacyConsentRow}>
+            <label className={styles.privacyConsentLabel} htmlFor="verify-privacy-policy">
+              <input
+                id="verify-privacy-policy"
+                type="checkbox"
+                required
+                checked={policyAccepted}
+                onChange={(event) => { setPolicyAccepted(event.target.checked); setError(""); }}
+              />
+              <span>
+                He leído y acepto la <a href="/politica-privacidad" target="_blank" rel="noreferrer">política de privacidad</a> del sistema.
+              </span>
+            </label>
+          </div>
+          <PrimaryButton type="submit" disabled={busy || !policyAccepted}>{busy ? "Verificando..." : "Verificar correo"}</PrimaryButton>
           <button type="button" className={styles.textButton} onClick={resend} disabled={busy}>Solicitar un nuevo código</button>
         </form>
       </Card>

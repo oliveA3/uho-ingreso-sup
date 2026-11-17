@@ -5,6 +5,7 @@ import FormField from "../FormField/FormField";
 import Select from "../Select/Select";
 import Input from "../Input/Input";
 import PrimaryButton from "../Buttons/PrimaryButton";
+import SecondaryButton from "../Buttons/SecondaryButton";
 import DataTable from "../DataTable/DataTable";
 import styles from "./OtorgamientosModal.module.css";
 
@@ -25,27 +26,34 @@ const otorgamientosColumns = [
   { key: "province", header: "Provincia" },
 ];
 
-export default function OtorgamientosModal({ onClose, mode = "otorgamientos" }) {
+export default function OtorgamientosModal({ onClose, mode = "otorgamientos", user }) {
   const [filters, setFilters] = useState(() => ({
     anio: mode === "cortes" ? "" : new Date().getFullYear(),
-    provincia: "",
+    provincia: mode !== "cortes" && user?.rol === "estudiante" ? user.provincia_nombre || "" : "",
     ci: "",
     carrera: "",
   }));
+  const [page, setPage] = useState(1);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [exporting, setExporting] = useState(false);
 
+  // El backend solo acepta el CI completo (11 digitos): con coincidencias
+  // parciales cualquiera podria enumerar otorgamientos por fecha de nacimiento.
+  const ciIncompleto = Boolean(filters.ci) && !/^\d{11}$/.test(filters.ci);
+  const queryFilters = ciIncompleto ? { ...filters, ci: "", page } : { ...filters, page };
+
   useEffect(() => {
     let active = true;
     setLoading(true);
-    (mode === "cortes" ? fetchLandingCortes(filters) : fetchLandingOtorgamientos(filters))
+    (mode === "cortes" ? fetchLandingCortes(queryFilters) : fetchLandingOtorgamientos(queryFilters))
       .then((nextData) => { if (active) { setData(nextData); setError(""); } })
       .catch((requestError) => { if (active) setError(requestError.message); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [filters, mode]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [queryFilters.anio, queryFilters.provincia, queryFilters.ci, queryFilters.carrera, page, mode]);
 
   useEffect(() => {
     if (mode === "cortes" && data?.year && filters.anio !== data.year) {
@@ -54,6 +62,9 @@ export default function OtorgamientosModal({ onClose, mode = "otorgamientos" }) 
   }, [data, filters.anio, mode]);
 
   function changeFilter(field, value) {
+    // Cambiar un filtro reinicia la paginación: la página 3 del filtro anterior
+    // no tiene sentido con el nuevo.
+    setPage(1);
     setFilters((current) => ({ ...current, [field]: field === "anio" ? Number(value) : value }));
   }
 
@@ -119,7 +130,8 @@ export default function OtorgamientosModal({ onClose, mode = "otorgamientos" }) 
           </FormField>
         ) : (
           <FormField label="Buscar por CI" className={styles.searchField}>
-            <Input value={filters.ci} onChange={(event) => changeFilter("ci", event.target.value)} inputMode="numeric" placeholder="11 dígitos" />
+            <Input value={filters.ci} onChange={(event) => changeFilter("ci", event.target.value)} inputMode="numeric" maxLength={11} placeholder="11 dígitos" />
+            {ciIncompleto && <p className={styles.ciHint}>Escribe los 11 dígitos del CI para filtrar.</p>}
           </FormField>
         )}
       </div>
@@ -132,9 +144,27 @@ export default function OtorgamientosModal({ onClose, mode = "otorgamientos" }) 
           data={tableData}
           loading={loading}
           loadingMessage="Cargando información..."
-          emptyMessage={mode === "cortes" ? "No hay índices de corte disponibles." : "No hay otorgamientos para los filtros seleccionados."}
+          emptyMessage={
+            data && data.publicacion_habilitada === false
+              ? "La consulta pública de estos datos aún no ha sido habilitada por la Comisión de Ingreso."
+              : mode === "cortes" ? "No hay índices de corte disponibles." : "No hay otorgamientos para los filtros seleccionados."
+          }
         />
       </div>
+
+      {mode !== "cortes" && data?.total_pages > 1 && (
+        <div className={styles.paginationRow}>
+          <SecondaryButton type="button" onClick={() => setPage((current) => Math.max(1, current - 1))} disabled={loading || page <= 1}>
+            Anterior
+          </SecondaryButton>
+          <span className={styles.pageSummary}>
+            Página {data.page} de {data.total_pages} · {data.count} registros
+          </span>
+          <SecondaryButton type="button" onClick={() => setPage((current) => Math.min(data.total_pages, current + 1))} disabled={loading || page >= data.total_pages}>
+            Siguiente
+          </SecondaryButton>
+        </div>
+      )}
     </Modal>
   );
 }

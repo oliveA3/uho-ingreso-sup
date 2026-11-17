@@ -64,3 +64,23 @@
   padding: 0.4rem 0.75rem;
   font-size: 0.75rem;
 }
+
+.ciHint {
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  color: var(--gris-500, #64748b);
+}
+
+.paginationRow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.pageSummary {
+  font-size: 0.8125rem;
+  color: var(--gris-500, #64748b);
+}

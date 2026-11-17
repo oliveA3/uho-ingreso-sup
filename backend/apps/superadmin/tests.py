@@ -1,5 +1,10 @@
 from datetime import date
+from io import StringIO
+import os
+from unittest.mock import patch
 
+from django.core.management import call_command
+from django.core.management.base import CommandError
 from django.core.validators import validate_email
 from django.test import SimpleTestCase
 from rest_framework.test import APITestCase
@@ -162,6 +167,41 @@ class SeedConfigurationTests(SimpleTestCase):
         self.assertGreaterEqual(len(DEMO_CAREERS), 20)
         self.assertEqual(len(normalized), len(set(normalized)))
         self.assertFalse(any("prueba" in name for name in normalized))
+
+
+class SeedInitialDataCommandTests(APITestCase):
+    def test_default_seed_creates_catalogs_without_demo_accounts(self):
+        with patch.dict(os.environ, {"INGRESOSUP_SEED_PASSWORD": "demo-secret-for-test"}):
+            call_command("seed_initial_data", stdout=StringIO())
+
+        self.assertEqual(Provincia.objects.count(), 16)
+        self.assertFalse(Escuela.objects.exists())
+        self.assertFalse(Usuario.objects.filter(username__startswith="seed_").exists())
+
+    def test_demo_accounts_require_an_explicit_password(self):
+        with patch.dict(os.environ, {"INGRESOSUP_SEED_PASSWORD": ""}):
+            with self.assertRaises(CommandError):
+                call_command(
+                    "seed_initial_data",
+                    with_demo_users=True,
+                    stdout=StringIO(),
+                )
+
+        self.assertFalse(Provincia.objects.exists())
+        self.assertFalse(Usuario.objects.exists())
+
+    def test_demo_seed_creates_only_its_demo_school(self):
+        call_command(
+            "seed_initial_data",
+            with_demo_users=True,
+            password="one-off-test-password",
+            stdout=StringIO(),
+        )
+
+        demo_admin = Usuario.objects.get(username="seed_superadmin")
+        self.assertTrue(demo_admin.is_superuser)
+        self.assertTrue(demo_admin.check_password("one-off-test-password"))
+        self.assertEqual(Escuela.objects.count(), 1)
 
 
 class IdentidadVisualConfigTests(APITestCase):

@@ -2,7 +2,7 @@ from datetime import date
 from io import BytesIO
 
 from openpyxl import Workbook, load_workbook
-from rest_framework.test import APIRequestFactory, APITestCase
+from rest_framework.test import APIRequestFactory, APITestCase, force_authenticate
 from django.contrib.auth.models import AnonymousUser
 from django.contrib.auth import get_user_model
 from django.utils import timezone
@@ -27,7 +27,9 @@ class PublicLandingCortesTests(APITestCase):
             codigo="COR-2", nombre="Carrera de otra provincia", ces=ces, provincia=self.other_province,
         )
         stage = Etapa.objects.get(nombre=ETAPAS_NOMBRES[6])
-        process = Proceso.objects.create(anio=date(2025, 1, 1), etapa=stage)
+        process = Proceso.objects.create(
+            anio=date(2025, 1, 1), etapa=stage, config_consulta_otorg_publico=True,
+        )
         PlanPlaza.objects.create(
             proceso=process, carrera=self.career, cantidad_plazas=1,
             otorgamiento_tipo=award_type, ces=ces, provincia=self.province, sexo="A",
@@ -118,10 +120,12 @@ class PublicResultsLandingTests(APITestCase):
         self.results_process = Proceso.objects.create(
             anio=date(2025, 1, 1),
             etapa=Etapa.objects.get(nombre=ETAPAS_NOMBRES[5]),
+            config_consulta_nota_publica=True,
         )
         self.awards_process = Proceso.objects.create(
             anio=date(2025, 1, 1),
             etapa=Etapa.objects.get(nombre=ETAPAS_NOMBRES[6]),
+            config_consulta_otorg_publico=True,
         )
         students = []
         for index in range(6):
@@ -176,7 +180,7 @@ class PublicResultsLandingTests(APITestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.data["results"]), 6)
         result = response.data["results"][0]
-        self.assertEqual(result["student"], "Nombre privado 0 Apellido privado 0")
+        self.assertEqual(result["student"], "N. P. A. P.")
         self.assertEqual(result["school"], "Escuela protegida")
         self.assertEqual(result["municipality"], "Municipio protegido")
         self.assertEqual(result["province"], "Provincia protegida")
@@ -196,9 +200,27 @@ class PublicResultsLandingTests(APITestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.data["results"]), 1)
         award = response.data["results"][0]
-        self.assertEqual(award["student"], "Nombre privado 0 Apellido privado 0")
-        self.assertEqual(award["ci"], "90000000000")
+        self.assertEqual(award["student"], "N. P. A. P.")
+        self.assertEqual(award["ci"], "*******0000")
         self.assertEqual(award["school"], "Escuela protegida")
+
+    def test_public_awards_show_own_student_unmasked(self):
+        from .views import LandingOtorgamientosView
+
+        user = get_user_model().objects.create_user(
+            username="own.student", email="own.student@example.com", password="secret1234", rol="estudiante",
+        )
+        Estudiante.objects.filter(ci="90000000001").update(usuario=user)
+        request = self.factory.get("/api/v1/import-export/otorgamiento/landing/", {"anio": 2025})
+        force_authenticate(request, user=user)
+        response = LandingOtorgamientosView.as_view()(request)
+
+        by_ci = {row["ci"]: row for row in response.data["results"]}
+        self.assertEqual(by_ci["90000000001"]["student"], "Nombre privado 1 Apellido privado 1")
+        self.assertIn("*******0000", by_ci)
+        # El CI enmascarado no puede revelar la fecha de nacimiento (YYMMDD).
+        for ci in by_ci:
+            self.assertTrue(ci == "90000000001" or ci.startswith("*******"), ci)
 
     def test_public_excel_exports_include_student_results_and_awards(self):
         from .views import LandingExcelExportView
@@ -214,8 +236,9 @@ class PublicResultsLandingTests(APITestCase):
                 values = [str(value) for row in rows for value in row]
                 self.assertIn("CI", rows[0])
                 self.assertIn("Estudiante", rows[0])
-                self.assertTrue(any("privado" in value.lower() for value in values))
-                self.assertTrue(any(value.startswith("900000000") for value in values))
+                self.assertFalse(any("privado" in value.lower() for value in values))
+                self.assertFalse(any(value.startswith("900000000") for value in values))
+                self.assertTrue(any(value == "*******0000" for value in values))
 
 
 class StudentBallotExcelExportTests(APITestCase):
@@ -361,3 +384,205 @@ class CareerCatalogSpreadsheetTests(APITestCase):
         exported_sheet = exported.active
         self.assertEqual([cell.value for cell in exported_sheet[1]], ["Código", "Nombre", "CES", "Provincia"])
         self.assertEqual(exported_sheet.max_column, 4)
+
+
+class PublicConsultSwitchTests(APITestCase):
+    """La consulta pública solo se abre cuando el Jefe de Comisión activa el
+    interruptor del proceso (`config_consulta_*`), no por estar en la etapa."""
+
+    def setUp(self):
+        self.factory = APIRequestFactory()
+        province = Provincia.objects.create(nombre="Provincia del interruptor")
+        municipality = Municipio.objects.create(nombre="Municipio del interruptor", provincia=province)
+        school = Escuela.objects.create(nombre="Escuela del interruptor", municipio=municipality)
+        ces = Ces.objects.create(nombre="CES del interruptor")
+        career = Carrera.objects.create(codigo="SW-1", nombre="Carrera del interruptor", ces=ces, provincia=province)
+        subject = Asignatura.objects.create(nombre="Asignatura del interruptor")
+        self.results_process = Proceso.objects.create(
+            anio=date(2025, 1, 1), etapa=Etapa.objects.get(nombre=ETAPAS_NOMBRES[5]),
+        )
+        self.awards_process = Proceso.objects.create(
+            anio=date(2025, 1, 1), etapa=Etapa.objects.get(nombre=ETAPAS_NOMBRES[6]),
+        )
+        student = Estudiante.objects.create(
+            ci="85010112345", nombre="Nombre", apellidos="Apellido", sexo="F",
+            direccion="Calle", escuela=school,
+        )
+        ResultadoExamen.objects.create(
+            estudiante=student, proceso=self.results_process, asignatura=subject,
+            nota=90, fecha_limite_reclamo=date(2025, 12, 31),
+        )
+        Otorgamiento.objects.create(
+            estudiante=student, proceso=self.awards_process, carrera=career, indice_otorgamiento=90,
+        )
+        CorteCarrera.objects.create(proceso=self.awards_process, carrera=career, indice_corte=88.0)
+
+    def _get(self, view, path, params, **kwargs):
+        request = self.factory.get(path, params)
+        request.user = AnonymousUser()
+        return view.as_view()(request, **kwargs)
+
+    def test_consulta_cerrada_no_publica_nada(self):
+        from .views import LandingCortesView, LandingOtorgamientosView, LandingResultadosView
+
+        resultados = self._get(LandingResultadosView, "/api/v1/import-export/resultados/landing/", {"anio": 2025})
+        self.assertEqual(resultados.status_code, 200)
+        self.assertFalse(resultados.data["publicacion_habilitada"])
+        self.assertEqual(resultados.data["results"], [])
+
+        otorgamientos = self._get(LandingOtorgamientosView, "/api/v1/import-export/otorgamiento/landing/", {"anio": 2025})
+        self.assertFalse(otorgamientos.data["publicacion_habilitada"])
+        self.assertEqual(otorgamientos.data["results"], [])
+
+        cortes = self._get(LandingCortesView, "/api/v1/import-export/cortes/landing/", {"anio": 2025})
+        self.assertEqual(cortes.data["items"], [])
+
+    def test_exportacion_publica_respeta_el_interruptor(self):
+        from .views import LandingExcelExportView
+
+        for kind in ("resultados", "otorgamientos", "cortes"):
+            with self.subTest(kind=kind):
+                response = self._get(
+                    LandingExcelExportView, f"/api/v1/import-export/landing/export/{kind}/",
+                    {"anio": 2025}, kind=kind,
+                )
+                self.assertEqual(response.status_code, 403)
+
+    def test_al_activar_el_interruptor_se_publica(self):
+        from .views import LandingOtorgamientosView, LandingResultadosView
+
+        Proceso.objects.filter(pk=self.results_process.pk).update(config_consulta_nota_publica=True)
+        Proceso.objects.filter(pk=self.awards_process.pk).update(config_consulta_otorg_publico=True)
+
+        resultados = self._get(LandingResultadosView, "/api/v1/import-export/resultados/landing/", {"anio": 2025})
+        self.assertTrue(resultados.data["publicacion_habilitada"])
+        self.assertEqual(len(resultados.data["results"]), 1)
+
+        otorgamientos = self._get(LandingOtorgamientosView, "/api/v1/import-export/otorgamiento/landing/", {"anio": 2025})
+        self.assertTrue(otorgamientos.data["publicacion_habilitada"])
+        self.assertEqual(len(otorgamientos.data["results"]), 1)
+
+    def test_ci_parcial_no_permite_enumerar_otorgamientos(self):
+        from .views import LandingOtorgamientosView
+
+        Proceso.objects.filter(pk=self.awards_process.pk).update(config_consulta_otorg_publico=True)
+
+        parcial = self._get(
+            LandingOtorgamientosView, "/api/v1/import-export/otorgamiento/landing/",
+            {"anio": 2025, "ci": "850101"},
+        )
+        self.assertEqual(parcial.status_code, 400)
+
+        completo = self._get(
+            LandingOtorgamientosView, "/api/v1/import-export/otorgamiento/landing/",
+            {"anio": 2025, "ci": "85010112345"},
+        )
+        self.assertEqual(completo.status_code, 200)
+        self.assertEqual(len(completo.data["results"]), 1)
+        self.assertEqual(completo.data["results"][0]["ci"], "*******2345")
+
+    def test_el_ci_enmascarado_no_revela_la_fecha_de_nacimiento(self):
+        from .views import mask_ci
+
+        self.assertEqual(mask_ci("85010112345"), "*******2345")
+        self.assertNotIn("850101", mask_ci("85010112345"))
+
+    def test_nombre_publico_solo_muestra_iniciales(self):
+        from .views import mask_name
+
+        self.assertEqual(mask_name("Ana María Pérez"), "A. M. P.")
+
+
+class ResultadosListYearTests(APITestCase):
+    """El año pedido debe respetarse en todas las ramas de rol, y un año no
+    numérico debe ser 400 y no un 500."""
+
+    def setUp(self):
+        self.factory = APIRequestFactory()
+        province = Provincia.objects.create(nombre="Provincia del año")
+        municipality = Municipio.objects.create(nombre="Municipio del año", provincia=province)
+        school = Escuela.objects.create(nombre="Escuela del año", municipio=municipality)
+        subject = Asignatura.objects.create(nombre="Asignatura del año")
+        student = Estudiante.objects.create(
+            ci="88010100001", nombre="Nombre", apellidos="Apellido", sexo="F",
+            direccion="Dir", escuela=school,
+        )
+        stage_five = Etapa.objects.get(nombre=ETAPAS_NOMBRES[5])
+        self.process_2025 = Proceso.objects.create(anio=date(2025, 1, 1), etapa=stage_five)
+        ResultadoExamen.objects.create(
+            estudiante=student, proceso=self.process_2025, asignatura=subject,
+            nota=90, fecha_limite_reclamo=date(2025, 12, 31),
+        )
+        self.jefe = get_user_model().objects.create_user(
+            username="jefe.anio", email="jefe.anio@example.com", password="secret1234",
+            rol="jefe_comision", provincia=province,
+        )
+
+    def _get(self, params):
+        from .views import ResultadosListView
+
+        request = self.factory.get("/api/v1/import-export/resultados/", params)
+        force_authenticate(request, user=self.jefe)
+        return ResultadosListView.as_view()(request)
+
+    def test_el_jefe_solo_ve_el_anio_pedido(self):
+        con_datos = self._get({"anio": 2025})
+        self.assertEqual(con_datos.status_code, 200)
+        self.assertEqual(len(con_datos.data), 1)
+
+        sin_datos = self._get({"anio": 2024})
+        self.assertEqual(sin_datos.status_code, 200)
+        self.assertEqual(sin_datos.data, [], "2024 no tiene resultados: no debe devolver los de 2025")
+
+    def test_un_anio_no_numerico_responde_400(self):
+        response = self._get({"anio": "abc"})
+        self.assertEqual(response.status_code, 400)
+
+
+class PublicPaginationAndAuditTests(APITestCase):
+    """Los listados públicos se paginan, y la auditoría no duplica filas."""
+
+    def setUp(self):
+        self.factory = APIRequestFactory()
+        province = Provincia.objects.create(nombre="Provincia paginada")
+        municipality = Municipio.objects.create(nombre="Municipio paginado", provincia=province)
+        school = Escuela.objects.create(nombre="Escuela paginada", municipio=municipality)
+        subject = Asignatura.objects.create(nombre="Asignatura paginada")
+        self.process = Proceso.objects.create(
+            anio=date(2025, 1, 1), etapa=Etapa.objects.get(nombre=ETAPAS_NOMBRES[5]),
+            config_consulta_nota_publica=True,
+        )
+        for index in range(120):
+            student = Estudiante.objects.create(
+                ci=f"660001{index:05d}", nombre=f"N{index}", apellidos=f"A{index:03d}",
+                sexo="F", direccion="Dir", escuela=school,
+            )
+            ResultadoExamen.objects.create(
+                estudiante=student, proceso=self.process, asignatura=subject,
+                nota=70, fecha_limite_reclamo=date(2025, 12, 31),
+            )
+
+    def _get(self, params):
+        from .views import LandingResultadosView
+
+        request = self.factory.get("/api/v1/import-export/resultados/landing/", params)
+        request.user = AnonymousUser()
+        return LandingResultadosView.as_view()(request)
+
+    def test_devuelve_una_pagina_y_no_todo_el_anio(self):
+        response = self._get({"anio": 2025})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["count"], 120)
+        self.assertEqual(len(response.data["results"]), 50, "por defecto 50 filas")
+        self.assertEqual(response.data["total_pages"], 3)
+
+    def test_la_segunda_pagina_trae_filas_distintas(self):
+        primera = self._get({"anio": 2025, "page": 1}).data["results"]
+        segunda = self._get({"anio": 2025, "page": 2}).data["results"]
+        self.assertEqual(len(segunda), 50)
+        self.assertFalse({row["id"] for row in primera} & {row["id"] for row in segunda})
+
+    def test_el_tamano_de_pagina_esta_acotado(self):
+        response = self._get({"anio": 2025, "page_size": 5000})
+        self.assertEqual(response.data["page_size"], 200, "el máximo es 200")
+        self.assertEqual(len(response.data["results"]), 120)

@@ -1,13 +1,14 @@
-from datetime import date
+from datetime import date, timedelta
 
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 from rest_framework.test import APITestCase
 
 from apps.authentication.models import Estudiante, Usuario
 from apps.gestion_escuela.models import Escalafon, EscalafonItem
 from apps.gestion_personal.models import BoletaSolicitud, BoletaSolicitudItemAnterior
-from apps.gestion_provincial.models import ETAPAS_NOMBRES, Etapa, Proceso
+from apps.gestion_provincial.models import ETAPAS_NOMBRES, Proceso, ensure_processes_for_year
 from apps.gestion_provincial.models import PlanPlaza
 from apps.superadmin.models import Carrera, Ces, Escuela, Municipio, Provincia, TipoOtorgamiento
 
@@ -35,20 +36,21 @@ class StudentSolicitudStageEditPermissionTests(APITestCase):
             indice_general=5.0,
         )
 
-        self.stage_3 = Etapa.objects.get(nombre=ETAPAS_NOMBRES[3])
+        year = timezone.localdate().year
+        ensure_processes_for_year(year)
+        self.stage_3 = Proceso.get_for_stage_and_year(year, ETAPAS_NOMBRES[3])
         self.stage_3.estado = "completada"
         self.stage_3.save(update_fields=["estado"])
 
-        self.stage_4 = Etapa.objects.get(nombre=ETAPAS_NOMBRES[4])
+        self.stage_4 = Proceso.get_for_stage_and_year(year, ETAPAS_NOMBRES[4])
         self.stage_4.estado = "en_curso"
         self.stage_4.save(update_fields=["estado"])
 
-        self.process_3 = Proceso.objects.create(anio=date(date.today().year, 1, 1), etapa=self.stage_3)
-        stage_1 = Etapa.objects.get(nombre=ETAPAS_NOMBRES[1])
+        self.process_3 = self.stage_3
+        stage_1 = Proceso.get_for_stage_and_year(year, ETAPAS_NOMBRES[1])
         stage_1.estado = "completada"
         stage_1.save(update_fields=["estado"])
-        process_1 = Proceso.objects.create(anio=date(date.today().year, 1, 1), etapa=stage_1)
-        escalafon = Escalafon.objects.create(proceso=process_1, escuela=self.escuela)
+        escalafon = Escalafon.objects.create(proceso=stage_1, escuela=self.escuela)
         EscalafonItem.objects.create(
             escalafon=escalafon,
             estudiante=self.student,
@@ -88,9 +90,22 @@ class StudentSolicitudStageEditPermissionTests(APITestCase):
         self.stage_4.estado = "completada"
         self.stage_4.save(update_fields=["estado"])
 
-        stage_5 = Etapa.objects.get(nombre=ETAPAS_NOMBRES[5])
+        stage_5 = Proceso.get_for_stage_and_year(self.stage_3.anio.year, ETAPAS_NOMBRES[5])
         stage_5.estado = "en_curso"
         stage_5.save(update_fields=["estado"])
+
+        response = self.client.post(reverse("student-solicitud-edit"))
+
+        self.assertEqual(response.status_code, 403, response.content)
+        self.ballot.refresh_from_db()
+        self.assertEqual(self.ballot.estado, "aprobada")
+
+    def test_student_cannot_request_modification_after_stage_three_expires_before_cleanup(self):
+        self.stage_3.estado = "en_curso"
+        self.stage_3.fecha_fin = timezone.localdate() - timedelta(days=1)
+        self.stage_3.save(update_fields=["estado", "fecha_fin"])
+        self.stage_4.estado = "completada"
+        self.stage_4.save(update_fields=["estado"])
 
         response = self.client.post(reverse("student-solicitud-edit"))
 
@@ -168,13 +183,14 @@ class StudentReadOnlyWhenStageCompletedTests(APITestCase):
         self.student = Estudiante.objects.create(
             usuario=self.user, ci="99999999999", nombre="Ana", apellidos="Pérez", sexo="F",
             direccion="Calle 1", escuela=escuela, indice_general=5.0)
-        year = date(date.today().year, 1, 1)
+        year = timezone.localdate().year
+        ensure_processes_for_year(year)
         self.processes = {}
         for number in range(1, 7):
-            stage = Etapa.objects.get(nombre=ETAPAS_NOMBRES[number])
-            stage.estado = "completada"
-            stage.save(update_fields=["estado"])
-            self.processes[number] = Proceso.objects.create(anio=year, etapa=stage)
+            process = Proceso.get_for_stage_and_year(year, ETAPAS_NOMBRES[number])
+            process.estado = "completada"
+            process.save(update_fields=["estado"])
+            self.processes[number] = process
         BoletaInteres.objects.create(estudiante=self.student, proceso=self.processes[2])
         BoletaSolicitud.objects.create(estudiante=self.student, proceso=self.processes[3], estado="aprobada")
         subject = Asignatura.objects.create(nombre="Matemática")
@@ -183,7 +199,7 @@ class StudentReadOnlyWhenStageCompletedTests(APITestCase):
             confirmada=True, fecha_prueba="2026-07-01T09:00:00Z")
         self.result = ResultadoExamen.objects.create(
             estudiante=self.student, proceso=self.processes[5], asignatura=subject,
-            nota=90, fecha_limite_reclamo=date(date.today().year + 1, 1, 1))
+            nota=90, fecha_limite_reclamo=date(year + 1, 1, 1))
         self.client.force_authenticate(self.user)
 
     def data(self, response):
@@ -207,6 +223,23 @@ class StudentReadOnlyWhenStageCompletedTests(APITestCase):
         self.assertFalse(data["puede_confirmar"])
         self.assertEqual(len(data["exams"]), 1)
         response = self.client.post(reverse("student-exam-confirmation"), {"id": self.confirmation.id, "confirmada": False}, format="json")
+        self.assertEqual(response.status_code, 403)
+        self.confirmation.refresh_from_db()
+        self.assertTrue(self.confirmation.confirmada)
+
+    def test_expired_exam_stage_is_readonly_before_cleanup_task(self):
+        stage = self.processes[4]
+        stage.estado = "en_curso"
+        stage.fecha_fin = timezone.localdate() - timedelta(days=1)
+        stage.save(update_fields=["estado", "fecha_fin"])
+
+        data = self.data(self.client.get(reverse("student-exam-confirmation")))
+        self.assertFalse(data["puede_confirmar"])
+        response = self.client.post(
+            reverse("student-exam-confirmation"),
+            {"id": self.confirmation.id, "confirmada": False},
+            format="json",
+        )
         self.assertEqual(response.status_code, 403)
         self.confirmation.refresh_from_db()
         self.assertTrue(self.confirmation.confirmada)
@@ -242,7 +275,7 @@ class StudentSolicitudYearEligibilityTests(APITestCase):
     def setUp(self):
         from apps.gestion_escuela.models import Escalafon, EscalafonItem
 
-        self.year = date.today().year
+        self.year = timezone.localdate().year
         self.province = Provincia.objects.create(nombre="Provincia del proceso")
         self.other_province = Provincia.objects.create(nombre="Otra provincia del proceso")
         municipality = Municipio.objects.create(nombre="Municipio proceso", provincia=self.province)
@@ -264,15 +297,17 @@ class StudentSolicitudYearEligibilityTests(APITestCase):
             direccion="Calle 1",
             escuela=self.school,
         )
-        self.stage_one = Etapa.objects.get(nombre=ETAPAS_NOMBRES[1])
+        ensure_processes_for_year(self.year)
+        self.stage_one = Proceso.get_for_stage_and_year(self.year, ETAPAS_NOMBRES[1])
         self.stage_one.estado = "completada"
         self.stage_one.save(update_fields=["estado"])
-        self.stage_three = Etapa.objects.get(nombre=ETAPAS_NOMBRES[3])
+        self.stage_three = Proceso.get_for_stage_and_year(self.year, ETAPAS_NOMBRES[3])
         self.stage_three.estado = "en_curso"
         self.stage_three.save(update_fields=["estado"])
-        self.process_one = Proceso.objects.create(anio=date(self.year, 1, 1), etapa=self.stage_one)
-        self.process_three = Proceso.objects.create(anio=date(self.year, 1, 1), etapa=self.stage_three)
-        self.previous_year_process = Proceso.objects.create(anio=date(self.year - 1, 1, 1), etapa=self.stage_one)
+        self.process_one = self.stage_one
+        self.process_three = self.stage_three
+        ensure_processes_for_year(self.year - 1)
+        self.previous_year_process = Proceso.get_for_stage_and_year(self.year - 1, ETAPAS_NOMBRES[1])
         previous_escalafon = Escalafon.objects.create(proceso=self.previous_year_process, escuela=self.school)
         EscalafonItem.objects.create(
             escalafon=previous_escalafon,
@@ -340,6 +375,102 @@ class StudentSolicitudYearEligibilityTests(APITestCase):
         self.assertTrue(response.data["escalafon_valido"])
         self.assertEqual(response.data["plan_anio"], self.year)
         self.assertEqual([plan["id"] for plan in response.data["available_plans"]], [self.current_plan.id])
+
+    def test_solicitud_only_lists_plans_open_to_the_student_sex(self):
+        from apps.gestion_escuela.models import Escalafon, EscalafonItem
+
+        current_escalafon = Escalafon.objects.create(proceso=self.process_one, escuela=self.school)
+        EscalafonItem.objects.create(
+            escalafon=current_escalafon,
+            estudiante=self.student,
+            indice_10=90,
+            indice_11=90,
+            indice_12=90,
+            indice_general=90,
+        )
+        female_plan = PlanPlaza.objects.create(
+            proceso=self.process_three,
+            carrera=self.career,
+            cantidad_plazas=1,
+            otorgamiento_tipo=self.tipo,
+            ces=self.ces,
+            provincia=self.province,
+            sexo="F",
+        )
+        male_plan = PlanPlaza.objects.create(
+            proceso=self.process_three,
+            carrera=self.career,
+            cantidad_plazas=1,
+            otorgamiento_tipo=self.tipo,
+            ces=self.ces,
+            provincia=self.province,
+            sexo="M",
+        )
+
+        response = self.client.get(reverse("student-solicitud"))
+
+        self.assertEqual(response.status_code, 200, response.content)
+        available_ids = {plan["id"] for plan in response.data["available_plans"]}
+        self.assertIn(self.current_plan.id, available_ids)
+        self.assertIn(female_plan.id, available_ids)
+        self.assertNotIn(male_plan.id, available_ids)
+
+    def test_solicitud_rejects_a_plan_for_the_wrong_student_sex(self):
+        from apps.gestion_escuela.models import Escalafon, EscalafonItem
+
+        current_escalafon = Escalafon.objects.create(proceso=self.process_one, escuela=self.school)
+        EscalafonItem.objects.create(
+            escalafon=current_escalafon,
+            estudiante=self.student,
+            indice_10=90,
+            indice_11=90,
+            indice_12=90,
+            indice_general=90,
+        )
+        eligible_plans = [self.current_plan]
+        for number in range(2, 10):
+            career = Carrera.objects.create(
+                codigo=f"ELIG-{number}",
+                nombre=f"Carrera elegible {number}",
+                ces=self.ces,
+                provincia=self.province,
+            )
+            eligible_plans.append(PlanPlaza.objects.create(
+                proceso=self.process_three,
+                carrera=career,
+                cantidad_plazas=1,
+                otorgamiento_tipo=self.tipo,
+                ces=self.ces,
+                provincia=self.province,
+                sexo="A",
+            ))
+        ineligible_career = Carrera.objects.create(
+            codigo="INELIG-1",
+            nombre="Carrera no elegible",
+            ces=self.ces,
+            provincia=self.province,
+        )
+        ineligible_plan = PlanPlaza.objects.create(
+            proceso=self.process_three,
+            carrera=ineligible_career,
+            cantidad_plazas=1,
+            otorgamiento_tipo=self.tipo,
+            ces=self.ces,
+            provincia=self.province,
+            sexo="M",
+        )
+
+        response = self.client.post(
+            reverse("student-solicitud"),
+            {
+                "plan_plazas": [plan.id for plan in eligible_plans] + [ineligible_plan.id],
+                "confirmar": True,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400, response.content)
+        self.assertIn("no pertenecen al plan", response.data["detail"])
 
     def test_previous_year_escalafon_does_not_allow_current_year_ballot(self):
         response = self.client.get(reverse("student-solicitud"))

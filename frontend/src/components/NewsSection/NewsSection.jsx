@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import PrimaryButton from "../Buttons/PrimaryButton";
 import SecondaryButton from "../Buttons/SecondaryButton";
 import Modal from "../Modals/Modal";
@@ -16,10 +16,29 @@ function formatDate(value) {
   }).format(date);
 }
 
+// En móvil se muestran 3 noticias antes del "Ver más": las tarjetas llevan imagen
+// y a una columna cuatro obligan a recorrer demasiado la portada.
+const MOBILE_QUERY = "(max-width: 639px)";
+
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(() => window.matchMedia(MOBILE_QUERY).matches);
+
+  useEffect(() => {
+    const query = window.matchMedia(MOBILE_QUERY);
+    const handleChange = (event) => setIsMobile(event.matches);
+    setIsMobile(query.matches);
+    query.addEventListener("change", handleChange);
+    return () => query.removeEventListener("change", handleChange);
+  }, []);
+
+  return isMobile;
+}
+
 export default function NewsSection({ items = [], provinceName }) {
   const [selectedNews, setSelectedNews] = useState(null);
   const [showAllNews, setShowAllNews] = useState(false);
-  const visibleItems = items.slice(0, 4);
+  const maxVisible = useIsMobile() ? 3 : 4;
+  const visibleItems = items.slice(0, maxVisible);
 
   return (
     <section className={styles.section}>
@@ -29,7 +48,7 @@ export default function NewsSection({ items = [], provinceName }) {
           <h2 className={styles.title}>Actualizaciones del proceso de ingreso</h2>
           {provinceName && <p className={styles.province}>{provinceName}</p>}
         </div>
-        {items.length > 4 && <SecondaryButton className={styles.moreTop} onClick={() => setShowAllNews(true)}>Ver más</SecondaryButton>}
+        {items.length > maxVisible && <SecondaryButton className={styles.moreTop} onClick={() => setShowAllNews(true)}>Ver más</SecondaryButton>}
       </div>
       <div className={styles.grid}>
         {items.length === 0 ? (
@@ -116,7 +135,7 @@ export default function NewsSection({ items = [], provinceName }) {
           );
         })}
       </div>
-      {items.length > 4 && <SecondaryButton className={styles.moreBottom} onClick={() => setShowAllNews(true)}>Ver más</SecondaryButton>}
+      {items.length > maxVisible && <SecondaryButton className={styles.moreBottom} onClick={() => setShowAllNews(true)}>Ver más</SecondaryButton>}
       {showAllNews && (
         <Modal
           open

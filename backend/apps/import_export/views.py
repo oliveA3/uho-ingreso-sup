@@ -9,19 +9,19 @@ from drf_spectacular.utils import extend_schema, inline_serializer, OpenApiParam
 from drf_spectacular.types import OpenApiTypes
 from rest_framework import status, permissions, serializers
 from django.db import transaction
-from apps.gestion_provincial.models import PlanPlaza, Otorgamiento, CorteCarrera, Proceso, Etapa
+from apps.gestion_provincial.models import PlanPlaza, Otorgamiento, CorteCarrera, Proceso
 from apps.authentication.models import Usuario
 from apps.core.audit import record_audit
 from apps.core.throttling import BulkOperationRateThrottle
 from apps.gestion_provincial.permissions import IsCareerManager
 from apps.superadmin.models import Asignatura, Carrera, Ces, Escuela, Municipio, Provincia, TipoOtorgamiento
-from apps.gestion_provincial.services.etapas import is_stage_active, stage_readonly_message
+from apps.gestion_provincial.services.etapas import effective_stage_state, get_current_cycle_year, is_stage_active, stage_readonly_message
 from .services.carreras_service import CareerExcelService
 from .services.escalafon_service import EscalafonExcelService, rank_escalafon_entries, resolve_school
 from apps.gestion_escuela.models import Escalafon, EscalafonItem
 from apps.gestion_escuela.serializers import EscalafonItemSerializer, StudentEscalafonActionSerializer
 from apps.gestion_escuela.permissions import CanManageEscalafon
-from apps.gestion_provincial.models import ETAPAS_NOMBRES, Etapa
+from apps.gestion_provincial.models import ETAPAS_NOMBRES
 from django.utils import timezone
 import io
 from datetime import date, datetime
@@ -60,7 +60,7 @@ def build_pdf_document(title, lines, process_name=None, process_identifier=None)
 def _ballot_pdf(title, student, items, career_getter, process_name=None, process_identifier=None):
     escalafon_entry = EscalafonItem.objects.filter(
         estudiante=student,
-        escalafon__proceso__anio__year=timezone.now().year,
+        escalafon__proceso__anio__year=get_current_cycle_year(),
     ).order_by("-escalafon__proceso__anio", "-escalafon_id", "-id").first()
     index = escalafon_entry.indice_general if escalafon_entry else student.indice_general
     lines = [
@@ -124,7 +124,7 @@ class StudentInterestPdfExportView(APIView):
         if request.user.rol != "estudiante":
             return Response({"detail": "Solo un estudiante puede descargar esta boleta."}, status=403)
         student = getattr(request.user, "estudiante", None)
-        process = Proceso.get_for_stage_and_year(timezone.now().year, ETAPAS_NOMBRES[2])
+        process = Proceso.get_for_stage_and_year(get_current_cycle_year(), ETAPAS_NOMBRES[2])
         ballot = BoletaInteres.objects.filter(estudiante=student, proceso=process).first() if student and process else None
         if not ballot:
             return Response({"detail": "No existe una boleta de interés."}, status=404)
@@ -136,7 +136,7 @@ class StudentInterestPdfExportView(APIView):
                 student,
                 items,
                 lambda item: item.carrera,
-                process_name=f"Proceso de Ingreso {timezone.now().year}",
+                process_name=f"Proceso de Ingreso {get_current_cycle_year()}",
                 process_identifier=f"{process_label}",
             ),
             content_type="application/pdf",
@@ -161,7 +161,7 @@ class StudentInterestExcelExportView(APIView):
         if request.user.rol != "estudiante":
             return Response({"detail": "Solo un estudiante puede descargar esta boleta."}, status=403)
         student = getattr(request.user, "estudiante", None)
-        process = Proceso.get_for_stage_and_year(timezone.now().year, ETAPAS_NOMBRES[2])
+        process = Proceso.get_for_stage_and_year(get_current_cycle_year(), ETAPAS_NOMBRES[2])
         ballot = BoletaInteres.objects.filter(estudiante=student, proceso=process).first() if student and process else None
         if not ballot:
             return Response({"detail": "No existe una boleta de interés."}, status=404)
@@ -190,7 +190,7 @@ class SolicitudPdfExportView(APIView):
     def get(self, request, ballot_id=None):
         student = getattr(request.user, "estudiante", None)
         if request.user.rol == "estudiante":
-            process = Proceso.get_for_stage_and_year(timezone.now().year, ETAPAS_NOMBRES[3])
+            process = Proceso.get_for_stage_and_year(get_current_cycle_year(), ETAPAS_NOMBRES[3])
             ballot = BoletaSolicitud.objects.filter(estudiante=student, proceso=process).select_related("estudiante__escuela").first() if student and process else None
         elif request.user.rol in {"secretario_escuela", "director_escuela"} and request.user.escuela_id and ballot_id:
             ballot = BoletaSolicitud.objects.filter(pk=ballot_id, estudiante__escuela_id=request.user.escuela_id).select_related("estudiante__escuela").first()
@@ -206,7 +206,7 @@ class SolicitudPdfExportView(APIView):
                 ballot.estudiante,
                 items,
                 lambda item: item.plan_plaza.carrera,
-                process_name=f"Proceso de Ingreso {timezone.now().year}",
+                process_name=f"Proceso de Ingreso {get_current_cycle_year()}",
                 process_identifier=f"{process_label}",
             ),
             content_type="application/pdf",
@@ -231,7 +231,7 @@ class SolicitudExcelExportView(APIView):
     def get(self, request, ballot_id=None):
         student = getattr(request.user, "estudiante", None)
         if request.user.rol == "estudiante":
-            process = Proceso.get_for_stage_and_year(timezone.now().year, ETAPAS_NOMBRES[3])
+            process = Proceso.get_for_stage_and_year(get_current_cycle_year(), ETAPAS_NOMBRES[3])
             ballot = BoletaSolicitud.objects.filter(estudiante=student, proceso=process).select_related("estudiante__escuela").first() if student and process else None
         elif request.user.rol in {"secretario_escuela", "director_escuela"} and request.user.escuela_id and ballot_id:
             ballot = BoletaSolicitud.objects.filter(pk=ballot_id, estudiante__escuela_id=request.user.escuela_id).select_related("estudiante__escuela").first()
@@ -290,7 +290,7 @@ _disambiguate_ballot_operation_id(
         "Codigo_Carrera, Nombre_Carrera, Cantidad_Plazas, Tipo_Otorgamiento, CES, Provincia, Sexo. Requiere permiso "
         "de gestor de carreras (`IsCareerManager`). Los roles con alcance provincial ('jefe_comision', "
         "'ingreso_provincial') solo pueden registrar plazas en su propia provincia. La importación es atómica: si "
-        "alguna fila tiene errores, no se guarda ningún registro.",
+        "alguna fila tiene errores, no se guarda ningún registro."
     ),
     request=inline_serializer(
         name="ImportPlanPlazaUploadRequest",
@@ -298,22 +298,7 @@ _disambiguate_ballot_operation_id(
     ),
     responses={
         202: _IMPORT_ACCEPTED,
-        201: inline_serializer(
-            name="ImportPlanPlazaResponse",
-            fields={
-                "inserted": serializers.IntegerField(),
-                "updated": serializers.IntegerField(),
-                "errors": serializers.ListField(child=serializers.DictField(), default=list),
-            },
-        ),
-        400: inline_serializer(
-            name="ImportPlanPlazaErrorResponse",
-            fields={
-                "inserted": serializers.IntegerField(),
-                "updated": serializers.IntegerField(),
-                "errors": serializers.ListField(child=serializers.DictField()),
-            },
-        ),
+        400: inline_serializer(name="ImportPlanPlazaErrorResponse", fields={"detail": serializers.CharField()}),
     },
     examples=[
         OpenApiExample(
@@ -389,7 +374,7 @@ class ImportPlanPlazaExportView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        anio = request.query_params.get("anio") or request.query_params.get("year") or timezone.now().year
+        anio = request.query_params.get("anio") or request.query_params.get("year") or get_current_cycle_year()
         provincia = request.query_params.get("provincia") or request.query_params.get("province") or ""
 
         queryset = PlanPlaza.objects.select_related("carrera", "carrera__ces", "carrera__provincia", "ces", "provincia", "proceso").filter(
@@ -436,8 +421,9 @@ class ImportPlanPlazaExportView(APIView):
     description=(
         "Sube un archivo Excel (.xlsx) con los otorgamientos de carreras (CI, Codigo_Carrera, Nombre_Carrera, "
         "Indice_Otorgamiento) durante la etapa 6 del proceso de ingreso en curso. Solo puede ejecutarlo el Jefe de "
-        "Comisión (o superusuario). La importación es atómica y, al finalizar sin errores, notifica a los "
-        "estudiantes afectados (de la provincia del jefe de comisión, o a todos si es superusuario).",
+        "Comisión (o superusuario). El Jefe de Comisión solo puede importar otorgamientos de estudiantes de su provincia. "
+        "La importación es atómica y, al finalizar sin errores, notifica a los "
+        "estudiantes afectados (de la provincia del jefe de comisión, o a todos si es superusuario)."
     ),
     request=inline_serializer(
         name="ImportOtorgamientoUploadRequest",
@@ -445,22 +431,7 @@ class ImportPlanPlazaExportView(APIView):
     ),
     responses={
         202: _IMPORT_ACCEPTED,
-        201: inline_serializer(
-            name="ImportOtorgamientoResponse",
-            fields={
-                "inserted": serializers.IntegerField(),
-                "updated": serializers.IntegerField(),
-                "errors": serializers.ListField(child=serializers.DictField(), default=list),
-            },
-        ),
-        400: inline_serializer(
-            name="ImportOtorgamientoErrorResponse",
-            fields={
-                "inserted": serializers.IntegerField(),
-                "updated": serializers.IntegerField(),
-                "errors": serializers.ListField(child=serializers.DictField()),
-            },
-        ),
+        400: inline_serializer(name="ImportOtorgamientoErrorResponse", fields={"detail": serializers.CharField()}),
     },
     examples=[
         OpenApiExample(
@@ -492,7 +463,9 @@ class ImportOtorgamientoView(APIView):
     description=(
         "Sube un archivo Excel (.xlsx) con los índices de corte por carrera (Codigo_Carrera, Nombre_Carrera, "
         "Indice_Corte) durante la etapa 6 del proceso de ingreso en curso. Solo puede ejecutarlo el Jefe de "
-        "Comisión (o superusuario). La importación es atómica.",
+        "Comisión (o superusuario). La importación es atómica. "
+        "La subida responde 202 con un `task_id`: el resultado "
+        "(`inserted`, `updated`, `errors`) se consulta en `GET /api/v1/import-export/tareas/{task_id}/`."
     ),
     request=inline_serializer(
         name="ImportCorteCarreraUploadRequest",
@@ -500,22 +473,7 @@ class ImportOtorgamientoView(APIView):
     ),
     responses={
         202: _IMPORT_ACCEPTED,
-        201: inline_serializer(
-            name="ImportCorteCarreraResponse",
-            fields={
-                "inserted": serializers.IntegerField(),
-                "updated": serializers.IntegerField(),
-                "errors": serializers.ListField(child=serializers.DictField(), default=list),
-            },
-        ),
-        400: inline_serializer(
-            name="ImportCorteCarreraErrorResponse",
-            fields={
-                "inserted": serializers.IntegerField(),
-                "updated": serializers.IntegerField(),
-                "errors": serializers.ListField(child=serializers.DictField()),
-            },
-        ),
+        400: inline_serializer(name="ImportCorteCarreraErrorResponse", fields={"detail": serializers.CharField()}),
     },
     examples=[
         OpenApiExample(
@@ -584,7 +542,7 @@ class OtorgamientoSummaryView(APIView):
         if request.user.rol != "jefe_comision" and not request.user.is_superuser:
             return Response({"detail": "Solo el Jefe de Comisión puede consultar este resumen."}, status=403)
         try:
-            anio = int(request.query_params.get("anio", timezone.now().year))
+            anio = int(request.query_params.get("anio", get_current_cycle_year()))
         except (TypeError, ValueError):
             return Response({"detail": "El año indicado no es válido."}, status=400)
         province_filter = {}
@@ -639,7 +597,7 @@ class ExportStageSixView(APIView):
         if request.user.rol not in {"jefe_comision", "secretario_escuela", "director_escuela", "superadmin"} and not request.user.is_superuser:
             return Response({"detail": "No tienes permiso para exportar estos datos."}, status=403)
         try:
-            anio = int(request.query_params.get("anio", timezone.now().year))
+            anio = int(request.query_params.get("anio", get_current_cycle_year()))
         except (TypeError, ValueError):
             return Response({"detail": "El año indicado no es válido."}, status=400)
         if kind not in {"otorgamientos", "cortes"}:
@@ -743,7 +701,7 @@ class SchoolOtorgamientoListView(APIView):
         if not request.user.escuela_id:
             return Response({"detail": "El usuario no tiene una escuela asignada."}, status=400)
         try:
-            anio = int(request.query_params.get("anio", timezone.now().year))
+            anio = int(request.query_params.get("anio", get_current_cycle_year()))
         except (TypeError, ValueError):
             return Response({"detail": "El año indicado no es válido."}, status=400)
         process = Proceso.get_for_stage_and_year(anio, ETAPAS_NOMBRES[6])
@@ -901,7 +859,7 @@ class ExportCatalogView(APIView):
         "de una escuela para un año/proceso dado. Solo pueden importarlo el Secretario de la escuela (limitado a "
         "su propia escuela), el Jefe de Comisión (limitado a escuelas de su provincia) o el superadmin. Falla si "
         "ya existe un escalafón para esa escuela y año. Al finalizar sin errores, notifica a los estudiantes de la "
-        "escuela.",
+        "escuela."
     ),
     request=inline_serializer(
         name="ImportEscalafonUploadRequest",
@@ -947,7 +905,7 @@ class ImportEscalafonView(APIView):
             return Response({"detail": upload_error}, status=status.HTTP_400_BAD_REQUEST)
         try:
             escuela = resolve_school(request.data.get("escuela") or request.user.escuela_id)
-            anio = int(request.data.get("anio", request.data.get("año", timezone.now().year)))
+            anio = int(request.data.get("anio", request.data.get("año", get_current_cycle_year())))
             proceso = Proceso.get_for_stage_and_year(anio, ETAPAS_NOMBRES[1])
             if not proceso:
                 raise ValueError("No existe un proceso para la etapa de escalafón en el año indicado.")
@@ -969,7 +927,7 @@ class ImportEscalafonView(APIView):
         "Sube un archivo Excel (.xlsx) con las notas de una asignatura para el proceso de resultados (etapa 5) de "
         "un año dado. Solo el Jefe de Comisión (limitado a su provincia) o el superadmin pueden importar, y solo "
         "mientras la etapa 5 esté 'en_curso'. Al finalizar sin errores, notifica a los estudiantes afectados y "
-        "registra auditoría.",
+        "registra auditoría."
     ),
     request=inline_serializer(
         name="ImportResultadosUploadRequest",
@@ -1021,13 +979,13 @@ class ImportResultadosView(APIView):
         if upload_error:
             return Response({"detail": upload_error}, status=400)
         try:
-            anio = int(request.data.get("anio", timezone.now().year))
+            anio = int(request.data.get("anio", get_current_cycle_year()))
             proceso = Proceso.get_for_stage_and_year(anio, ETAPAS_NOMBRES[5])
         except (TypeError, ValueError):
             proceso = None
         if not proceso:
             return Response({"detail": "No existe un proceso de resultados para el año indicado."}, status=400)
-        if proceso.etapa.estado != "en_curso":
+        if not is_stage_active(5):
             return Response({"detail": "La importación de resultados solo está disponible durante la etapa 5."}, status=403)
         selected_subject = request.data.get("asignatura")
         try:
@@ -1038,6 +996,102 @@ class ImportResultadosView(APIView):
             "proceso_id": proceso.id, "asignatura": selected_subject, "deadline": deadline.isoformat(),
         })
         return _accepted(task_id)
+
+
+def mask_ci(ci):
+    """Enmascara el CI dejando visibles solo los ultimos 4 digitos.
+
+    Los 6 primeros digitos del CI cubano son la fecha de nacimiento (YYMMDD),
+    asi que enmascarar por el final publicaba el dato mas identificativo.
+    """
+    ci = ci or ""
+    if len(ci) <= 4:
+        return "*" * len(ci)
+    return "*" * (len(ci) - 4) + ci[-4:]
+
+
+def mask_name(full_name):
+    initials = []
+    for word in (full_name or "").split():
+        initial = next((character for character in word if character.isalpha()), None)
+        if initial:
+            initials.append(f"{initial.upper()}.")
+    return " ".join(initials)
+
+
+def requested_year(request, default=None):
+    """Año pedido en `?anio=`, o 400 si no es un número.
+
+    Sin esto `int()` propagaba un ValueError y el manejador de excepciones lo
+    convertía en un 500 opaco.
+    """
+    raw = request.query_params.get("anio")
+    if raw in (None, ""):
+        return default if default is not None else get_current_cycle_year()
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        raise serializers.ValidationError({"detail": "El año indicado no es válido."})
+
+
+PUBLIC_PAGE_SIZE = 50
+PUBLIC_MAX_PAGE_SIZE = 200
+
+
+def paginate_public(request, items):
+    """Pagina un listado público. Devuelve (pagina, metadatos).
+
+    Estos endpoints devolvían todas las filas del año de una vez, lo que los hacía
+    lentos y abusables desde fuera. Se usa la misma forma (`count` + `results`) que
+    ya consume el frontend en el panel de nomencladores.
+    """
+    try:
+        page = max(int(request.query_params.get("page", 1)), 1)
+    except (TypeError, ValueError):
+        page = 1
+    try:
+        size = int(request.query_params.get("page_size", PUBLIC_PAGE_SIZE))
+    except (TypeError, ValueError):
+        size = PUBLIC_PAGE_SIZE
+    size = max(1, min(size, PUBLIC_MAX_PAGE_SIZE))
+
+    total = len(items) if isinstance(items, list) else items.count()
+    start = (page - 1) * size
+    return items[start:start + size], {
+        "count": total,
+        "page": page,
+        "page_size": size,
+        "total_pages": max(1, -(-total // size)),
+    }
+
+
+NOTA_PUBLICA_FLAG = "config_consulta_nota_publica"
+OTORG_PUBLICO_FLAG = "config_consulta_otorg_publico"
+
+
+def public_consult_enabled(year, stage_name, flag):
+    """Indica si el Jefe de Comisión habilitó la consulta pública de ese proceso.
+
+    Los interruptores viven en `Proceso` (uno por año y etapa) y por defecto están
+    en `False`: la publicación es una decisión explícita, no una consecuencia de
+    que la etapa esté en curso.
+    """
+    process = Proceso.get_for_stage_and_year(year, stage_name)
+    return bool(process and getattr(process, flag, False))
+
+
+def own_student_id(request):
+    """ID del estudiante autenticado (None si es anónimo o no es estudiante)."""
+    student = getattr(request.user, "estudiante", None) if request.user.is_authenticated else None
+    return student.id if student else None
+
+
+def public_student_identity(student, own_id):
+    """(nombre completo, CI) para listados públicos: enmascarados salvo para el propio estudiante."""
+    full_name = f"{student.nombre} {student.apellidos}"
+    if student.id == own_id:
+        return full_name, student.ci
+    return mask_name(full_name), mask_ci(student.ci)
 
 
 def normalize_result_subject(value):
@@ -1113,7 +1167,7 @@ class ResultadosListView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        anio = int(request.query_params.get("anio", timezone.now().year))
+        anio = requested_year(request)
         if request.user.rol in {"secretario_escuela", "director_escuela"}:
             if not request.user.escuela_id:
                 return Response({"detail": "El usuario no tiene una escuela asignada."}, status=400)
@@ -1152,8 +1206,8 @@ class ResultadosListView(APIView):
                     resultado__proceso=result_process,
                 )
             } if result_process else {}
-            stage_five = Etapa.objects.filter(nombre=ETAPAS_NOMBRES[5]).first()
-            stage_en_curso = bool(stage_five and stage_five.estado == "en_curso")
+            stage_five = result_process
+            stage_en_curso = is_stage_active(5, anio)
             today = timezone.localdate()
             results_by_subject = {
                 normalize_result_subject(result.asignatura.nombre): result
@@ -1164,7 +1218,7 @@ class ResultadosListView(APIView):
             return Response({
                 "stage": {
                     "active": stage_en_curso,
-                    "completed": bool(stage_five and stage_five.estado == "completada"),
+                    "completed": bool(stage_five and effective_stage_state(stage_five) == "completada"),
                     "current_number": 5 if stage_en_curso else None,
                     "fecha_fin": stage_five.fecha_fin if stage_en_curso else None,
                 },
@@ -1191,7 +1245,10 @@ class ResultadosListView(APIView):
                 } for subject_key, subject_name in subjects for result in [results_by_subject.get(subject_key)]],
             })
         elif request.user.rol in {"jefe_comision", "superadmin"}:
-            queryset = ResultadoExamen.objects.filter(proceso__etapa__nombre=ETAPAS_NOMBRES[5])
+            queryset = ResultadoExamen.objects.filter(
+                proceso__etapa__nombre=ETAPAS_NOMBRES[5],
+                proceso__anio__year=anio,
+            )
             if request.user.rol == "jefe_comision":
                 queryset = queryset.filter(estudiante__escuela__municipio__provincia_id=request.user.provincia_id)
         else:
@@ -1222,6 +1279,8 @@ class ResultadosListView(APIView):
         OpenApiParameter("municipio", OpenApiTypes.STR, OpenApiParameter.QUERY, required=False, description="Nombre exacto del municipio."),
         OpenApiParameter("escuela", OpenApiTypes.STR, OpenApiParameter.QUERY, required=False, description="Nombre exacto de la escuela."),
         OpenApiParameter("asignatura", OpenApiTypes.STR, OpenApiParameter.QUERY, required=False, description="Nombre exacto de la asignatura."),
+        OpenApiParameter("page", OpenApiTypes.INT, OpenApiParameter.QUERY, required=False, description="Número de página (50 filas por página)."),
+        OpenApiParameter("page_size", OpenApiTypes.INT, OpenApiParameter.QUERY, required=False, description="Filas por página (máximo 200)."),
     ],
     responses={
         200: inline_serializer(
@@ -1278,9 +1337,15 @@ class LandingResultadosView(APIView):
 
     def get(self, request):
         try:
-            anio = int(request.query_params.get("anio", timezone.now().year))
+            anio = int(request.query_params.get("anio", get_current_cycle_year()))
         except (TypeError, ValueError):
             return Response({"detail": "El año indicado no es válido."}, status=400)
+        if not public_consult_enabled(anio, ETAPAS_NOMBRES[5], NOTA_PUBLICA_FLAG):
+            return Response({
+                "year": anio, "results": [], "publicacion_habilitada": False,
+                "count": 0, "page": 1, "page_size": PUBLIC_PAGE_SIZE, "total_pages": 1,
+                "years": [], "provinces": [], "municipalities": [], "schools": [], "subjects": [],
+            })
         queryset = ResultadoExamen.objects.filter(
             proceso__anio__year=anio,
             proceso__etapa__nombre=ETAPAS_NOMBRES[5],
@@ -1297,16 +1362,21 @@ class LandingResultadosView(APIView):
             queryset = queryset.filter(estudiante__escuela__nombre__iexact=escuela)
         if asignatura:
             queryset = queryset.filter(asignatura__nombre__iexact=asignatura)
+        own_id = own_student_id(request)
+        page_items, page_meta = paginate_public(
+            request,
+            queryset.order_by("estudiante__apellidos", "estudiante__nombre", "asignatura__nombre"),
+        )
         results = [{
             "id": item.id,
-            "student": f"{item.estudiante.nombre} {item.estudiante.apellidos}",
+            "student": public_student_identity(item.estudiante, own_id)[0],
             "school": item.estudiante.escuela.nombre,
             "municipality": item.estudiante.escuela.municipio.nombre,
             "province": item.estudiante.escuela.municipio.provincia.nombre,
             "subject": item.asignatura.nombre,
             "grade": item.nota,
             "year": item.proceso.anio.year,
-        } for item in queryset.order_by("estudiante__apellidos", "estudiante__nombre", "asignatura__nombre")]
+        } for item in page_items]
         all_results = ResultadoExamen.objects.filter(
             proceso__anio__year=anio,
             proceso__etapa__nombre=ETAPAS_NOMBRES[5],
@@ -1314,7 +1384,9 @@ class LandingResultadosView(APIView):
         return Response({
             "year": anio,
             "results": results,
-            "years": list(Proceso.objects.filter(etapa__nombre=ETAPAS_NOMBRES[5]).values_list("anio__year", flat=True).distinct().order_by("-anio__year")),
+            **page_meta,
+            "publicacion_habilitada": True,
+            "years": list(Proceso.objects.filter(etapa__nombre=ETAPAS_NOMBRES[5], **{NOTA_PUBLICA_FLAG: True}).values_list("anio__year", flat=True).distinct().order_by("-anio__year")),
             "provinces": list(all_results.values_list("estudiante__escuela__municipio__provincia__nombre", flat=True).distinct().order_by("estudiante__escuela__municipio__provincia__nombre")),
             "municipalities": list(all_results.values_list("estudiante__escuela__municipio__nombre", flat=True).distinct().order_by("estudiante__escuela__municipio__nombre")),
             "schools": list(all_results.values_list("estudiante__escuela__nombre", flat=True).distinct().order_by("estudiante__escuela__nombre")),
@@ -1331,7 +1403,9 @@ class LandingResultadosView(APIView):
     parameters=[
         OpenApiParameter("anio", OpenApiTypes.INT, OpenApiParameter.QUERY, required=False, description="Año del proceso. Por defecto el año actual."),
         OpenApiParameter("provincia", OpenApiTypes.STR, OpenApiParameter.QUERY, required=False, description="Nombre exacto de la provincia."),
-        OpenApiParameter("ci", OpenApiTypes.STR, OpenApiParameter.QUERY, required=False, description="Carné de identidad (búsqueda parcial) del estudiante."),
+        OpenApiParameter("ci", OpenApiTypes.STR, OpenApiParameter.QUERY, required=False, description="Carné de identidad completo del estudiante (11 dígitos, coincidencia exacta). Un valor parcial responde 400."),
+        OpenApiParameter("page", OpenApiTypes.INT, OpenApiParameter.QUERY, required=False, description="Número de página (50 filas por página)."),
+        OpenApiParameter("page_size", OpenApiTypes.INT, OpenApiParameter.QUERY, required=False, description="Filas por página (máximo 200)."),
     ],
     responses={
         200: inline_serializer(
@@ -1384,11 +1458,17 @@ class LandingOtorgamientosView(APIView):
 
     def get(self, request):
         try:
-            anio = int(request.query_params.get("anio", timezone.now().year))
+            anio = int(request.query_params.get("anio", get_current_cycle_year()))
         except (TypeError, ValueError):
             return Response({"detail": "El año indicado no es válido."}, status=400)
         provincia = request.query_params.get("provincia", "").strip()
         ci = request.query_params.get("ci", "").strip()
+        if not public_consult_enabled(anio, ETAPAS_NOMBRES[6], OTORG_PUBLICO_FLAG):
+            return Response({
+                "year": anio, "results": [], "publicacion_habilitada": False,
+                "count": 0, "page": 1, "page_size": PUBLIC_PAGE_SIZE, "total_pages": 1,
+                "years": [], "provinces": [],
+            })
         queryset = Otorgamiento.objects.filter(
             proceso__anio__year=anio,
             proceso__etapa__nombre=ETAPAS_NOMBRES[6],
@@ -1396,25 +1476,43 @@ class LandingOtorgamientosView(APIView):
         if provincia:
             queryset = queryset.filter(estudiante__escuela__municipio__provincia__nombre__iexact=provincia)
         if ci:
-            queryset = queryset.filter(estudiante__ci__icontains=ci)
+            # Coincidencia exacta y CI completo: con `icontains` un cliente
+            # anonimo podia enumerar por prefijos (los 6 primeros digitos son
+            # la fecha de nacimiento) y confirmar a quien pertenece cada CI.
+            if not (ci.isdigit() and len(ci) == 11):
+                return Response(
+                    {"detail": "Para consultar por CI debes indicar los 11 dígitos completos."},
+                    status=400,
+                )
+            queryset = queryset.filter(estudiante__ci=ci)
         all_awards = Otorgamiento.objects.filter(
             proceso__anio__year=anio,
             proceso__etapa__nombre=ETAPAS_NOMBRES[6],
         ).select_related("estudiante__escuela__municipio__provincia")
-        return Response({
-            "year": anio,
-            "results": [{
+        own_id = own_student_id(request)
+        page_items, page_meta = paginate_public(
+            request, queryset.order_by("estudiante__apellidos", "estudiante__nombre"),
+        )
+        results = []
+        for item in page_items:
+            student_name, student_ci = public_student_identity(item.estudiante, own_id)
+            results.append({
                 "id": item.id,
-                "student": f"{item.estudiante.nombre} {item.estudiante.apellidos}",
-                "ci": item.estudiante.ci,
+                "student": student_name,
+                "ci": student_ci,
                 "career": item.carrera.nombre,
                 "ces": item.carrera.ces.nombre,
                 "award_index": item.indice_otorgamiento,
                 "school": item.estudiante.escuela.nombre,
                 "province": item.estudiante.escuela.municipio.provincia.nombre,
                 "year": item.proceso.anio.year,
-            } for item in queryset.order_by("estudiante__apellidos", "estudiante__nombre")],
-            "years": list(Proceso.objects.filter(etapa__nombre=ETAPAS_NOMBRES[6]).values_list("anio__year", flat=True).distinct().order_by("-anio__year")),
+            })
+        return Response({
+            "year": anio,
+            "results": results,
+            **page_meta,
+            "publicacion_habilitada": True,
+            "years": list(Proceso.objects.filter(etapa__nombre=ETAPAS_NOMBRES[6], **{OTORG_PUBLICO_FLAG: True}).values_list("anio__year", flat=True).distinct().order_by("-anio__year")),
             "provinces": list(all_awards.values_list("estudiante__escuela__municipio__provincia__nombre", flat=True).distinct().order_by("estudiante__escuela__municipio__provincia__nombre")),
         })
 
@@ -1477,9 +1575,10 @@ class LandingCortesView(APIView):
     def get(self, request):
         available_years = list(CorteCarrera.objects.filter(
             proceso__etapa__nombre=ETAPAS_NOMBRES[6],
+            **{f"proceso__{OTORG_PUBLICO_FLAG}": True},
         ).values_list("proceso__anio__year", flat=True).distinct().order_by("-proceso__anio__year"))
         if not available_years:
-            return Response({"year": None, "items": [], "years": []})
+            return Response({"year": None, "items": [], "years": [], "publicacion_habilitada": False})
         try:
             selected_year = int(request.query_params.get("anio", available_years[0]))
         except (TypeError, ValueError):
@@ -1489,6 +1588,7 @@ class LandingCortesView(APIView):
         cuts = CorteCarrera.objects.filter(
             proceso__anio__year=selected_year,
             proceso__etapa__nombre=ETAPAS_NOMBRES[6],
+            **{f"proceso__{OTORG_PUBLICO_FLAG}": True},
         ).select_related("carrera", "proceso")
         province = request.query_params.get("provincia", "").strip()
         career_search = request.query_params.get("carrera", "").strip()
@@ -1542,10 +1642,21 @@ class LandingExcelExportView(APIView):
         if kind not in {"resultados", "otorgamientos", "cortes"}:
             return Response({"detail": "Tipo de exportación no válido."}, status=404)
         try:
-            anio = int(request.query_params.get("anio", timezone.now().year))
+            anio = int(request.query_params.get("anio", get_current_cycle_year()))
         except (TypeError, ValueError):
             return Response({"detail": "El año indicado no es válido."}, status=400)
         provincia = request.query_params.get("provincia", "").strip()
+        # La exportación pública expone los mismos datos que la consulta web, así
+        # que respeta el mismo interruptor del proceso.
+        stage_name, flag = (
+            (ETAPAS_NOMBRES[5], NOTA_PUBLICA_FLAG) if kind == "resultados"
+            else (ETAPAS_NOMBRES[6], OTORG_PUBLICO_FLAG)
+        )
+        if not public_consult_enabled(anio, stage_name, flag):
+            return Response(
+                {"detail": "La consulta pública de estos datos no está habilitada para el año indicado."},
+                status=403,
+            )
         workbook = Workbook()
         sheet = workbook.active
 
@@ -1558,10 +1669,12 @@ class LandingExcelExportView(APIView):
             ).select_related("estudiante__escuela__municipio__provincia", "asignatura")
             if provincia:
                 queryset = queryset.filter(estudiante__escuela__municipio__provincia__nombre__iexact=provincia)
+            own_id = own_student_id(request)
             for item in queryset.order_by("estudiante__apellidos", "estudiante__nombre", "asignatura__nombre"):
+                student_name, student_ci = public_student_identity(item.estudiante, own_id)
                 sheet.append([
-                    item.estudiante.ci,
-                    f"{item.estudiante.nombre} {item.estudiante.apellidos}",
+                    student_ci,
+                    student_name,
                     item.asignatura.nombre,
                     item.nota,
                     item.estudiante.escuela.nombre,
@@ -1578,10 +1691,12 @@ class LandingExcelExportView(APIView):
             ).select_related("estudiante__escuela__municipio__provincia", "carrera__ces")
             if provincia:
                 queryset = queryset.filter(estudiante__escuela__municipio__provincia__nombre__iexact=provincia)
+            own_id = own_student_id(request)
             for item in queryset.order_by("estudiante__apellidos", "estudiante__nombre"):
+                student_name, student_ci = public_student_identity(item.estudiante, own_id)
                 sheet.append([
-                    item.estudiante.ci,
-                    f"{item.estudiante.nombre} {item.estudiante.apellidos}",
+                    student_ci,
+                    student_name,
                     item.carrera.nombre,
                     item.carrera.ces.nombre,
                     item.indice_otorgamiento,
@@ -1649,11 +1764,11 @@ class StudentResultClaimView(APIView):
             pk=result_id,
             estudiante__usuario=request.user,
             proceso__etapa__nombre=ETAPAS_NOMBRES[5],
+            proceso__anio__year=get_current_cycle_year(),
         ).first()
         if not result:
             return Response({"detail": "No existe ese resultado publicado."}, status=404)
-        stage = Etapa.objects.filter(nombre=ETAPAS_NOMBRES[5]).first()
-        if not stage or stage.estado != "en_curso":
+        if not is_stage_active(5):
             return Response({"detail": "Las reclamaciones no están disponibles fuera de la etapa 5."}, status=403)
         if result.fecha_limite_reclamo and result.fecha_limite_reclamo < timezone.localdate():
             return Response({"detail": "El plazo de reclamación ya finalizó."}, status=403)
@@ -1727,7 +1842,7 @@ class ResultClaimsListView(APIView):
         if request.user.rol not in {"jefe_comision", "superadmin"}:
             return Response({"detail": "No tienes permiso para consultar reclamaciones."}, status=403)
         try:
-            anio = int(request.query_params.get("anio", timezone.now().year))
+            anio = int(request.query_params.get("anio", get_current_cycle_year()))
         except (TypeError, ValueError):
             return Response({"detail": "El año indicado no es válido."}, status=400)
         claims = Reclamacion.objects.filter(
@@ -1861,7 +1976,7 @@ class ExportResultadosView(APIView):
     def get(self, request):
         if request.user.rol not in {"jefe_comision", "secretario_escuela", "director_escuela", "superadmin"}:
             return Response({"detail": "No tienes permiso para exportar resultados."}, status=403)
-        anio = int(request.query_params.get("anio", timezone.now().year))
+        anio = requested_year(request)
         if request.user.rol in {"secretario_escuela", "director_escuela"}:
             if not request.user.escuela_id:
                 return Response({"detail": "El usuario no tiene una escuela asignada."}, status=400)
@@ -1962,7 +2077,7 @@ class ExportEscalafonView(APIView):
                 return Response({"detail": "Solo puedes exportar el escalafón de tu escuela."}, status=status.HTTP_403_FORBIDDEN)
             if request.user.rol == "jefe_comision" and escuela.municipio.provincia_id != request.user.provincia_id:
                 return Response({"detail": "Solo puedes exportar escalafones de tu provincia."}, status=status.HTTP_403_FORBIDDEN)
-            anio = int(request.query_params.get("anio", request.query_params.get("año", timezone.now().year)))
+            anio = int(request.query_params.get("anio", request.query_params.get("año", get_current_cycle_year())))
             proceso = Proceso.get_for_stage_and_year(anio, ETAPAS_NOMBRES[1])
             if not proceso:
                 raise Escalafon.DoesNotExist
@@ -1976,12 +2091,12 @@ class ExportEscalafonView(APIView):
 
 
 def escalafon_stage_active():
-    stage = Etapa.objects.filter(nombre=ETAPAS_NOMBRES[1]).first()
-    return bool(stage and stage.estado == "en_curso"), stage
+    process = Proceso.get_for_stage_and_year(get_current_cycle_year(), ETAPAS_NOMBRES[1])
+    return is_stage_active(1), process
 
 
 def visible_entries(request):
-    process = Proceso.get_for_stage_and_year(timezone.now().year, ETAPAS_NOMBRES[1])
+    process = Proceso.get_for_stage_and_year(get_current_cycle_year(), ETAPAS_NOMBRES[1])
     entries = EscalafonItem.objects.select_related("estudiante", "escalafon__escuela").filter(escalafon__proceso=process) if process else EscalafonItem.objects.none()
     user = request.user
     if user.rol == "estudiante":
@@ -2019,16 +2134,19 @@ class EscalafonListView(APIView):
     def get(self, request):
         entries = visible_entries(request)
         active, _ = escalafon_stage_active()
+        current = entries.filter(estudiante__usuario=request.user).first() if request.user.rol == "estudiante" else None
+        # Un estudiante ve el ranking completo de su escuela, pero los datos
+        # personales (CI, direccion, sexo, indices por grado y estado de revision)
+        # solo en su propia fila.
+        context = {"request": request}
+        if request.user.rol == "estudiante":
+            context["own_entry_id"] = current.id if current else None
         serialized = []
         for posicion, entry in rank_escalafon_entries(entries):
-            item = dict(EscalafonItemSerializer(entry, context={"request": request}).data)
+            item = dict(EscalafonItemSerializer(entry, context=context).data)
             item["posicion"] = posicion
             serialized.append(item)
-        current = entries.filter(estudiante__usuario=request.user).first() if request.user.rol == "estudiante" else None
-        stage_one = Etapa.objects.filter(nombre=ETAPAS_NOMBRES[1]).first()
-        puede_responder = bool(
-            current and stage_one and stage_one.estado == "en_curso" and current.escalafon.estado != "enviado"
-        )
+        puede_responder = bool(current and active and current.escalafon.estado != "enviado")
         is_secretary = request.user.rol == "secretario_escuela"
         enviado = any(entry.escalafon.estado == "enviado" for entry in entries[:1])
         return Response({
@@ -2088,7 +2206,7 @@ class ProvincialEscalafonSummaryView(APIView):
     def get(self, request):
         if request.user.rol not in {"jefe_comision", "secretario_escuela"} and not request.user.is_superuser and request.user.rol != "superadmin":
             return Response({"detail": "No tienes permiso para consultar este resumen."}, status=403)
-        process = Proceso.get_for_stage_and_year(timezone.now().year, ETAPAS_NOMBRES[1])
+        process = Proceso.get_for_stage_and_year(get_current_cycle_year(), ETAPAS_NOMBRES[1])
         if request.user.rol == "secretario_escuela":
             schools = Escuela.objects.filter(pk=request.user.escuela_id)
         else:
@@ -2126,7 +2244,7 @@ class ProvincialEscalafonSummaryView(APIView):
                 ],
             })
         return Response({
-            "year": timezone.now().year,
+            "year": get_current_cycle_year(),
             "stage_active": is_stage_active(1),
             "puede_importar": is_stage_active(1),
             "escuelas_enviaron": sum(item["escuelas_enviaron"] for item in data),
@@ -2153,7 +2271,7 @@ class ProvincialEscalafonExportView(APIView):
     def get(self, request):
         if request.user.rol != "jefe_comision" and not request.user.is_superuser and request.user.rol != "superadmin":
             return Response({"detail": "Solo el Jefe de Comisión puede exportar este resumen."}, status=403)
-        process = Proceso.get_for_stage_and_year(timezone.now().year, ETAPAS_NOMBRES[1])
+        process = Proceso.get_for_stage_and_year(get_current_cycle_year(), ETAPAS_NOMBRES[1])
         entries = EscalafonItem.objects.filter(
             escalafon__proceso=process,
             escalafon__escuela__municipio__provincia_id=request.user.provincia_id,
@@ -2262,7 +2380,7 @@ class EscalafonSendView(APIView):
             return Response({"detail": "Solo el Secretario puede enviar índices a la Comisión."}, status=403)
         if not is_stage_active(1):
             return Response({"detail": stage_readonly_message(1, "enviar índices a la Comisión")}, status=403)
-        entries = visible_entries(request).filter(escalafon__proceso__anio__year=timezone.now().year)
+        entries = visible_entries(request).filter(escalafon__proceso__anio__year=get_current_cycle_year())
         if entries.filter(estado="por_revisar").exists():
             return Response({"detail": "No puedes enviar el escalafón mientras existan reclamaciones pendientes."}, status=400)
         escalafones = Escalafon.objects.filter(
@@ -2314,15 +2432,14 @@ class StudentEscalafonActionView(APIView):
         if request.user.rol != "estudiante":
             return Response({"detail": "Solo un estudiante puede realizar esta acción."}, status=403)
         try:
-            entry = EscalafonItem.objects.get(estudiante__usuario=request.user, escalafon__proceso__anio__year=timezone.now().year)
+            entry = EscalafonItem.objects.get(estudiante__usuario=request.user, escalafon__proceso__anio__year=get_current_cycle_year())
         except EscalafonItem.DoesNotExist:
             return Response({"detail": "No tienes un escalafón vigente."}, status=404)
         serializer = StudentEscalafonActionSerializer(data=request.data, context={"action": action})
         serializer.is_valid(raise_exception=True)
         if action not in {"aceptar", "revision"}:
             return Response({"detail": "Acción no válida."}, status=400)
-        stage_one = Etapa.objects.filter(nombre=ETAPAS_NOMBRES[1]).first()
-        if not stage_one or stage_one.estado != "en_curso":
+        if not is_stage_active(1):
             return Response({"detail": "El escalafón solo puede responderse durante la etapa 1; ahora solo puede consultarse."}, status=403)
         if entry.escalafon.estado == "enviado":
             return Response({"detail": "El escalafón ya fue enviado y solo puede consultarse."}, status=403)

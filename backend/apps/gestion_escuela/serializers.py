@@ -40,6 +40,12 @@ class EscalafonItemSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["indices_bloqueados", "estado", "estado_revision", "aceptado", "fecha_revision"]
 
+    # Campos que solo pueden salir en la fila del propio estudiante: el escalafon
+    # se publica como ranking (nombre e indice general), no como padron con datos
+    # de contacto. Ver `redact_for_student`.
+    PERSONAL_FIELDS = ("ci", "direccion", "sexo", "indice_10", "indice_11", "indice_12")
+    REVIEW_FIELDS = ("estado", "causa_revision", "estado_revision", "aceptado", "fecha_revision", "tiene_cuenta")
+
     def to_representation(self, instance):
         data = super().to_representation(instance)
         data.update({
@@ -48,6 +54,10 @@ class EscalafonItemSerializer(serializers.ModelSerializer):
             "sexo": instance.estudiante.sexo,
             "direccion": instance.estudiante.direccion,
         })
+        own_entry_id = self.context.get("own_entry_id", False)
+        if own_entry_id is not False and instance.id != own_entry_id:
+            for field in (*self.PERSONAL_FIELDS, *self.REVIEW_FIELDS):
+                data.pop(field, None)
         return data
 
     def get_estado_revision(self, instance) -> str:

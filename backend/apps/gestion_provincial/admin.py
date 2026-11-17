@@ -5,13 +5,13 @@ from .models import Etapa, Proceso
 
 @admin.register(Proceso)
 class ProcesoAdmin(admin.ModelAdmin):
-	list_display = ("id", "anio", "etapa")
+	list_display = ("id", "anio", "etapa", "estado", "fecha_inicio", "fecha_fin")
 	ordering = ("-anio", "-id")
 
 
 @admin.register(Etapa)
 class EtapaAdmin(admin.ModelAdmin):
-	list_display = ("nombre", "fecha_inicio", "fecha_fin", "estado")
+	list_display = ("nombre",)
 	ordering = ("id",)
 	readonly_fields = ("nombre",)
 

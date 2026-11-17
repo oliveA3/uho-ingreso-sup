@@ -32,8 +32,9 @@ export function fetchProvincialTiposOtorgamiento() {
   return request("/gestion-provincial/tipos-otorgamiento/");
 }
 
-export function fetchProvincialEtapas() {
-  return request("/gestion-provincial/etapas/");
+export function fetchProvincialEtapas(anio) {
+  const query = anio ? `?anio=${encodeURIComponent(anio)}` : "";
+  return request(`/gestion-provincial/etapas/${query}`);
 }
 
 export function activateProvincialEtapa(id, dates) {
@@ -44,8 +45,8 @@ export function closeProvincialEtapa(id) {
   return request(`/gestion-provincial/etapas/${id}/cerrar/`, { method: "POST" });
 }
 
-export function resetProvincialEtapas() {
-  return request("/gestion-provincial/etapas/reiniciar/", { method: "POST" });
+export function resetProvincialEtapas(anio) {
+  return request("/gestion-provincial/etapas/reiniciar/", { method: "POST", body: { anio } });
 }
 
 export function createProvincialProceso(anio) {

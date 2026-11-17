@@ -50,20 +50,16 @@ class Command(BaseCommand):
 
         today = timezone.localdate()
         for etapa_id, nombre in ETAPAS_NOMBRES.items():
-            etapa, _ = Etapa.objects.get_or_create(
-                nombre=nombre,
-                defaults={
-                    "estado": "en_curso" if etapa_id == 3 else "no_iniciada",
-                    "fecha_inicio": today if etapa_id == 3 else None,
-                    "fecha_fin": today + timedelta(days=30) if etapa_id == 3 else None,
-                },
+            etapa, _ = Etapa.objects.get_or_create(nombre=nombre)
+            proceso, _ = Proceso.objects.get_or_create(
+                anio=today.replace(month=1, day=1),
+                etapa=etapa,
             )
-            if etapa_id == 3 and etapa.estado != "en_curso":
-                etapa.estado = "en_curso"
             if etapa_id == 3:
-                etapa.fecha_inicio = today
-                etapa.fecha_fin = today + timedelta(days=30)
-                etapa.save(update_fields=["estado", "fecha_inicio", "fecha_fin"])
+                proceso.estado = "en_curso"
+                proceso.fecha_inicio = today
+                proceso.fecha_fin = today + timedelta(days=30)
+                proceso.save(update_fields=["estado", "fecha_inicio", "fecha_fin"])
 
         stage = Etapa.objects.filter(nombre=ETAPAS_NOMBRES[3]).first()
         if stage is None:

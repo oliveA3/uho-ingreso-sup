@@ -161,26 +161,40 @@ def get_or_create_territory(model, name, defaults=None, **scope):
 
 
 class Command(BaseCommand):
-    help = "Crea el catalogo territorial cubano y usuarios demo de todos los roles."
+    help = "Carga los catálogos territoriales; las cuentas demo son optativas."
 
     def add_arguments(self, parser):
         parser.add_argument(
             "--password",
             dest="password",
-            help="Contraseña para las cuentas seed. Por defecto usa INGRESOSUP_SEED_PASSWORD.",
+            help="Contraseña para cuentas demo (también puede definirse con INGRESOSUP_SEED_PASSWORD).",
         )
         parser.add_argument(
             "--reset-password",
             action="store_true",
             help="Actualiza la contraseña de las cuentas seed existentes.",
         )
+        parser.add_argument(
+            "--with-demo-users",
+            action="store_true",
+            help="Crea cuentas demo. Requiere --password o INGRESOSUP_SEED_PASSWORD.",
+        )
 
     @transaction.atomic
     def handle(self, *args, **options):
-        password = options.get("password") or os.environ.get(
-            "INGRESOSUP_SEED_PASSWORD", "IngresoSUP-demo-2026!"
-        )
+        with_demo_users = options["with_demo_users"]
+        requested_password = options.get("password")
+        password = requested_password or os.environ.get("INGRESOSUP_SEED_PASSWORD")
         reset_password = options["reset_password"]
+        if (requested_password or reset_password) and not with_demo_users:
+            raise CommandError(
+                "Las opciones de contraseña requieren --with-demo-users."
+            )
+        if with_demo_users and not password:
+            raise CommandError(
+                "Para crear cuentas demo debes indicar --password o "
+                "INGRESOSUP_SEED_PASSWORD."
+            )
 
         provinces_created = municipalities_created = schools_created = 0
         ces_created = subjects_created = 0
@@ -215,122 +229,105 @@ class Command(BaseCommand):
                     defaults={"activo": True},
                 )
                 municipalities_created += int(municipality_created)
-                school, school_created = get_or_create_territory(
-                    Escuela,
-                    f"Preuniversitario {municipality.nombre}",
-                    municipio=municipality,
-                    defaults={
-                        "codigo": f"SEED-{province.id}-{municipality.id}",
-                        "descripcion": "Escuela inicial creada por la semilla territorial.",
-                        "activa": True,
-                    },
-                )
-                schools_created += int(school_created)
                 territories[province_name]["municipalities"][municipality_name] = {
                     "municipality": municipality,
-                    "school": school,
                 }
 
-        # Completa municipios previos que puedan existir sin escuela.
-        for municipality in Municipio.objects.all().iterator():
-            if municipality.escuelas.exists():
-                continue
-            _, school_created = get_or_create_territory(
+        users_created = 0
+        skipped_roles = []
+        if with_demo_users:
+            first_province = territories["Pinar del Río"]["province"]
+            first_municipality = territories["Pinar del Río"]["municipalities"]["Pinar del Río"]["municipality"]
+            first_school, school_created = get_or_create_territory(
                 Escuela,
-                f"Preuniversitario {municipality.nombre}",
-                municipio=municipality,
+                f"Preuniversitario {first_municipality.nombre}",
+                municipio=first_municipality,
                 defaults={
-                    "codigo": f"SEED-{municipality.provincia_id}-{municipality.id}",
-                    "descripcion": "Escuela inicial creada por la semilla territorial.",
+                    "codigo": f"SEED-{first_province.id}-{first_municipality.id}",
+                    "descripcion": "Escuela demo creada por la semilla inicial.",
                     "activa": True,
                 },
             )
             schools_created += int(school_created)
+            scopes = {
+                "superadmin": {},
+                "jefe_comision": {"provincia": first_province},
+                "ingreso_provincial": {"provincia": first_province},
+                "gestor_noticias": {"provincia": first_province},
+                "ingreso_municipal": {"municipio": first_municipality, "provincia": first_province},
+                "director_escuela": {"escuela": first_school, "municipio": first_municipality, "provincia": first_province},
+                "secretario_escuela": {"escuela": first_school, "municipio": first_municipality, "provincia": first_province},
+                "estudiante": {"escuela": first_school, "municipio": first_municipality, "provincia": first_province},
+            }
 
-        first_province = territories["Pinar del Río"]["province"]
-        first_municipality = territories["Pinar del Río"]["municipalities"]["Pinar del Río"]["municipality"]
-        first_school = territories["Pinar del Río"]["municipalities"]["Pinar del Río"]["school"]
-        scopes = {
-            "superadmin": {},
-            "jefe_comision": {"provincia": first_province},
-            "ingreso_provincial": {"provincia": first_province},
-            "gestor_noticias": {"provincia": first_province},
-            "ingreso_municipal": {"municipio": first_municipality, "provincia": first_province},
-            "director_escuela": {"escuela": first_school, "municipio": first_municipality, "provincia": first_province},
-            "secretario_escuela": {"escuela": first_school, "municipio": first_municipality, "provincia": first_province},
-            "estudiante": {"escuela": first_school, "municipio": first_municipality, "provincia": first_province},
-        }
-
-        users_created = 0
-        skipped_roles = []
-        for role, username, email, first_name, last_name in ROLE_USERS:
-            user, created, is_seed_user = self._get_role_user(
-                role, username, email, scopes[role]
-            )
-            if not is_seed_user:
-                skipped_roles.append(role)
-                self.stdout.write(
-                    self.style.WARNING(
-                        f"No se modificó un usuario existente que ya cubre el rol {role}."
-                    )
+            for role, username, email, first_name, last_name in ROLE_USERS:
+                user, created, is_seed_user = self._get_role_user(
+                    role, username, email, scopes[role]
                 )
-                continue
-
-            unique_scope = ROLE_UNIQUE_SCOPES.get(role)
-            if unique_scope and scopes[role].get(unique_scope):
-                scope_value = scopes[role][unique_scope]
-                has_conflict = Usuario.objects.filter(
-                    rol=role,
-                    **{f"{unique_scope}_id": scope_value.pk},
-                ).exclude(pk=user.pk).exists()
-                if has_conflict:
+                if not is_seed_user:
                     skipped_roles.append(role)
                     self.stdout.write(
                         self.style.WARNING(
-                            f"No se creó la cuenta seed de {role}: ya existe una cuenta para ese alcance."
+                            f"No se modificó un usuario existente que ya cubre el rol {role}."
                         )
                     )
                     continue
 
-            if created:
-                users_created += 1
-            for scope_field in ("provincia", "municipio", "escuela"):
-                setattr(user, scope_field, scopes[role].get(scope_field))
-            user.email = email
-            user.rol = role
-            user.first_name = first_name
-            user.last_name = last_name
-            user.is_active = True
-            user.email_verificado = True
-            user.is_staff = role == "superadmin"
-            user.is_superuser = role == "superadmin"
-            if reset_password or created:
-                user.set_password(password)
-            user.save()
-            if role == "estudiante":
-                student, _ = Estudiante.objects.get_or_create(
-                    usuario=user,
-                    defaults={
-                        "ci": "08051212345",
-                        "nombre": first_name,
-                        "apellidos": last_name,
-                        "sexo": "M",
-                        "direccion": "Calle Martí No. 12, Pinar del Río",
-                        "escuela": first_school,
-                    },
-                )
-                demo_ci = "08051212345"
-                if Estudiante.objects.filter(ci=demo_ci).exclude(pk=student.pk).exists():
-                    raise CommandError(
-                        f"El CI demo {demo_ci} ya pertenece a otro estudiante; no se modificaron los datos seed."
+                unique_scope = ROLE_UNIQUE_SCOPES.get(role)
+                if unique_scope and scopes[role].get(unique_scope):
+                    scope_value = scopes[role][unique_scope]
+                    has_conflict = Usuario.objects.filter(
+                        rol=role,
+                        **{f"{unique_scope}_id": scope_value.pk},
+                    ).exclude(pk=user.pk).exists()
+                    if has_conflict:
+                        skipped_roles.append(role)
+                        self.stdout.write(
+                            self.style.WARNING(
+                                f"No se creó la cuenta seed de {role}: ya existe una cuenta para ese alcance."
+                            )
+                        )
+                        continue
+
+                if created:
+                    users_created += 1
+                for scope_field in ("provincia", "municipio", "escuela"):
+                    setattr(user, scope_field, scopes[role].get(scope_field))
+                user.email = email
+                user.rol = role
+                user.first_name = first_name
+                user.last_name = last_name
+                user.is_active = True
+                user.email_verificado = True
+                user.is_staff = role == "superadmin"
+                user.is_superuser = role == "superadmin"
+                if reset_password or created:
+                    user.set_password(password)
+                user.save()
+                if role == "estudiante":
+                    student, _ = Estudiante.objects.get_or_create(
+                        usuario=user,
+                        defaults={
+                            "ci": "08051212345",
+                            "nombre": first_name,
+                            "apellidos": last_name,
+                            "sexo": "M",
+                            "direccion": "Calle Martí No. 12, Pinar del Río",
+                            "escuela": first_school,
+                        },
                     )
-                student.ci = demo_ci
-                student.nombre = first_name
-                student.apellidos = last_name
-                student.sexo = "M"
-                student.escuela = first_school
-                student.direccion = "Calle Martí No. 12, Pinar del Río"
-                student.save(update_fields=["ci", "nombre", "apellidos", "sexo", "escuela", "direccion"])
+                    demo_ci = "08051212345"
+                    if Estudiante.objects.filter(ci=demo_ci).exclude(pk=student.pk).exists():
+                        raise CommandError(
+                            f"El CI demo {demo_ci} ya pertenece a otro estudiante; no se modificaron los datos seed."
+                        )
+                    student.ci = demo_ci
+                    student.nombre = first_name
+                    student.apellidos = last_name
+                    student.sexo = "M"
+                    student.escuela = first_school
+                    student.direccion = "Calle Martí No. 12, Pinar del Río"
+                    student.save(update_fields=["ci", "nombre", "apellidos", "sexo", "escuela", "direccion"])
 
         self.stdout.write(self.style.SUCCESS("Semilla inicial completada."))
         self.stdout.write(f"Provincias creadas: {provinces_created} de {len(CUBA_TERRITORIES)} territorios cargados.")
@@ -338,9 +335,8 @@ class Command(BaseCommand):
         self.stdout.write(f"Escuelas creadas: {schools_created}.")
         self.stdout.write(f"CES creados: {ces_created} de {len(INITIAL_CES)}.")
         self.stdout.write(f"Asignaturas creadas: {subjects_created} de {len(INITIAL_SUBJECTS)}.")
-        self.stdout.write(f"Usuarios seed creados: {users_created}; roles configurados: {len(ROLE_USERS) - len(skipped_roles)}.")
-        self.stdout.write("Cuentas seed: seed_superadmin, seed_jefe_comision, seed_ingreso_provincial, seed_gestor_noticias, seed_ingreso_municipal, seed_director_escuela, seed_secretario_escuela y seed_estudiante.")
-        self.stdout.write("Cambia INGRESOSUP_SEED_PASSWORD antes de usar la semilla fuera de desarrollo.")
+        if with_demo_users:
+            self.stdout.write(f"Usuarios seed creados: {users_created}; roles configurados: {len(ROLE_USERS) - len(skipped_roles)}.")
 
     @staticmethod
     def _get_role_user(role, username, email, scope):

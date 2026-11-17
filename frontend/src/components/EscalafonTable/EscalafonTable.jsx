@@ -1,9 +1,14 @@
 import Input from "../Input/Input";
 import styles from "./EscalafonTable.module.css";
 
+// El escalafon se muestra como ranking: posicion, nombre e indice general. Los
+// datos personales (CI, direccion, indices por grado) solo llegan del backend
+// para la fila del propio estudiante, y ya se muestran en las tarjetas de
+// arriba, asi que la tabla no los repite.
 export default function EscalafonTable({ entries, current, search, onSearchChange }) {
+  const term = search.trim().toLowerCase();
   const visibleEntries = entries.filter((entry) =>
-    `${entry.nombre} ${entry.apellidos} ${entry.ci}`.toLowerCase().includes(search.toLowerCase())
+    !term || `${entry.nombre} ${entry.apellidos}`.toLowerCase().includes(term)
   );
 
   return (
@@ -13,7 +18,7 @@ export default function EscalafonTable({ entries, current, search, onSearchChang
         <Input
           value={search}
           onChange={onSearchChange}
-          placeholder="Buscar por nombre o CI"
+          placeholder="Buscar por nombre"
           className={styles.searchInput}
         />
       </div>
@@ -21,7 +26,7 @@ export default function EscalafonTable({ entries, current, search, onSearchChang
         <table className={styles.table}>
           <thead className={styles.thead}>
             <tr>
-              {["Posición", "CI", "Nombre", "10mo", "11mo", "12mo", "Índice general"].map((heading) => (
+              {["Posición", "Nombre", "Índice general"].map((heading) => (
                 <th key={heading} className={styles.th}>{heading}</th>
               ))}
             </tr>
@@ -29,7 +34,6 @@ export default function EscalafonTable({ entries, current, search, onSearchChang
           <tbody>
             {visibleEntries.map((entry) => {
               const isCurrentStudent = entry.id === current.id;
-              const position = entries.findIndex((item) => item.id === entry.id) + 1;
 
               return (
                 <tr
@@ -38,18 +42,22 @@ export default function EscalafonTable({ entries, current, search, onSearchChang
                 >
                   <td className={styles.td}>
                     <span className={isCurrentStudent ? styles.positionBadgeActive : styles.positionBadge}>
-                      {position}
+                      {entry.posicion}
                     </span>
                   </td>
-                  <td className={styles.td}>{entry.ci}</td>
-                  <td className={styles.td}>{entry.nombre} {entry.apellidos}</td>
-                  <td className={styles.td}>{entry.indice_10 ?? "--"}</td>
-                  <td className={styles.td}>{entry.indice_11 ?? "--"}</td>
-                  <td className={styles.td}>{entry.indice_12 ?? "--"}</td>
+                  <td className={styles.td}>
+                    {entry.nombre} {entry.apellidos}
+                    {isCurrentStudent && <span className={styles.youTag}> (tú)</span>}
+                  </td>
                   <td className={styles.td}>{entry.indice_general ?? "--"}</td>
                 </tr>
               );
             })}
+            {!visibleEntries.length && (
+              <tr className={styles.rowNormal}>
+                <td className={styles.td} colSpan={3}>No hay estudiantes que coincidan con la búsqueda.</td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
